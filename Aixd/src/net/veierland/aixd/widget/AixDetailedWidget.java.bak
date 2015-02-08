@@ -1,13 +1,13 @@
-package net.veierland.aix.widget;
+package net.veierland.aixd.widget;
 
-import static net.veierland.aix.AixUtils.WEATHER_ICONS_DAY;
-import static net.veierland.aix.AixUtils.WEATHER_ICONS_NIGHT;
-import static net.veierland.aix.AixUtils.WEATHER_ICONS_POLAR;
-import static net.veierland.aix.AixUtils.hcap;
-import static net.veierland.aix.AixUtils.isPrime;
-import static net.veierland.aix.AixUtils.lcap;
-import static net.veierland.aix.AixUtils.truncateDay;
-import static net.veierland.aix.AixUtils.truncateHour;
+import static net.veierland.aixd.AixUtils.WEATHER_ICONS_DAY;
+import static net.veierland.aixd.AixUtils.WEATHER_ICONS_NIGHT;
+import static net.veierland.aixd.AixUtils.WEATHER_ICONS_POLAR;
+import static net.veierland.aixd.AixUtils.hcap;
+import static net.veierland.aixd.AixUtils.isPrime;
+import static net.veierland.aixd.AixUtils.lcap;
+import static net.veierland.aixd.AixUtils.truncateDay;
+import static net.veierland.aixd.AixUtils.truncateHour;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -16,24 +16,23 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.Locale;
 import java.util.TimeZone;
 
-import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
-import net.veierland.aix.AixProvider.AixLocations;
-import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
-import net.veierland.aix.AixProvider.AixSunMoonData;
-import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
-import net.veierland.aix.IntervalData;
-import net.veierland.aix.PointData;
-import net.veierland.aix.R;
-import net.veierland.aix.SunMoonData;
-import net.veierland.aix.util.AixLocationInfo;
-import net.veierland.aix.util.AixWidgetInfo;
-import net.veierland.aix.util.AixWidgetSettings;
-import net.veierland.aix.util.CatmullRomSpline;
-import net.veierland.aix.util.Cubic;
-import net.veierland.aix.util.Cubic.CubicResult;
+import net.veierland.aixd.AixProvider.AixIntervalDataForecastColumns;
+import net.veierland.aixd.AixProvider.AixLocations;
+import net.veierland.aixd.AixProvider.AixPointDataForecastColumns;
+import net.veierland.aixd.AixProvider.AixSunMoonData;
+import net.veierland.aixd.AixProvider.AixSunMoonDataColumns;
+import net.veierland.aixd.IntervalData;
+import net.veierland.aixd.PointData;
+import net.veierland.aixd.R;
+import net.veierland.aixd.SunMoonData;
+import net.veierland.aixd.util.AixLocationInfo;
+import net.veierland.aixd.util.AixWidgetInfo;
+import net.veierland.aixd.util.AixWidgetSettings;
+import net.veierland.aixd.util.CatmullRomSpline;
+import net.veierland.aixd.util.Cubic;
+import net.veierland.aixd.util.Cubic.CubicResult;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
@@ -757,6 +756,7 @@ public class AixDetailedWidget {
 	private void drawHourLabels(Canvas canvas) throws AixWidgetDrawException {
 		// Draw time stamp labels and horizontal notches
 		float notchHeight = 3.5f * mDP;
+		float labelTextPaddingY = 1.5f * mDP;
 		
 		mLabelPaint.setTextAlign(Paint.Align.CENTER);
 		
@@ -822,15 +822,15 @@ public class AixDetailedWidget {
 			
 			String hourLabel;
 			if (use24hours) {
-				hourLabel = String.format(Locale.US, "%02d", hour % 24);
+				hourLabel = String.format("%02d", hour % 24);
 			} else {
 				int hour12 = hour % 12;
 				if (0 == hour12) hour12 = 12;
 				boolean am = (hour % 24) < 12;
 				if (useShortLabel) {
-					hourLabel = String.format(Locale.US, "%2d%s", hour12, am ? "a" : "p" );
+					hourLabel = String.format("%2d%s", hour12, am ? "a" : "p" );
 				} else {
-					hourLabel = String.format(Locale.US, "%2d %s", hour12, am ? "am" : "pm" );
+					hourLabel = String.format("%2d %s", hour12, am ? "am" : "pm" );
 				}
 			}
 			canvas.drawText(hourLabel, notchX, (float)Math.floor(((float)mGraphRect.bottom + mBackgroundRect.bottom) / 2.0f + mLabelPaint.getTextSize() / 2.0f), mLabelPaint);
@@ -839,7 +839,10 @@ public class AixDetailedWidget {
 
 	private void drawInfoText(Canvas canvas, Float pressure, Float humidity, Float temperature)
 	{
+		final float locationLabelTextSize = 10.0f * mDP;
+		
 		float topTextSidePadding = 1.0f * mDP;
+		float topTextBottomPadding = 3.0f * mDP;
 		
 		String locationName = mAixLocationInfo.getTitle();
 		

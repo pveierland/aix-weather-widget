@@ -46,7 +46,7 @@ public class ColorPreference extends DialogPreference implements android.view.Vi
 	private EditText mEditText;
 	
     @SuppressWarnings("unused")
-	private static class RevertHolder extends ImageView {
+	public static class RevertHolder extends ImageView {
         public RevertHolder(Context context, AttributeSet attrs) {
             super(context, attrs);
         }

@@ -179,6 +179,14 @@ public class AixUtils {
 	public static final int WEATHER_ICON_SNOW = 13;
 	public static final int WEATHER_ICON_SNOWTHUNDER = 14;
 	public static final int WEATHER_ICON_FOG = 15;
+	//public static final int WEATHER_ICON_POLAR_SUN = 16;
+	//public static final int WEATHER_ICON_DAY_POLAR_LIGHTCLOUD = 17;
+	//public static final int WEATHER_ICON_POLAR_LIGHTRAINSUN = 18;
+	//public static final int WEATHER_ICON_POLAR_SNOWSUN = 19;
+	public static final int WEATHER_ICON_DAY_SLEETSUNTHUNDER = 20;
+	public static final int WEATHER_ICON_DAY_SNOWSUNTHUNDER = 21;
+	public static final int WEATHER_ICON_LIGHTRAINTHUNDER = 22;
+	public static final int WEATHER_ICON_SLEETTHUNDER = 23;
 	
 	public static final int BORDER_COLOR = 0;
 	public static final int BACKGROUND_COLOR = 1;

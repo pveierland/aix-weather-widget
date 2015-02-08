@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import net.veierland.aixd.AixProvider.AixIntervalDataForecastColumns;
@@ -756,7 +757,6 @@ public class AixDetailedWidget {
 	private void drawHourLabels(Canvas canvas) throws AixWidgetDrawException {
 		// Draw time stamp labels and horizontal notches
 		float notchHeight = 3.5f * mDP;
-		float labelTextPaddingY = 1.5f * mDP;
 		
 		mLabelPaint.setTextAlign(Paint.Align.CENTER);
 		
@@ -822,15 +822,15 @@ public class AixDetailedWidget {
 			
 			String hourLabel;
 			if (use24hours) {
-				hourLabel = String.format("%02d", hour % 24);
+				hourLabel = String.format(Locale.US, "%02d", hour % 24);
 			} else {
 				int hour12 = hour % 12;
 				if (0 == hour12) hour12 = 12;
 				boolean am = (hour % 24) < 12;
 				if (useShortLabel) {
-					hourLabel = String.format("%2d%s", hour12, am ? "a" : "p" );
+					hourLabel = String.format(Locale.US, "%2d%s", hour12, am ? "a" : "p" );
 				} else {
-					hourLabel = String.format("%2d %s", hour12, am ? "am" : "pm" );
+					hourLabel = String.format(Locale.US, "%2d %s", hour12, am ? "am" : "pm" );
 				}
 			}
 			canvas.drawText(hourLabel, notchX, (float)Math.floor(((float)mGraphRect.bottom + mBackgroundRect.bottom) / 2.0f + mLabelPaint.getTextSize() / 2.0f), mLabelPaint);
@@ -839,10 +839,7 @@ public class AixDetailedWidget {
 
 	private void drawInfoText(Canvas canvas, Float pressure, Float humidity, Float temperature)
 	{
-		final float locationLabelTextSize = 10.0f * mDP;
-		
 		float topTextSidePadding = 1.0f * mDP;
-		float topTextBottomPadding = 3.0f * mDP;
 		
 		String locationName = mAixLocationInfo.getTitle();
 		

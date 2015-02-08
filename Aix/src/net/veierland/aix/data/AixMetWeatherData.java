@@ -47,6 +47,49 @@ public class AixMetWeatherData implements AixDataSource {
 		return new AixMetWeatherData(context, aixUpdate, aixSettings);
 	}
 	
+	private static int mapWeatherIconToOldApi(int id)
+	{
+		switch (id % 100) // ID + 100 is used to indicate polar night in WeatherIcon 1.1 - Mod 100 to get normal value.
+		{
+			case 24: // DrizzleThunderSun
+			case 25: // RainThunderSun
+				return AixUtils.WEATHER_ICON_DAY_POLAR_LIGHTRAINTHUNDERSUN; // LightRainThunderSun
+			case 26: // LightSleetThunderSun
+			case 27: // HeavySleetThunderSun
+				return AixUtils.WEATHER_ICON_DAY_SLEETSUNTHUNDER; // SleetSunThunder
+			case 28: // LightSnowThunderSun
+			case 29: // HeavySnowThunderSun
+				return AixUtils.WEATHER_ICON_DAY_SNOWSUNTHUNDER; // SnowSunThunder
+			case 30: // DrizzleThunder
+				return AixUtils.WEATHER_ICON_LIGHTRAINTHUNDER; // LightRainThunder
+			case 31: // LightSleetThunder
+			case 32: // HeavySleetThunder
+				return AixUtils.WEATHER_ICON_SLEETTHUNDER; // SleetThunder
+			case 33: // LightSnowThunder
+			case 34: // HeavySnowThunder
+				return AixUtils.WEATHER_ICON_SNOWTHUNDER; // SnowThunder
+			case 40: // DrizzleSun
+			case 41: // RainSun
+				return AixUtils.WEATHER_ICON_DAY_LIGHTRAINSUN; // LightRainSun
+			case 42: // LightSleetSun
+			case 43: // HeavySleetSun
+				return AixUtils.WEATHER_ICON_DAY_POLAR_SLEETSUN; // SleetSun
+			case 44: // LightSnowSun
+			case 45: // HeavysnowSun
+				return AixUtils.WEATHER_ICON_DAY_SNOWSUN; // SnowSun
+			case 46: // Drizzle
+				return AixUtils.WEATHER_ICON_LIGHTRAIN; // LightRain
+			case 47: // LightSleet
+			case 48: // HeavySleet
+				return AixUtils.WEATHER_ICON_SLEET; // Sleet
+			case 49: // LightSnow
+			case 50: // HeavySnow
+				return AixUtils.WEATHER_ICON_SNOW; // Snow
+			default:
+				return id;
+		}
+	}
+	
 	public void update(AixLocationInfo aixLocationInfo, long currentUtcTime)
 			throws AixDataUpdateException
 	{
@@ -65,7 +108,7 @@ public class AixMetWeatherData implements AixDataSource {
 			
 			String url = String.format(
 					Locale.US,
-					"http://api.met.no/weatherapi/locationforecast/1.8/?lat=%.5f;lon=%.5f",
+					"http://api.met.no/weatherapi/locationforecast/1.9/?lat=%.5f;lon=%.5f",
 					latitude.doubleValue(),
 					longitude.doubleValue());
 			
@@ -79,7 +122,7 @@ public class AixMetWeatherData implements AixDataSource {
 			mAixUpdate.updateWidgetRemoteViews("Parsing NMI weather data...", false);
 			
 			TimeZone utcTimeZone = TimeZone.getTimeZone("UTC");
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
 			dateFormat.setTimeZone(utcTimeZone);
 			
 			ArrayList<ContentValues> pointDataValues = new ArrayList<ContentValues>();
@@ -154,7 +197,8 @@ public class AixMetWeatherData implements AixDataSource {
 					} else if (parser.getName().equals("symbol")) {
 						if (contentValues != null) {
 							contentValues.put(AixIntervalDataForecastColumns.WEATHER_ICON,
-									Integer.parseInt(parser.getAttributeValue(null, "number")));
+									mapWeatherIconToOldApi(
+											Integer.parseInt(parser.getAttributeValue(null, "number"))));
 						}
 					} else if (parser.getName().equals("precipitation")) {
 						if (contentValues != null) {
@@ -178,7 +222,7 @@ public class AixMetWeatherData implements AixDataSource {
 						}
 					} else if (parser.getName().equals("model")) {
 						String model = parser.getAttributeValue(null, "name");
-						if (model.toLowerCase().equals("yr")) {
+						if (model.toLowerCase(Locale.US).equals("yr")) {
 							try {
 								nextUpdate = dateFormat.parse(parser.getAttributeValue(null, "nextrun")).getTime();
 							} catch (ParseException e) {

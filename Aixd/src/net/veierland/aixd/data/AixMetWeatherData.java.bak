@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import net.veierland.aixd.AixSettings;
@@ -54,10 +55,19 @@ public class AixMetWeatherData implements AixDataSource {
 			
 			mAixUpdate.updateWidgetRemoteViews("Downloading NMI weather data...", false);
 			
+			Double latitude = aixLocationInfo.getLatitude();
+			Double longitude = aixLocationInfo.getLongitude();
+			
+			if (latitude == null || longitude == null)
+			{
+				throw new AixDataUpdateException("Missing location information. Latitude/Longitude was null");
+			}
+			
 			String url = String.format(
+					Locale.US,
 					"http://api.met.no/weatherapi/locationforecast/1.8/?lat=%.5f;lon=%.5f",
-					aixLocationInfo.getLatitude(),
-					aixLocationInfo.getLongitude());
+					latitude.doubleValue(),
+					longitude.doubleValue());
 			
 			Log.d(TAG, "Attempting to download weather data from URL=" + url);
 			

@@ -1,4 +1,4 @@
-package net.veierland.aix;
+package net.veierland.aixd;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,14 +24,14 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import net.veierland.aix.AixProvider.AixForecasts;
-import net.veierland.aix.AixProvider.AixForecastsColumns;
-import net.veierland.aix.AixProvider.AixLocations;
-import net.veierland.aix.AixProvider.AixLocationsColumns;
-import net.veierland.aix.AixProvider.AixViews;
-import net.veierland.aix.AixProvider.AixViewsColumns;
-import net.veierland.aix.AixProvider.AixWidgets;
-import net.veierland.aix.AixProvider.AixWidgetsColumns;
+import net.veierland.aixd.AixProvider.AixForecasts;
+import net.veierland.aixd.AixProvider.AixForecastsColumns;
+import net.veierland.aixd.AixProvider.AixLocations;
+import net.veierland.aixd.AixProvider.AixLocationsColumns;
+import net.veierland.aixd.AixProvider.AixViews;
+import net.veierland.aixd.AixProvider.AixViewsColumns;
+import net.veierland.aixd.AixProvider.AixWidgets;
+import net.veierland.aixd.AixProvider.AixWidgetsColumns;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -60,7 +60,7 @@ import android.widget.Toast;
 public class AixService extends Service implements Runnable {
 	private static final String TAG = "AixService";
 	
-	public static final String ACTION_UPDATE_ALL = "net.veierland.aix.UPDATE_ALL";
+	public static final String ACTION_UPDATE_ALL = "net.veierland.aixd.UPDATE_ALL";
 	
 	private static Object sLock = new Object();
 	private static boolean sThreadRunning = false;

@@ -1,4 +1,4 @@
-package net.veierland.aix;
+package net.veierland.aixd;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

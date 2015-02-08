@@ -1,4 +1,4 @@
-package net.veierland.aix;
+package net.veierland.aixd;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -6,12 +6,12 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.TimeZone;
 
-import net.veierland.aix.AixProvider.AixForecasts;
-import net.veierland.aix.AixProvider.AixForecastsColumns;
-import net.veierland.aix.AixProvider.AixLocations;
-import net.veierland.aix.AixProvider.AixLocationsColumns;
-import net.veierland.aix.AixProvider.AixViews;
-import net.veierland.aix.AixProvider.AixWidgets;
+import net.veierland.aixd.AixProvider.AixForecasts;
+import net.veierland.aixd.AixProvider.AixForecastsColumns;
+import net.veierland.aixd.AixProvider.AixLocations;
+import net.veierland.aixd.AixProvider.AixLocationsColumns;
+import net.veierland.aixd.AixProvider.AixViews;
+import net.veierland.aixd.AixProvider.AixWidgets;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;

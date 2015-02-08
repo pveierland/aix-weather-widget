@@ -1,20 +1,22 @@
 package net.veierland.aix;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.Intent;
 import android.content.UriMatcher;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.util.Log;
@@ -140,6 +142,8 @@ public class AixProvider extends ContentProvider {
 		public static final String TIME_FROM = "timeFrom";
 		public static final String TIME_TO = "timeTo";
 		public static final String TEMPERATURE = "temperature";
+		public static final String HUMIDITY = "humidity";
+		public static final String PRESSURE = "pressure";
 		public static final String RAIN_LOWVAL = "rainLowVal";
 		public static final String RAIN_VALUE = "rainValue";
 		public static final String RAIN_HIGHVAL = "rainHighVal";
@@ -152,12 +156,14 @@ public class AixProvider extends ContentProvider {
 		public static final int TIME_FROM_COLUMN = 2;
 		public static final int TIME_TO_COLUMN = 3;
 		public static final int TEMPERATURE_COLUMN = 4;
-		public static final int RAIN_LOWVAL_COLUMN = 5;
-		public static final int RAIN_VALUE_COLUMN = 6;
-		public static final int RAIN_HIGHVAL_COLUMN = 7;
-		public static final int WEATHER_ICON_COLUMN = 8;
-		public static final int SUN_RISE_COLUMN = 9;
-		public static final int SUN_SET_COLUMN = 10;
+		public static final int HUMIDITY_COLUMN = 5;
+		public static final int PRESSURE_COLUMN = 6;
+		public static final int RAIN_LOWVAL_COLUMN = 7;
+		public static final int RAIN_VALUE_COLUMN = 8;
+		public static final int RAIN_HIGHVAL_COLUMN = 9;
+		public static final int WEATHER_ICON_COLUMN = 10;
+		public static final int SUN_RISE_COLUMN = 11;
+		public static final int SUN_SET_COLUMN = 12;
 	}
 	
 	public static class AixForecasts implements BaseColumns, AixForecastsColumns {
@@ -228,7 +234,10 @@ public class AixProvider extends ContentProvider {
 	
 	private static class DatabaseHelper extends SQLiteOpenHelper {
 		private static final String DATABASE_NAME = "aix_database.db";
-		private static final int DATABASE_VERSION = 6; // 0.1.4 will be 6, 0.1.3 was 5
+		private static final int DATABASE_VERSION = 7;
+		// 0.1.5 was 7
+		// 0.1.4 was 6
+		// 0.1.3 was 5
 		
 		private Context mContext;
 		
@@ -240,6 +249,30 @@ public class AixProvider extends ContentProvider {
 		@Override
 		public void onCreate(SQLiteDatabase db) {
 			Log.d(TAG, "onCreate()");
+			createWidgetViewLocationTables(db);
+			createForecastTable(db);
+			
+			ContentValues values = new ContentValues();
+			values.put(AixLocationsColumns.TITLE, "Brussels");
+			values.put(AixLocationsColumns.TITLE_DETAILED, "Brussels, Belgium");
+			values.put(AixLocationsColumns.LATITUDE, 50.85f);
+			values.put(AixLocationsColumns.LONGITUDE, 4.35f);
+			db.insert(TABLE_AIXLOCATIONS, null, values);
+			values.clear();
+			values.put(AixLocationsColumns.TITLE, "Luxembourg");
+			values.put(AixLocationsColumns.TITLE_DETAILED, "Luxembourg, Europe");
+			values.put(AixLocationsColumns.LATITUDE, 49.6f);
+			values.put(AixLocationsColumns.LONGITUDE, 6.116667f);
+			db.insert(TABLE_AIXLOCATIONS, null, values);
+			values.clear();
+			values.put(AixLocationsColumns.TITLE, "Oslo");
+			values.put(AixLocationsColumns.TITLE_DETAILED, "Oslo, Norway");
+			values.put(AixLocationsColumns.LATITUDE, 59.949444f);
+			values.put(AixLocationsColumns.LONGITUDE, 10.756389f);
+			db.insert(TABLE_AIXLOCATIONS, null, values);
+		}
+
+		private void createWidgetViewLocationTables(SQLiteDatabase db) {
 			db.execSQL("CREATE TABLE " + TABLE_AIXWIDGETS + " ("
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY,"
 					+ AixWidgetsColumns.SIZE + " INTEGER,"
@@ -274,13 +307,17 @@ public class AixProvider extends ContentProvider {
 					+ AixLocationsColumns.LAST_FORECAST_UPDATE + " INTEGER,"
 					+ AixLocationsColumns.FORECAST_VALID_TO + " INTEGER,"
 					+ AixLocationsColumns.NEXT_FORECAST_UPDATE + " INTEGER);");
-			
+		}
+
+		private void createForecastTable(SQLiteDatabase db) {
 			db.execSQL("CREATE TABLE " + TABLE_AIXFORECASTS + " ("
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
 					+ AixForecastsColumns.LOCATION + " INTEGER,"
 					+ AixForecastsColumns.TIME_FROM + " INTEGER,"
 					+ AixForecastsColumns.TIME_TO + " INTEGER,"
 					+ AixForecastsColumns.TEMPERATURE + " REAL,"
+					+ AixForecastsColumns.HUMIDITY + " REAL,"
+					+ AixForecastsColumns.PRESSURE + " REAL,"
 					+ AixForecastsColumns.RAIN_LOWVAL + " REAL,"
 					+ AixForecastsColumns.RAIN_VALUE + " REAL,"
 					+ AixForecastsColumns.RAIN_HIGHVAL + " REAL,"
@@ -321,8 +358,6 @@ public class AixProvider extends ContentProvider {
 							migrateProperty(settings, cursor, mContext.getString(R.string.precipitation_units_string), 5);
 							migrateProperty(settings, cursor, mContext.getString(R.string.background_color_int), 7);
 							migrateProperty(settings, cursor, mContext.getString(R.string.text_color_int), 8);
-							migrateProperty(settings, cursor, mContext.getString(R.string.location_background_color_int), 9);
-							migrateProperty(settings, cursor, mContext.getString(R.string.location_text_color_int), 10);
 							migrateProperty(settings, cursor, mContext.getString(R.string.grid_color_int), 11);
 							migrateProperty(settings, cursor, mContext.getString(R.string.grid_outline_color_int), 12);
 							migrateProperty(settings, cursor, mContext.getString(R.string.max_rain_color_int), 13);
@@ -368,7 +403,8 @@ public class AixProvider extends ContentProvider {
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXVIEWS);
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXLOCATIONS);
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXFORECASTS);
-				onCreate(db);
+				createWidgetViewLocationTables(db);
+				createForecastTable(db);
 				
 				for (ContentValues widget : widgets) {
 					db.insert(TABLE_AIXWIDGETS, null, widget);
@@ -391,6 +427,10 @@ public class AixProvider extends ContentProvider {
 				for (ContentValues location : locations) {
 					db.insert(TABLE_AIXLOCATIONS, null, location);
 				}
+			} else if (oldVersion == 6) {
+				// Humidity and pressure fields were added to forecasts table
+				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXFORECASTS);
+				createForecastTable(db);
 			} else {
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXWIDGETS);
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXVIEWS);
@@ -398,8 +438,30 @@ public class AixProvider extends ContentProvider {
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXFORECASTS);
 				onCreate(db);
 			}
+			
+			ContentValues values = new ContentValues();
+			
+			if (oldVersion < 7) {
+				Cursor c = db.query(TABLE_AIXWIDGETS, null, null, null, null, null, null);
+				if (c != null) {
+					if (c.moveToFirst()) {
+						values.put(AixWidgetSettings.KEY, mContext.getString(R.string.day_effect_bool));
+						values.put(AixWidgetSettings.VALUE, "true");
+						do {
+							values.put(AixWidgetSettings.ROW_ID, c.getLong(0));
+							db.insert(TABLE_AIXWIDGETSETTINGS, null, values);
+						} while (c.moveToNext());
+					}
+				}
+			}
+			
+			// All forecast data has been deleted.
+			values.clear();
+			values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
+			values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
+			values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
+			db.update(TABLE_AIXLOCATIONS, values, null, null);
 		}
-		
 	}
 	
 	@Override
@@ -511,7 +573,47 @@ public class AixProvider extends ContentProvider {
 		}
 		throw new IllegalStateException();
 	}
-
+	
+	@Override
+	public ParcelFileDescriptor openFile(Uri uri, String mode)
+			throws FileNotFoundException
+	{
+		if (sUriMatcher.match(uri) == AIXRENDER) {
+			String widgetId = uri.getPathSegments().get(1);
+			String updateId = uri.getPathSegments().get(2);
+			long updateTime = Long.parseLong(updateId);
+			
+			File dir = getContext().getCacheDir();
+			File[] files = dir.listFiles();
+				
+			for (int i = 0; i < files.length; i++) {
+				File f = files[i];
+				String[] s = f.getName().split("_");
+				if (s.length == 4 && s[1].equals(widgetId)) {
+					long filetime = Long.parseLong(s[2]);
+					if (filetime < updateTime) {
+						f.delete();
+					}
+				}
+			}
+				
+			boolean isLandscape = (getContext().getResources().getConfiguration().orientation ==
+				   Configuration.ORIENTATION_LANDSCAPE);
+			
+			StringBuilder sb = new StringBuilder();
+			sb.append("aix_");
+			sb.append(widgetId);
+			sb.append('_');
+			sb.append(updateId);
+			if (isLandscape) sb.append("_landscape.png");
+			else sb.append("_portrait.png");
+			
+			File file = new File(getContext().getCacheDir(), sb.toString());
+			return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+		}
+		return null;
+	}
+	
 	@Override
 	public Uri insert(Uri uri, ContentValues values) {
 		if (LOGD) Log.d(TAG, "insert() with uri=" + uri);
@@ -775,6 +877,8 @@ public class AixProvider extends ContentProvider {
 	private static final int AIXFORECASTS = 601;
 	private static final int AIXFORECASTS_ID = 602;
 	
+	private static final int AIXRENDER = 777;
+	
 	static {
 		/* URI for retrieving all widgets */
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets", AIXWIDGETS);
@@ -810,6 +914,8 @@ public class AixProvider extends ContentProvider {
 		sUriMatcher.addURI(AUTHORITY, "aixforecasts", AIXFORECASTS);
 		/* URI for retrieving a specific forecast by ID */
 		sUriMatcher.addURI(AUTHORITY, "aixforecasts/#", AIXFORECASTS_ID);
+		
+		sUriMatcher.addURI(AUTHORITY, "aixrender/#/#", AIXRENDER);
 	}
 	
 	public Uri addForecast(SQLiteDatabase db, ContentValues values) {

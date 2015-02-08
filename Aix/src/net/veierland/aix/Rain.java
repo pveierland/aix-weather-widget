@@ -28,7 +28,7 @@ public class Rain implements Comparable<Rain> {
 			this.maxValue = maxValue / scale;
 		}
 		this.weatherIcon = weatherIcon;
-	}	
+	}
 	
 	public Rain(long timeFrom, long timeTo, String value, String minValue, String maxValue,
 			boolean isInches, float scale, String weatherIcon) throws Exception

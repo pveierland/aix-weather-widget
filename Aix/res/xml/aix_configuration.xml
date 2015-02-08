@@ -54,14 +54,34 @@
 						android:persistent="true" />
 	
 				<Preference
-						android:key="@string/location_background_color_int"
-						android:title="@string/location_background_color_title"
+						android:key="@string/pattern_color_int"
+						android:title="@string/pattern_color_title"
 						android:persistent="true" />
+			
+			</PreferenceCategory>
+
+			<PreferenceCategory
+					android:title="@string/color_settings_category_dayeffect_title">
+			
+				<CheckBoxPreference
+						android:key="@string/day_effect_bool"
+						android:title="@string/day_effect_title"
+						android:persistent="true"
+						android:defaultValue="true"
+						android:summaryOn="@string/day_effect_summary_on"
+						android:summaryOff="@string/day_effect_summary_off" />
+			
+				<Preference
+						android:key="@string/day_color_int"
+						android:title="@string/day_color_title"
+						android:persistent="true"
+						android:dependency="@string/day_effect_bool" />
 				
 				<Preference
-						android:key="@string/location_text_color_int"
-						android:title="@string/location_text_color_title"
-						android:persistent="true" />
+						android:key="@string/night_color_int"
+						android:title="@string/night_color_title"
+						android:persistent="true"
+						android:dependency="@string/day_effect_bool" />
 			
 			</PreferenceCategory>
 			
@@ -101,16 +121,6 @@
 				<Preference
 						android:key="@string/below_freezing_color_int"
 						android:title="@string/below_freezing_color_title"
-						android:persistent="true" />
-						
-				<Preference
-						android:key="@string/day_color_int"
-						android:title="@string/day_color_title"
-						android:persistent="true" />
-				
-				<Preference
-						android:key="@string/night_color_int"
-						android:title="@string/night_color_title"
 						android:persistent="true" />
 			
 			</PreferenceCategory>

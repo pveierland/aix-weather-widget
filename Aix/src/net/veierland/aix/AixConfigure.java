@@ -3,14 +3,11 @@ package net.veierland.aix;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import net.veierland.aix.AixProvider.AixLocationsColumns;
-import net.veierland.aix.AixProvider.AixSettings;
 import net.veierland.aix.AixProvider.AixSettingsColumns;
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixViewsColumns;
-import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
 import android.app.Activity;
@@ -47,8 +44,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	
 	private Preference mBackgroundColorPreference = null;
 	private Preference mTextColorPreference = null;
-	private Preference mLocationBackgroundColorPreference = null;
-	private Preference mLocationTextColorPreference = null;
+	private Preference mPatternColorPreference = null;
 	private Preference mGridColorPreference = null;
 	private Preference mGridOutlineColorPreference = null;
 	private Preference mMaxRainColorPreference = null;
@@ -128,10 +124,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		mBackgroundColorPreference.setOnPreferenceClickListener(this);
 		mTextColorPreference = findPreference(getString(R.string.text_color_int));
 		mTextColorPreference.setOnPreferenceClickListener(this);
-		mLocationBackgroundColorPreference = findPreference(getString(R.string.location_background_color_int));
-		mLocationBackgroundColorPreference.setOnPreferenceClickListener(this);
-		mLocationTextColorPreference = findPreference(getString(R.string.location_text_color_int));
-		mLocationTextColorPreference.setOnPreferenceClickListener(this);
+		mPatternColorPreference = findPreference(getString(R.string.pattern_color_int));
+		mPatternColorPreference.setOnPreferenceClickListener(this);
 		mGridColorPreference = findPreference(getString(R.string.grid_color_int));
 		mGridColorPreference.setOnPreferenceClickListener(this);
 		mGridOutlineColorPreference = findPreference(getString(R.string.grid_outline_color_int));
@@ -152,7 +146,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			if (mLocationName != null) {
 				mLocationPreference.setSummary(mLocationName);
 			}
-			mAddWidgetButton.setText("Apply Settings");
+			mAddWidgetButton.setText(getString(R.string.apply_settings));
 		}
 
 		setResult(Activity.RESULT_CANCELED);
@@ -231,7 +225,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	public void onClick(View v) {
 		if (v == mAddWidgetButton) {
 			if (mLocationId == -1) {
-				Toast.makeText(this, "You must set a location", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, getString(R.string.must_select_location), Toast.LENGTH_SHORT).show();
 			} else {
 				Intent intent = getIntent();
 				String action = intent.getAction();
@@ -265,14 +259,16 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 							Uri viewUri = resolver.insert(AixViews.CONTENT_URI, viewValues);
 							if (viewUri != null) {
 								// Get the size of the widget
-								AppWidgetManager mgr = AppWidgetManager.getInstance(getApplicationContext());
-								String widgetClassName = mgr.getAppWidgetInfo(appWidgetId).provider.getClassName();
+								//AppWidgetManager mgr = AppWidgetManager.getInstance(getApplicationContext());
+								//String widgetClassName = mgr.getAppWidgetInfo(appWidgetId).provider.getShortClassName();
 								
 								ContentValues widgetValues = new ContentValues();
 								widgetValues.put(BaseColumns._ID, appWidgetId);
 								
-								//if (widgetClassName.equals("AixWidget")) {
+								//if (widgetClassName.equals(".AixWidget")) {
 									widgetValues.put(AixWidgetsColumns.SIZE, AixWidgetsColumns.SIZE_LARGE_TINY);
+								//} else if (widgetClassName.equals(".widget.AixWidgetLargeSmall")) {
+								//	widgetValues.put(AixWidgetsColumns.SIZE, AixWidgetsColumns.SIZE_LARGE_SMALL);
 								//}
 								
 								widgetValues.put(AixWidgetsColumns.VIEWS, viewUri.getLastPathSegment());
@@ -312,16 +308,15 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			Map<String, Integer> colorMap = new HashMap<String, Integer>() {{
 				put(getString(R.string.background_color_int), resources.getColor(R.color.background_default));
 				put(getString(R.string.text_color_int), resources.getColor(R.color.text_default));
-				put(getString(R.string.location_background_color_int), resources.getColor(R.color.location_background_default));
-				put(getString(R.string.location_text_color_int), resources.getColor(R.color.location_text_default));
+				put(getString(R.string.pattern_color_int), resources.getColor(R.color.pattern_default));
+				put(getString(R.string.day_color_int), resources.getColor(R.color.day_default));
+				put(getString(R.string.night_color_int), resources.getColor(R.color.night_default));
 				put(getString(R.string.grid_color_int), resources.getColor(R.color.grid_default));
 				put(getString(R.string.grid_outline_color_int), resources.getColor(R.color.grid_outline_default));
 				put(getString(R.string.max_rain_color_int), resources.getColor(R.color.maximum_rain_default));
 				put(getString(R.string.min_rain_color_int), resources.getColor(R.color.minimum_rain_default));
 				put(getString(R.string.above_freezing_color_int), resources.getColor(R.color.above_freezing_default));
 				put(getString(R.string.below_freezing_color_int), resources.getColor(R.color.below_freezing_default));
-				put(getString(R.string.day_color_int), resources.getColor(R.color.day_default));
-				put(getString(R.string.night_color_int), resources.getColor(R.color.night_default));
 			}};
 			
 			if (colorMap.containsKey(preference.getKey())) {

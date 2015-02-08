@@ -1,6 +1,8 @@
 package net.veierland.aix;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -27,6 +29,8 @@ import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
+import net.veierland.aix.widget.AixDetailedWidget;
+import net.veierland.aix.widget.AixWidgetDrawException;
 
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -38,13 +42,12 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import widget.AixDetailedWidget;
-
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -56,6 +59,8 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -66,6 +71,7 @@ import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Xml;
 import android.view.OrientationEventListener;
@@ -123,11 +129,24 @@ public class AixService extends IntentService {
 			
 			int widgetId = (int)ContentUris.parseId(widgetUri);
 			resolver.delete(AixWidgetSettings.CONTENT_URI, AixSettingsColumns.ROW_ID + '=' + widgetId, null);
+			
+			File dir = getCacheDir();
+			File[] files = dir.listFiles();
+				
+			for (int i = 0; i < files.length; i++) {
+				File f = files[i];
+				String[] s = f.getName().split("_");
+				if (s.length == 4 && s[1].equals(Integer.toString(widgetId))) {
+					f.delete();
+				}
+			}
 		}
 	}
 	
 	private void updateWhatever(Uri widgetUri) {
 		ContentResolver resolver = getApplicationContext().getContentResolver();
+		
+		int widgetId = (int)ContentUris.parseId(widgetUri);
 		
 		long utcTime = Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTimeInMillis();
 		long updateTime = Long.MAX_VALUE;
@@ -166,7 +185,20 @@ public class AixService extends IntentService {
 			// Draw error widget
 			Log.d(TAG, "Error: Could not find widget in database. uri=" + widgetUri);
 		} else {
-			viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, Long.parseLong(widgetViews));
+			
+			int layout;
+			
+//			switch (widgetSize) {
+//			case AixWidgets.SIZE_LARGE_SMALL:
+//				layout = R.layout.widget_large_small;
+//				break;
+//			default:
+				layout = R.layout.widget;
+				//break;
+			//}
+			
+			long viewId = Long.parseLong(widgetViews);
+			viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, viewId);
 			
 			Cursor locationCursor = resolver.query(
 					Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION),
@@ -221,25 +253,68 @@ public class AixService extends IntentService {
 							Log.d(TAG, "updateWeather() successful!");
 						} catch (Exception e) {
 							Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
+							ContentValues values = new ContentValues();
+							values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
+							values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
+							values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
+							resolver.update(Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION), values, null, null);
 							updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
 						}
 					}
 				}
 			}
-		
-			if (!widgetFound || !locationFound || (!weatherUpdated && shouldUpdate && forecastValidTo < utcTime)) {
+			
+			if (!widgetFound || !locationFound) {
 				if (widgetFound && !locationFound) {
-					updateWidget(widgetUri, "Error. Please recreate widget.");
-				} else if (widgetFound && locationFound && !weatherUpdated) {
-					updateWidget(widgetUri, "No weather data. Retrying in 5 minutes");
+					updateWidget(widgetUri, getString(R.string.widget_load_error_please_recreate), layout);
 				}
 			} else {
 				try {
-					Bitmap bitmap = AixDetailedWidget.buildView(getApplicationContext(), widgetUri, viewUri);
-					updateWidget(widgetUri, bitmap);
+					long now = System.currentTimeMillis();
+					
+					try {
+						String portraitFileName = "aix_" + widgetId + "_" + now + "_portrait.png";
+						
+						Bitmap bitmap = AixDetailedWidget.buildView(
+								getApplicationContext(), widgetUri, viewUri, false);
+						File file = new File(getCacheDir(), portraitFileName);
+						FileOutputStream out = new FileOutputStream(file);
+						bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+						out.flush();
+						out.close();
+						
+						String landscapeFileName = "aix_" + widgetId + "_" + now + "_landscape.png";
+						bitmap = AixDetailedWidget.buildView(
+								getApplicationContext(), widgetUri, viewUri, true);
+						file = new File(getCacheDir(), landscapeFileName);
+						out = new FileOutputStream(file);
+						bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+						out.flush();
+						out.close();
+						
+						Uri uri = Uri.parse("content://net.veierland.aix/aixrender/" + widgetId + "/" + now);
+						updateWidget(widgetId, widgetUri, uri, layout);
+					} catch (AixWidgetDrawException e) {
+						switch (e.getErrorCode()) {
+						case AixWidgetDrawException.INVALID_WIDGET_SIZE:
+							updateWidget(widgetUri, getString(R.string.widget_load_error_please_recreate), layout);
+							return;
+						default:
+							updateWidget(widgetUri, getString(R.string.widget_no_weather_data), layout);
+							ContentValues values = new ContentValues();
+							values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
+							values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
+							values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
+							resolver.update(Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION), values, null, null);
+							updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+							break;
+						}
+						Log.d(TAG, e.toString());
+						e.printStackTrace();
+					}
 				} catch (Exception e) {
-					Log.d(TAG, e.getMessage());
-					updateWidget(widgetUri, "Failed to draw widget");
+					updateWidget(widgetUri, getString(R.string.widget_failed_to_draw), layout);
+					e.printStackTrace();
 				}
 			}
 			
@@ -249,6 +324,9 @@ public class AixService extends IntentService {
 			calendar.set(Calendar.SECOND, 0);
 			calendar.set(Calendar.MILLISECOND, 0);
 			calendar.add(Calendar.HOUR, 1);
+			
+			// Add random interval to spread traffic
+			calendar.add(Calendar.SECOND, (int)(120.0f * Math.random()));
 			
 			updateTime = calcUpdateTime(updateTime, calendar.getTimeInMillis());
 			
@@ -268,25 +346,24 @@ public class AixService extends IntentService {
 		}
 	}
 	
-	private void updateWidget(Uri widgetUri, Bitmap bitmap) {
-		int widgetId = (int)ContentUris.parseId(widgetUri);
-		
+	private void updateWidget(int widgetId, Uri widgetUri, Uri imageUri, int layoutId) {
+		RemoteViews updateView = new RemoteViews(getPackageName(), layoutId);
+		updateView.setViewVisibility(R.id.widgetTextContainer, View.GONE);
+		updateView.setViewVisibility(R.id.widgetImageContainer, View.VISIBLE);
+		updateView.setImageViewUri(R.id.widgetImage, imageUri);
+
 		Intent editWidgetIntent = new Intent(
 				Intent.ACTION_EDIT, widgetUri, getApplicationContext(), AixConfigure.class);
-		
 		editWidgetIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, editWidgetIntent, 0);
+		PendingIntent pendingIntent = PendingIntent.getActivity(
+				getApplicationContext(), 0, editWidgetIntent, 0);
 		
-		RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.widget);
-		updateView.setViewVisibility(R.id.widgetTextContainer, View.GONE);
-		updateView.setViewVisibility(R.id.widgetImage, View.VISIBLE);
-		updateView.setImageViewBitmap(R.id.widgetImage, bitmap);
 		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
 		
 		AppWidgetManager.getInstance(getApplicationContext()).updateAppWidget(widgetId, updateView);
 	}
 	
-	private void updateWidget(Uri widgetUri, String message) {
+	private void updateWidget(Uri widgetUri, String message, int layoutId) {
 		int widgetId = (int)ContentUris.parseId(widgetUri);
 		
 		Intent editWidgetIntent = new Intent(
@@ -295,12 +372,12 @@ public class AixService extends IntentService {
 		editWidgetIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, editWidgetIntent, 0);
 		
-		RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.widget);
+		RemoteViews updateView = new RemoteViews(getPackageName(), layoutId);
 		updateView.setViewVisibility(R.id.widgetTextContainer, View.VISIBLE);
-		updateView.setViewVisibility(R.id.widgetImage, View.GONE);
+		updateView.setViewVisibility(R.id.widgetImageContainer, View.GONE);
 		updateView.setTextViewText(R.id.widgetText, message);
 		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
-		 
+		
 		AppWidgetManager.getInstance(getApplicationContext()).updateAppWidget(widgetId, updateView);
 	}
 	
@@ -582,6 +659,16 @@ public class AixService extends IntentService {
 					} else if (parser.getName().equals("temperature")) {
 						if (contentValues != null) {
 							contentValues.put(AixForecastsColumns.TEMPERATURE,
+									Float.parseFloat(parser.getAttributeValue(null, "value")));
+						}
+					} else if (parser.getName().equals("humidity")) {
+						if (contentValues != null) {
+							contentValues.put(AixForecastsColumns.HUMIDITY,
+									Float.parseFloat(parser.getAttributeValue(null, "value")));
+						}
+					} else if (parser.getName().equals("pressure")) {
+						if (contentValues != null) {
+							contentValues.put(AixForecastsColumns.PRESSURE,
 									Float.parseFloat(parser.getAttributeValue(null, "value")));
 						}
 					} else if (parser.getName().equals("symbol")) {

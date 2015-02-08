@@ -1,6 +1,5 @@
 package net.veierland.aix;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,8 +21,6 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.provider.BaseColumns;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -105,8 +102,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		AdapterContextMenuInfo adapterMenuInfo = (AdapterContextMenuInfo) (menuInfo);
 		mCursor.moveToPosition(adapterMenuInfo.position);
 		if (mCursor.isAfterLast()) return;
-		menu.setHeaderTitle("Location: " + mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocationsColumns.TITLE)));
-		menu.add(0, CONTEXT_MENU_DELETE, 0, "Delete");
+		menu.setHeaderTitle(String.format(getString(R.string.context_menu_location_title), mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocationsColumns.TITLE))));
+		menu.add(0, CONTEXT_MENU_DELETE, 0, getString(R.string.context_menu_location_delete));
 	}
 
 	@Override
@@ -158,7 +155,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	                			mLocationSearchTask.execute(searchString);
 	                    	} else {
 	                    		mEditText.setText("");
-	                    		Toast.makeText(mContext, "Error: Empty search string.", Toast.LENGTH_SHORT).show();
+	                    		Toast.makeText(mContext, getString(R.string.location_empty_search_string_toast), Toast.LENGTH_SHORT).show();
 	                    	}
 	                    }})
 	                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
@@ -210,7 +207,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		protected void onPreExecute() {
 			super.onPreExecute();
 			mProgressDialog = ProgressDialog.show(
-					mContext, "Please wait...", "Searching...", true, true, this);
+					mContext, getString(R.string.location_search_progress_dialog_title), getString(R.string.location_search_progress_dialog_message), true, true, this);
 		}
 		
 		@Override
@@ -226,7 +223,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				mResetSearch = true;
 				Toast.makeText(
 						mContext,
-						"Invalid search input, please try a different search!",
+						getString(R.string.invalid_search_input_toast),
 						Toast.LENGTH_SHORT).show();
 				break;
 			case SEARCH_CANCELLED:
@@ -235,7 +232,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 			case NO_RESULTS:
 				Toast.makeText(
 						getApplicationContext(),
-						"No results found, please try a different search!",
+						getString(R.string.location_search_no_results),
 						Toast.LENGTH_SHORT).show();
 				break;
 			case SEARCH_SUCCESS:
@@ -248,7 +245,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 					mAddressListDetailed[i] = buildDetailedLocationTitle(address);
 				}
 				AlertDialog alertDialog = new AlertDialog.Builder(mContext)
-						.setTitle("Select a location")
+						.setTitle(R.string.location_search_results_select_dialog_title)
 						.setItems(mAddressListDetailed, new DialogInterface.OnClickListener() {
 							@Override
 							public void onClick(DialogInterface dialog, int which) {
@@ -276,7 +273,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		protected void onProgressUpdate(Integer... values) {
 			super.onProgressUpdate(values);
 			if (!isCancelled()) {
-				mProgressDialog.setMessage("Please wait... (" + values[0] + ")");
+				mProgressDialog.setMessage(getString(R.string.location_search_progress_dialog_message) + " (" + values[0] + ")");
 			}
 		}
 
@@ -305,8 +302,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 					} else {
 						return NO_RESULTS;
 					}
-				} catch (IOException e) {
-					Log.d(TAG, "geocoder.getFromLocationName() threw IOException on attempt #" + mAttempts);
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 				
 				publishProgress(mAttempts);

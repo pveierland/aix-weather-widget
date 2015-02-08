@@ -4,6 +4,41 @@
 	<string name="measurement_unit_celsius">Celsius</string>
 	<string name="measurement_unit_fahrenheit">Fahrenheit</string>
  -->
+
+	<!-- InfoText -->
+	<string name="pressure_top">MSLP: %1$.0f hPa</string>
+	<string name="pressure_top_short">%1$.0f hPa</string>
+	<string name="humidity_top">RH: %1$.0f%%</string>
+	<string name="humidity_top_short">%1$.0f%%</string>
+	<string name="rain_scale_format">0.###</string>
+	<string name="rain_scale_top">%1$s %2$s</string>
+	<string name="rain_scale_unit_inches">in</string>
+	<string name="rain_scale_unit_mm">mm</string>
+	<string name="temperature_format">0.#</string>
+	<string name="temperature_unit_fahrenheit">\u00B0F</string>
+	<string name="temperature_unit_celsius">\u00B0C</string>
+	<string name="temperature_top">(%1$s%2$s)</string>
+	 
+ 	<string name="widget_load_error_please_recreate">Error: Please recreate widget</string>
+ 	<string name="widget_no_weather_data">No weather data. Retrying in 5 minutes</string>
+ 	<string name="widget_failed_to_draw">Failed to draw widget</string>
+ 
+ 	<string name="context_menu_location_title">Location: %s</string>
+ 	<string name="context_menu_location_delete">Delete</string>
+ 	
+ 	<string name="invalid_search_input_toast">Invalid search input, please try a different search!</string>
+ 	
+ 	<string name="location_search_results_select_dialog_title">Select a location</string>
+ 	
+ 	<string name="location_search_no_results">No results found, please try a different search!</string>
+ 	
+ 	<string name="location_empty_search_string_toast">Error: Empty search string.</string>
+ 	
+ 	<string name="location_search_progress_dialog_message">Searching...</string>
+ 	<string name="location_search_progress_dialog_title">Please wait...</string>
+ 
+	<string name="must_select_location">You must set a location</string>
+	<string name="apply_settings">Apply Settings</string>
 	
 	<string name="header_widget_settings">Widget Settings</string>
 	<string name="header_location_settings">Select location</string>
@@ -11,6 +46,7 @@
 	<string name="title_measurement_unit">Measurement unit</string>
 	
 	<string name="color_settings_category_main_title">Main colors</string>
+	<string name="color_settings_category_dayeffect_title">Daylight effect</string>
 	<string name="color_settings_category_grid_title">Grid colors</string>
 	<string name="color_settings_category_indicator_title">Indicator colors</string>
 	
@@ -61,30 +97,32 @@
 	
 	<string name="background_color_int">background_color_int</string>
 	<string name="text_color_int">text_color_int</string>
-	<string name="location_background_color_int">location_background_color_int</string>
-	<string name="location_text_color_int">location_text_color_int</string>
+	<string name="pattern_color_int">pattern_color_int</string>
+	<string name="day_effect_bool">day_effect_bool</string>
+	<string name="day_color_int">day_color_int</string>
+	<string name="night_color_int">night_color_int</string>
 	<string name="grid_color_int">grid_color_int</string>
 	<string name="grid_outline_color_int">grid_outline_color_int</string>
 	<string name="max_rain_color_int">max_rain_color_int</string>
 	<string name="min_rain_color_int">min_rain_color_int</string>
 	<string name="above_freezing_color_int">above_freezing_color_int</string>
 	<string name="below_freezing_color_int">below_freezing_color_int</string>
-	<string name="day_color_int">day_color_int</string>
-	<string name="night_color_int">night_color_int</string>
 	
 	<string name="background_color_title">Background color</string>
 	<string name="text_color_title">Text color</string>
 	<string name="text_color_summary">Used for time and temperature labels</string>
-	<string name="location_background_color_title">Location background color</string>
-	<string name="location_text_color_title">Location text color</string>
+	<string name="pattern_color_title">Background pattern color</string>
+	<string name="day_effect_title">Day/night effect</string>
+	<string name="day_effect_summary_on">Background effect enabled.</string>
+	<string name="day_effect_summary_off">Background effect disabled.</string>
+	<string name="day_color_title">Day background color</string>
+	<string name="night_color_title">Night background color</string>
 	<string name="grid_color_title">Grid color</string>
 	<string name="grid_outline_color_title">Grid outline color</string>
 	<string name="max_rain_color_title">Maximum rain bar color</string>
 	<string name="min_rain_color_title">Minimum rain bar color</string>
 	<string name="above_freezing_color_title">Above freezing color</string>
 	<string name="below_freezing_color_title">Below freezing color</string>
-	<string name="day_color_title">Day background color</string>
-	<string name="night_color_title">Night background color</string>
 
 	<string name="awake_only_bool">global_awake_only</string>
 	<string name="wifi_only_bool">global_wifi_only</string>

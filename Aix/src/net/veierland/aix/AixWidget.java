@@ -4,12 +4,9 @@ import net.veierland.aix.AixProvider.AixWidgets;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
-import android.net.Uri;
 
 public class AixWidget extends AppWidgetProvider {
 	

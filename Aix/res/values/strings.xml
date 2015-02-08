@@ -10,48 +10,9 @@
 	
 	<string name="title_measurement_unit">Measurement unit</string>
 	
-	<string name="preference_temperature_units">temperature_units</string>
-    <string name="preference_precipitation_units">precipitation_units</string>
-    <string name="preference_precipitation_title">Select the unit of measure to use for forecasted rain. For millimetres, each grid is 1 mm of rain. For inches, each grid represents 0.05 inches of rain.</string>
-	
-	<string name="preference_background_color">preference_background_color</string>
-	<string name="preference_text_color">preference_text_color</string>
-	<string name="preference_location_background_color">preference_location_background_color</string>
-	<string name="preference_location_text_color">preference_location_text_color</string>
-	<string name="preference_grid_color">preference_grid_color</string>
-	<string name="preference_grid_outline_color">preference_grid_outline_color</string>
-	<string name="preference_max_rain_color">preference_max_rain_color</string>
-	<string name="preference_min_rain_color">preference_min_rain_color</string>
-	<string name="preference_above_freezing_color">preference_above_freezing_color</string>
-	<string name="preference_below_freezing_color">preference_below_freezing_color</string>
-	
-	<string name="preference_background_color_title">Background color</string>
-	<string name="preference_text_color_title">Text color</string>
-	<string name="preference_text_color_summary">Used for time and temperature labels</string>
-	<string name="preference_location_background_color_title">Location background color</string>
-	<string name="preference_location_text_color_title">Location text color</string>
-	<string name="preference_grid_color_title">Grid color</string>
-	<string name="preference_grid_outline_color_title">Grid outline color</string>
-	<string name="preference_max_rain_color_title">Maximum rain bar color</string>
-	<string name="preference_min_rain_color_title">Minimum rain bar color</string>
-	<string name="preference_above_freezing_color_title">Above freezing color</string>
-	<string name="preference_below_freezing_color_title">Below freezing color</string>
-	
 	<string name="color_settings_category_main_title">Main colors</string>
 	<string name="color_settings_category_grid_title">Grid colors</string>
 	<string name="color_settings_category_indicator_title">Indicator colors</string>
-	
-	<string name="preference_awake_only">preference_awake_only</string>
-	<string name="preference_awake_only_title">Only when awake</string>
-	<string name="preference_awake_only_summary_on">The device will not be awoken to update weather data.</string>
-	<string name="preference_awake_only_summary_off">Weather data will be updated even when the device is sleeping.</string>
-	<string name="preference_wifi_only">preference_wifi_only</string>
-	<string name="preference_wifi_only_title">WiFi only</string>
-	<string name="preference_wifi_only_summary_on">Weather data will only be updated when a WiFi connection is active.</string>
-	<string name="preference_wifi_only_summary_off">Weather data will be updated using any connection type.</string>
-	<string name="preference_update_rate">preference_update_rate</string>
-	<string name="preference_update_rate_title">Update rate</string>
-	<string name="preference_update_rate_summary">Adjust how often weather data will be retrieved</string>
 	
 	<string name="add_location">Add location</string>
 	<string name="app_description">Weather widget showing detailed 24-hour forecasts in a 4x1 format.</string>	
@@ -85,5 +46,59 @@
     <string name="app_name">Aix Weather Widget</string>
     <string name="widget_name">Aix Weather</string>
     <string name="widget_loading">Loading Aix...</string>
+    
+    <string name="widget_name_small_tiny">Aix Weather (2x1)</string>
+    <string name="widget_name_small_small">Aix Weather (2x2)</string>
+    <string name="widget_name_large_tiny">Aix Weather (4x1)</string>
+    <string name="widget_name_large_small">Aix Weather (4x2)</string>
+
+	<!-- BEGIN PREFERENCE STRINGS -->
+	
+	<string name="temperature_units_string">temperature_units_string</string>
+    <string name="precipitation_units_string">precipitation_units_string</string>
+    
+    <string name="precipitation_title">Select the unit of measure to use for forecasted rain. For millimetres, each grid is 1 mm of rain. For inches, each grid represents 0.05 inches of rain.</string>
+	
+	<string name="background_color_int">background_color_int</string>
+	<string name="text_color_int">text_color_int</string>
+	<string name="location_background_color_int">location_background_color_int</string>
+	<string name="location_text_color_int">location_text_color_int</string>
+	<string name="grid_color_int">grid_color_int</string>
+	<string name="grid_outline_color_int">grid_outline_color_int</string>
+	<string name="max_rain_color_int">max_rain_color_int</string>
+	<string name="min_rain_color_int">min_rain_color_int</string>
+	<string name="above_freezing_color_int">above_freezing_color_int</string>
+	<string name="below_freezing_color_int">below_freezing_color_int</string>
+	<string name="day_color_int">day_color_int</string>
+	<string name="night_color_int">night_color_int</string>
+	
+	<string name="background_color_title">Background color</string>
+	<string name="text_color_title">Text color</string>
+	<string name="text_color_summary">Used for time and temperature labels</string>
+	<string name="location_background_color_title">Location background color</string>
+	<string name="location_text_color_title">Location text color</string>
+	<string name="grid_color_title">Grid color</string>
+	<string name="grid_outline_color_title">Grid outline color</string>
+	<string name="max_rain_color_title">Maximum rain bar color</string>
+	<string name="min_rain_color_title">Minimum rain bar color</string>
+	<string name="above_freezing_color_title">Above freezing color</string>
+	<string name="below_freezing_color_title">Below freezing color</string>
+	<string name="day_color_title">Day background color</string>
+	<string name="night_color_title">Night background color</string>
+
+	<string name="awake_only_bool">global_awake_only</string>
+	<string name="wifi_only_bool">global_wifi_only</string>
+	<string name="update_rate_string">global_update_rate</string>
+	
+	<string name="awake_only_title">Only when awake</string>
+	<string name="awake_only_summary_on">The device will not be awoken to update weather data.</string>
+	<string name="awake_only_summary_off">Weather data will be updated even when the device is sleeping.</string>
+	
+	<string name="wifi_only_title">WiFi only</string>
+	<string name="wifi_only_summary_on">Weather data will only be updated when a WiFi connection is active.</string>
+	<string name="wifi_only_summary_off">Weather data will be updated using any connection type.</string>
+	
+	<string name="update_rate_title">Update rate</string>
+	<string name="update_rate_summary">Adjust how often weather data will be retrieved</string>
 
 </resources>

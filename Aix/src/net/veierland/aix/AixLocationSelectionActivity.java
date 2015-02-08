@@ -2,10 +2,10 @@ package net.veierland.aix;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.location.Address;
 import android.location.Geocoder;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -30,7 +31,6 @@ import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -124,7 +124,18 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	}
 	
 	private ProgressDialog mProgressDialog = null;
+	private LocationSearchTask mLocationSearchTask = null;
 	
+	@Override
+	protected void onPause() {
+		Log.d(TAG, "onPause()");
+		if (mProgressDialog != null) {
+			mLocationSearchTask.cancel(false);
+			mProgressDialog.dismiss();
+		}
+		super.onPause();
+	}
+
 	@Override
 	protected Dialog onCreateDialog(int id) {
 		Dialog dialog = null;
@@ -143,7 +154,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	                		imm.hideSoftInputFromWindow(mEditText.getWindowToken(), 0);
 	                		String searchString = mEditText.getText().toString();
 	                		if (!TextUtils.isEmpty(searchString)) {
-		                    	searchLocationByName(searchString, mContext, mHandler);
+	                			mLocationSearchTask = new LocationSearchTask();
+	                			mLocationSearchTask.execute(searchString);
 	                    	} else {
 	                    		mEditText.setText("");
 	                    		Toast.makeText(mContext, "Error: Empty search string.", Toast.LENGTH_SHORT).show();
@@ -178,64 +190,147 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				super.onPrepareDialog(id, dialog);
 		}
 	}
-
-	private List<Address> mAddresses = null;
 	
 	private String[] mAddressList = null;
 	private String[] mAddressListDetailed = null;
 	
-	private static final int LOCATION_SEARCH_SUCCESS = 0;
-	private static final int LOCATION_SEARCH_FAIL = 1;
-	
-	private Handler mHandler = new Handler() {
-		public void handleMessage(Message message) {
-			mProgressDialog.dismiss();
-			
-			switch (message.what) {
-			case LOCATION_SEARCH_FAIL:
-				Toast.makeText(mContext, "Search failed! Ensure that your data connection works, and try again.", Toast.LENGTH_SHORT).show();
-				break;
-			case LOCATION_SEARCH_SUCCESS:
-				if (mAddresses == null || mAddresses.size() < 0) {
-					Toast.makeText(mContext, "No results found, please try a different search!", Toast.LENGTH_SHORT).show();
-				} else {
-					mResetSearch = true;
-					mAddressList = new String[mAddresses.size()];
-					mAddressListDetailed = new String[mAddresses.size()];
-					for (int i = 0; i < mAddresses.size(); i++) {
-						Address address = mAddresses.get(i);
-						mAddressList[i] = buildLocationTitle(address);
-						mAddressListDetailed[i] = buildDetailedLocationTitle(address);
-					}
-					AlertDialog alertDialog = new AlertDialog.Builder(mContext)
-							.setTitle("Select a location")
-							.setItems(mAddressListDetailed, new DialogInterface.OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									// Add selected location to provider
-									Address a = mAddresses.get(which);
-									ContentResolver resolver = mContext.getContentResolver();
-									ContentValues values = new ContentValues();
-									values.put(AixLocationsColumns.LATITUDE, a.getLatitude());
-									values.put(AixLocationsColumns.LONGITUDE, a.getLongitude());
-									values.put(AixLocationsColumns.TITLE, mAddressList[which]);
-									values.put(AixLocationsColumns.TITLE_DETAILED, mAddressListDetailed[which]);
-									resolver.insert(AixLocations.CONTENT_URI, values);
+	private class LocationSearchTask extends AsyncTask<String, Integer, Integer> implements DialogInterface.OnCancelListener {
+		
+		private final static int MAX_RESULTS = 5;
+		
+		private final static int INVALID_INPUT = 0;
+		private final static int SEARCH_CANCELLED = 1;
+		private final static int NO_RESULTS = 2;
+		private final static int SEARCH_SUCCESS = 3;
 
-									mCursor.requery();
-									getListView().setSelection(getListView().getCount() - 1);
-								}
-							})
-							.create();
-					alertDialog.show();
-				}
+		private int mAttempts = 0;
+		private List<Address> mAddresses;
+		
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			mProgressDialog = ProgressDialog.show(
+					mContext, "Please wait...", "Searching...", true, true, this);
+		}
+		
+		@Override
+		protected void onPostExecute(Integer result) {
+			// TODO Auto-generated method stub
+			super.onPostExecute(result);
+			if (mProgressDialog != null) {
+				mProgressDialog.dismiss();
+			}
+			
+			switch (result.intValue()) {
+			case INVALID_INPUT:
+				mResetSearch = true;
+				Toast.makeText(
+						mContext,
+						"Invalid search input, please try a different search!",
+						Toast.LENGTH_SHORT).show();
 				break;
-			default:
-				throw new UnsupportedOperationException(
-						"Unexpected message to location result handler");
+			case SEARCH_CANCELLED:
+				Log.d(TAG, "Search was cancelled!");
+				break;
+			case NO_RESULTS:
+				Toast.makeText(
+						getApplicationContext(),
+						"No results found, please try a different search!",
+						Toast.LENGTH_SHORT).show();
+				break;
+			case SEARCH_SUCCESS:
+				mResetSearch = true;
+				mAddressList = new String[mAddresses.size()];
+				mAddressListDetailed = new String[mAddresses.size()];
+				for (int i = 0; i < mAddresses.size(); i++) {
+					Address address = mAddresses.get(i);
+					mAddressList[i] = buildLocationTitle(address);
+					mAddressListDetailed[i] = buildDetailedLocationTitle(address);
+				}
+				AlertDialog alertDialog = new AlertDialog.Builder(mContext)
+						.setTitle("Select a location")
+						.setItems(mAddressListDetailed, new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								// Add selected location to provider
+								Address a = mAddresses.get(which);
+								ContentResolver resolver = mContext.getContentResolver();
+								ContentValues values = new ContentValues();
+								values.put(AixLocationsColumns.LATITUDE, a.getLatitude());
+								values.put(AixLocationsColumns.LONGITUDE, a.getLongitude());
+								values.put(AixLocationsColumns.TITLE, mAddressList[which]);
+								values.put(AixLocationsColumns.TITLE_DETAILED, mAddressListDetailed[which]);
+								resolver.insert(AixLocations.CONTENT_URI, values);
+
+								mCursor.requery();
+								getListView().setSelection(getListView().getCount() - 1);
+							}
+						})
+						.create();
+				alertDialog.show();
+				break;
 			}
 		}
-	};
+
+		@Override
+		protected void onProgressUpdate(Integer... values) {
+			super.onProgressUpdate(values);
+			if (!isCancelled()) {
+				mProgressDialog.setMessage("Please wait... (" + values[0] + ")");
+			}
+		}
+
+		@Override
+		protected void onCancelled() {
+			super.onCancelled();
+			Log.d(TAG, "Cancelled!");
+		}
+		
+		@Override
+		protected Integer doInBackground(String... params) {
+			Log.d(TAG, "Hard at work!");
+
+			if (params.length != 1 || TextUtils.isEmpty(params[0])) {
+				return INVALID_INPUT;
+			}
+			
+			while (!isCancelled()) {
+				mAttempts++;
+				
+				try {
+					Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+					mAddresses = geocoder.getFromLocationName(params[0].trim(), MAX_RESULTS);
+					if (mAddresses != null && mAddresses.size() > 0) {
+						return SEARCH_SUCCESS;
+					} else {
+						return NO_RESULTS;
+					}
+				} catch (IOException e) {
+					Log.d(TAG, "geocoder.getFromLocationName() threw IOException on attempt #" + mAttempts);
+				}
+				
+				publishProgress(mAttempts);
+			}
+
+			return SEARCH_CANCELLED;
+		}
+
+		@Override
+		public void onCancel(DialogInterface dialog) {
+			cancel(false);
+		}
+		
+	}
+	
+	private String buildLocationTitle(Address address) {
+		if (!TextUtils.isEmpty(address.getLocality())) {
+			return address.getLocality();
+		} else if (!TextUtils.isEmpty(address.getAddressLine(0))) {
+			return address.getAddressLine(0);
+		} else {
+			return address.toString();
+		}
+	}
 	
 	private String buildDetailedLocationTitle(Address address) {
 		StringBuilder sb = new StringBuilder();
@@ -249,50 +344,6 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		return sb.toString();
 	}
 	
-	private String buildLocationTitle(Address address) {
-		if (!TextUtils.isEmpty(address.getLocality())) {
-			return address.getLocality();
-		} else if (!TextUtils.isEmpty(address.getAddressLine(0))) {
-			return address.getAddressLine(0);
-		} else {
-			return address.toString();
-		}
-	}
-	
-	public void searchLocationByName(
-	        final String locationName, final Context context, final Handler handler) {
-		mResetSearch = false;
-		mProgressDialog = ProgressDialog.show(mContext, "Please wait...", "Searching...", true, false); // TODO cannot cancel. this should be fixed!
-		
-		Thread thread = new Thread() {
-			@Override
-			public void run() {
-				Geocoder geocoder = new Geocoder(context);
-				Message message = Message.obtain(mHandler);
-				int attempts = 3;
-				do {
-					try {
-						mAddresses = geocoder.getFromLocationName(locationName, 5);
-						message.what = LOCATION_SEARCH_SUCCESS;
-						break;
-		            } catch (IOException e) {
-		            	Log.d(TAG, "searchLocationByName() geocoder threw exception: " +
-		            			e.getMessage());
-		            	message.what = LOCATION_SEARCH_FAIL;
-		            }
-		            try {
-						Thread.sleep(2000);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				} while (--attempts > 0);
-	            message.sendToTarget();
-	        }
-	    };
-	    thread.start();
-	}
-
 	@Override
 	public void onClick(View v) {
 		if (v == mAddLocationButton) {

@@ -11,6 +11,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.preference.PreferenceManager;
 import android.text.format.DateUtils;
+import android.util.Log;
 
 public class AixServiceReceiver extends BroadcastReceiver {
 	private static final String TAG = "AixServiceReceiver";
@@ -25,16 +26,16 @@ public class AixServiceReceiver extends BroadcastReceiver {
 				editor.putBoolean("needwifi", false);
 				editor.commit();
 				if(networkInfo.getType() == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected()) {
-					sendIntent(context);
+					sendIntent(context, 10);
 				}
 			}
 		} else {
-			sendIntent(context);
+			sendIntent(context, 10);
 		}
 	}
 	
-	private void sendIntent(Context context) {
-		long updateTime = System.currentTimeMillis() + 10 * DateUtils.SECOND_IN_MILLIS;
+	private void sendIntent(Context context, int delay) {
+		long updateTime = System.currentTimeMillis() + delay * DateUtils.SECOND_IN_MILLIS;
 		
 		Intent updateIntent = new Intent(AixService.ACTION_UPDATE_ALL);
 		updateIntent.setClass(context, AixService.class);

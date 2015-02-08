@@ -16,5 +16,7 @@
 	<color name="minimum_rain_default">#CC68CFE8</color>
 	<color name="above_freezing_default">#FFF01C1C</color>
 	<color name="below_freezing_default">#FF0280D9</color>
+	<color name="day_default">#40DDDDDD</color>
+	<color name="night_default">#40202020</color>
 
 </resources>

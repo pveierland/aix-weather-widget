@@ -1,12 +1,10 @@
 package net.veierland.aix;
 
-import android.R.color;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorMatrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -14,16 +12,14 @@ import android.graphics.SweepGradient;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.TextView;
 
 public class ColorPickerView extends View {
 	
@@ -35,7 +31,7 @@ public class ColorPickerView extends View {
 	private boolean mTrackingCenter;
     private boolean mHighlightCenter;
     private int mAlpha = 100;
-    private int mRequestCode;
+    private String mColorId;
     
     private OnColorSelectedListener mSelectedListener = null;
     private OnColorUpdatedListener mUpdatedListener = null;
@@ -45,7 +41,7 @@ public class ColorPickerView extends View {
     private Dialog mDialog;
     
     public interface OnColorSelectedListener {
-    	void colorSelected(int requestCode, int color);
+    	void colorSelected(String colorId, int color);
     }
     
     public interface OnColorUpdatedListener {
@@ -78,8 +74,8 @@ public class ColorPickerView extends View {
         mCenterPaint.setStrokeWidth(5);
     }
     
-    public void setRequestCode(int requestCode) {
-    	mRequestCode = requestCode;
+    public void setColorId(String colorId) {
+    	mColorId = colorId;
     }
     
     public void setDialog(Dialog dialog) {
@@ -101,17 +97,9 @@ public class ColorPickerView extends View {
     }
     
     public void setColor(int color) {
+    	mAlpha = Color.alpha(color);
     	mCenterPaint.setColor(color);
     	invalidate();
-    }
-    
-    public void setColor(String color) {
-    	try {
-    		mCenterPaint.setColor(Color.parseColor(color));
-    		invalidate();
-    	} catch (IllegalArgumentException e) {
-    		/* Ignore exception */
-    	}
     }
     
     public int getColor() {
@@ -221,7 +209,7 @@ public class ColorPickerView extends View {
 		case MotionEvent.ACTION_UP:
 			if (mTrackingCenter) {
 				if (inCenter && mSelectedListener != null) {
-					mSelectedListener.colorSelected(mRequestCode, mCenterPaint.getColor());
+					mSelectedListener.colorSelected(mColorId, mCenterPaint.getColor());
 					mDialog.dismiss();
 				} else {
 					mTrackingCenter = false; // so we draw w/o halo
@@ -323,7 +311,7 @@ public class ColorPickerView extends View {
 	}
 	
 	public static void showColorPickerDialog(final Context context, LayoutInflater inflater,
-			int requestCode, int initialColor, OnColorSelectedListener listener) {
+			String colorId, int initialColor, OnColorSelectedListener listener) {
 		View content = inflater.inflate(R.layout.dialog_selectcolor, null);
 		
 		final ColorPickerView colorPicker = (ColorPickerView)content.findViewById(R.id.dialog_color_picker);
@@ -333,10 +321,8 @@ public class ColorPickerView extends View {
 		
 		final ColorPickerDialogMediator mediator = new ColorPickerDialogMediator(
 				context, colorPicker, alphaLabel, seekBar, colorValue);
-
-		mediator.setColor(initialColor);
 		
-		colorPicker.setRequestCode(requestCode);
+		colorPicker.setColorId(colorId);
 		colorPicker.setOnColorUpdatedListener(new OnColorUpdatedListener() {
 			@Override
 			public void colorUpdated(int color) {
@@ -376,6 +362,8 @@ public class ColorPickerView extends View {
 		if (listener != null) {
 			colorPicker.setOnColorSelectedListener(listener);
 		}
+		
+		mediator.setColor(initialColor);
 		
 		Dialog dialog = new AlertDialog.Builder(context)
 				.setTitle(R.string.dialog_color_title)

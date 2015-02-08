@@ -1,8 +1,16 @@
 package net.veierland.aix;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import net.veierland.aix.AixProvider.AixLocationsColumns;
+import net.veierland.aix.AixProvider.AixSettings;
+import net.veierland.aix.AixProvider.AixSettingsColumns;
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixViewsColumns;
+import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
 import android.app.Activity;
@@ -21,6 +29,7 @@ import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -63,43 +72,41 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		Editor editor = settings.edit();
 		editor.clear();
-		editor.putBoolean(getString(R.string.preference_awake_only), settings.getBoolean(getString(R.string.preference_awake_only), false));
-		editor.putBoolean(getString(R.string.preference_wifi_only), settings.getBoolean(getString(R.string.preference_wifi_only), false));
-		editor.putString(getString(R.string.preference_update_rate), settings.getString(getString(R.string.preference_update_rate), "0"));
+		editor.putBoolean(getString(R.string.awake_only_bool), settings.getBoolean(getString(R.string.awake_only_bool), false));
+		editor.putBoolean(getString(R.string.wifi_only_bool), settings.getBoolean(getString(R.string.wifi_only_bool), false));
+		editor.putString(getString(R.string.update_rate_string), settings.getString(getString(R.string.update_rate_string), "0"));
 		
 		Intent intent = getIntent();
 		String action = intent.getAction();
 		
 		if (Intent.ACTION_EDIT.equals(action)) {
+			ContentResolver resolver = getContentResolver();
 			mWidgetUri = intent.getData();
 			
-			ContentResolver resolver = getContentResolver();
-			Cursor widgetCursor = resolver.query(mWidgetUri, null, null, null, null);
-			
-			if (widgetCursor != null) {
-				if (widgetCursor.moveToFirst()) {
-					mViewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI,
-							widgetCursor.getLong(AixWidgetsColumns.VIEWS_COLUMN));
-					loadWidgetSettingsFromProvider(widgetCursor, editor);
+			if (mWidgetUri != null) {
+				Cursor widgetCursor = resolver.query(mWidgetUri, null, null, null, null);
+				
+				if (widgetCursor != null) {
+					if (widgetCursor.moveToFirst()) {
+						// TODO This will be changed in the future. Assuming 1 view / widget atm.
+						mViewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI,
+								widgetCursor.getLong(AixWidgetsColumns.VIEWS_COLUMN));
+					}
+					widgetCursor.close();
 				}
-				widgetCursor.close();
+				
+				loadWidgetSettingsFromProvider(resolver, mWidgetUri, editor);
 			}
 			
 			if (mViewUri != null) {
 				Cursor viewCursor = resolver.query(mViewUri, null, null, null, null);
-				if (viewCursor != null) {
-					if (viewCursor.moveToFirst()) {
-						// Load stuff from view
-					}
-					viewCursor.close();
-				}
 				
 				Cursor locationCursor = resolver.query(
 						Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION),
 						null, null, null, null);
 				if (locationCursor != null) {
 					if (locationCursor.moveToFirst()) {
-						mLocationId = locationCursor.getLong(0);
+						mLocationId = locationCursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
 						mLocationName = locationCursor.getString(AixLocationsColumns.TITLE_COLUMN);
 					}
 					locationCursor.close();
@@ -110,33 +117,36 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		
 		setContentView(R.layout.aix_configure);
 		addPreferencesFromResource(R.xml.aix_configuration);
-
+		
 		mLocationPreference = findPreference("select_location");
 		mLocationPreference.setOnPreferenceClickListener(this);
 		
 		mAddWidgetButton = (Button) findViewById(R.id.add_widget_button);
 		mAddWidgetButton.setOnClickListener(this);
 		
-		mBackgroundColorPreference = findPreference(getString(R.string.preference_background_color));
+		mBackgroundColorPreference = findPreference(getString(R.string.background_color_int));
 		mBackgroundColorPreference.setOnPreferenceClickListener(this);
-		mTextColorPreference = findPreference(getString(R.string.preference_text_color));
+		mTextColorPreference = findPreference(getString(R.string.text_color_int));
 		mTextColorPreference.setOnPreferenceClickListener(this);
-		mLocationBackgroundColorPreference = findPreference(getString(R.string.preference_location_background_color));
+		mLocationBackgroundColorPreference = findPreference(getString(R.string.location_background_color_int));
 		mLocationBackgroundColorPreference.setOnPreferenceClickListener(this);
-		mLocationTextColorPreference = findPreference(getString(R.string.preference_location_text_color));
+		mLocationTextColorPreference = findPreference(getString(R.string.location_text_color_int));
 		mLocationTextColorPreference.setOnPreferenceClickListener(this);
-		mGridColorPreference = findPreference(getString(R.string.preference_grid_color));
+		mGridColorPreference = findPreference(getString(R.string.grid_color_int));
 		mGridColorPreference.setOnPreferenceClickListener(this);
-		mGridOutlineColorPreference = findPreference(getString(R.string.preference_grid_outline_color));
+		mGridOutlineColorPreference = findPreference(getString(R.string.grid_outline_color_int));
 		mGridOutlineColorPreference.setOnPreferenceClickListener(this);
-		mMaxRainColorPreference = findPreference(getString(R.string.preference_max_rain_color));
+		mMaxRainColorPreference = findPreference(getString(R.string.max_rain_color_int));
 		mMaxRainColorPreference.setOnPreferenceClickListener(this);
-		mMinRainColorPreference = findPreference(getString(R.string.preference_min_rain_color));
+		mMinRainColorPreference = findPreference(getString(R.string.min_rain_color_int));
 		mMinRainColorPreference.setOnPreferenceClickListener(this);
-		mAboveFreezingColorPreference = findPreference(getString(R.string.preference_above_freezing_color));
+		mAboveFreezingColorPreference = findPreference(getString(R.string.above_freezing_color_int));
 		mAboveFreezingColorPreference.setOnPreferenceClickListener(this);
-		mBelowFreezingColorPreference = findPreference(getString(R.string.preference_below_freezing_color));
+		mBelowFreezingColorPreference = findPreference(getString(R.string.below_freezing_color_int));
 		mBelowFreezingColorPreference.setOnPreferenceClickListener(this);
+		
+		findPreference(getString(R.string.day_color_int)).setOnPreferenceClickListener(this);
+		findPreference(getString(R.string.night_color_int)).setOnPreferenceClickListener(this);
 		
 		if (Intent.ACTION_EDIT.equals(action)) {
 			if (mLocationName != null) {
@@ -144,65 +154,56 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			}
 			mAddWidgetButton.setText("Apply Settings");
 		}
-		
+
 		setResult(Activity.RESULT_CANCELED);
 	}
 
-	private void addColorToEditor(Cursor widgetCursor, int columnId, Editor editor,
-			int colorStringId)
-	{
-		String colorString = widgetCursor.getString(columnId);
-		if (colorString != null) {
-			try {
-				int color = Integer.parseInt(colorString);
-				editor.putInt(getString(colorStringId), color);
-			} catch (NumberFormatException e) { }
-		}
-	}
-	
-	private void loadWidgetSettingsFromProvider(Cursor widgetCursor, Editor editor) {
-		String temperatureUnit = widgetCursor.getString(AixWidgetsColumns.TEMPERATURE_UNITS_COLUMN);
-		if (temperatureUnit != null) {
-			editor.putString(getString(R.string.preference_temperature_units), temperatureUnit);
-		} else {
-			editor.putString(getString(R.string.preference_temperature_units), "1");
-		}
-		String precipitationUnit = widgetCursor.getString(AixWidgetsColumns.PRECIPITATION_UNITS_COLUMN);
-		if (precipitationUnit != null) {
-			editor.putString(getString(R.string.preference_precipitation_units), precipitationUnit);
-		} else {
-			editor.putString(getString(R.string.preference_precipitation_units), "1");
-		}
+	private void loadWidgetSettingsFromProvider(ContentResolver resolver, Uri widgetUri, Editor editor) {
+		Cursor widgetSettingsCursor = resolver.query(
+				Uri.withAppendedPath(widgetUri, AixWidgets.TWIG_SETTINGS),
+				null, null, null, null);
 		
-		addColorToEditor(widgetCursor, AixWidgetsColumns.BACKGROUND_COLOR_COLUMN, editor, R.string.preference_background_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.TEXT_COLOR_COLUMN, editor, R.string.preference_text_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.LOCATION_BACKGROUND_COLOR_COLUMN, editor, R.string.preference_location_background_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.LOCATION_TEXT_COLOR_COLUMN, editor, R.string.preference_location_text_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.GRID_COLOR_COLUMN, editor, R.string.preference_grid_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.GRID_OUTLINE_COLOR_COLUMN, editor, R.string.preference_grid_outline_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.MAX_RAIN_COLOR_COLUMN, editor, R.string.preference_max_rain_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.MIN_RAIN_COLOR_COLUMN, editor, R.string.preference_min_rain_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.ABOVE_FREEZING_COLOR_COLUMN, editor, R.string.preference_above_freezing_color);
-		addColorToEditor(widgetCursor, AixWidgetsColumns.BELOW_FREEZING_COLOR_COLUMN, editor, R.string.preference_below_freezing_color);
+		if (widgetSettingsCursor != null) {
+			if (widgetSettingsCursor.moveToFirst()) {
+				do {
+					String key = widgetSettingsCursor.getString(AixSettingsColumns.KEY_COLUMN);
+					String value = widgetSettingsCursor.getString(AixSettingsColumns.VALUE_COLUMN);
+					
+					if (!TextUtils.isEmpty(key) && !TextUtils.isEmpty(value)) {
+						if (key.endsWith("bool")) {
+							editor.putBoolean(key, Boolean.parseBoolean(value));
+						} else if (key.endsWith("int")) {
+							editor.putInt(key, Integer.parseInt(value));
+						} else if (key.endsWith("string")) {
+							editor.putString(key, value);
+						}
+					}
+				} while (widgetSettingsCursor.moveToNext());
+			}
+			widgetSettingsCursor.close();
+		}
 	}
 	
 	private void saveWidgetSettingsToProvider(SharedPreferences settings, ContentValues values) {
-		values.put(AixWidgetsColumns.TEMPERATURE_UNITS,
-				settings.getString(getString(R.string.preference_temperature_units), "1"));
-		values.put(AixWidgetsColumns.PRECIPITATION_UNITS,
-				settings.getString(getString(R.string.preference_precipitation_units), "1"));
-		
-		Resources resources = getResources();
-		values.put(AixWidgetsColumns.BACKGROUND_COLOR, settings.getInt(getString(R.string.preference_background_color), resources.getColor(R.color.background_default)));
-		values.put(AixWidgetsColumns.TEXT_COLOR, settings.getInt(getString(R.string.preference_text_color), resources.getColor(R.color.text_default)));
-		values.put(AixWidgetsColumns.LOCATION_BACKGROUND_COLOR, settings.getInt(getString(R.string.preference_location_background_color), resources.getColor(R.color.location_background_default)));
-		values.put(AixWidgetsColumns.LOCATION_TEXT_COLOR, settings.getInt(getString(R.string.preference_location_text_color), resources.getColor(R.color.location_text_default)));
-		values.put(AixWidgetsColumns.GRID_COLOR, settings.getInt(getString(R.string.preference_grid_color), resources.getColor(R.color.grid_default)));
-		values.put(AixWidgetsColumns.GRID_OUTLINE_COLOR, settings.getInt(getString(R.string.preference_grid_outline_color), resources.getColor(R.color.grid_outline_default)));
-		values.put(AixWidgetsColumns.MAX_RAIN_COLOR, settings.getInt(getString(R.string.preference_max_rain_color), resources.getColor(R.color.maximum_rain_default)));
-		values.put(AixWidgetsColumns.MIN_RAIN_COLOR, settings.getInt(getString(R.string.preference_min_rain_color), resources.getColor(R.color.minimum_rain_default)));
-		values.put(AixWidgetsColumns.ABOVE_FREEZING_COLOR, settings.getInt(getString(R.string.preference_above_freezing_color), resources.getColor(R.color.above_freezing_default)));
-		values.put(AixWidgetsColumns.BELOW_FREEZING_COLOR, settings.getInt(getString(R.string.preference_below_freezing_color), resources.getColor(R.color.below_freezing_default)));
+		Map<String, Object> settingMap = (Map<String, Object>)settings.getAll();
+		for (Entry<String, Object> setting : settingMap.entrySet()) {
+			if (!setting.getKey().startsWith("global_")) {
+				String value = null;
+				if (setting.getKey().endsWith("bool")) {
+					value = Boolean.toString((Boolean)setting.getValue());
+					Log.d(TAG, "Saving bool " + setting.getKey() + " has value " + value);
+				} else if (setting.getKey().endsWith("int")) {
+					value = Integer.toString((Integer)setting.getValue());
+					Log.d(TAG, "Saving int " + setting.getKey() + " has value " + value);
+				} else if (setting.getKey().endsWith("string")) {
+					value = (String)setting.getValue();
+					Log.d(TAG, "Saving string " + setting.getKey() + " has value " + value);
+				}
+				if (value != null) {
+					values.put(setting.getKey(), value);
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -210,13 +211,13 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		switch (requestCode) {
 		case SELECT_LOCATION: {
 			if (resultCode == Activity.RESULT_OK) {
-				Uri tempUri = Uri.parse(data.getStringExtra("location"));
+				Uri locationUri = Uri.parse(data.getStringExtra("location"));
 				Cursor cursor = getContentResolver().query(
-						tempUri, null, null, null, null);
+						locationUri, null, null, null, null);
 				if (cursor != null) {
 					if (cursor.moveToFirst()) {
 						findPreference("select_location").setSummary(cursor.getString(AixLocationsColumns.TITLE_COLUMN));
-						mLocationId = cursor.getLong(AixLocationsColumns.LOCATIONS_ID_COLUMN);
+						mLocationId = cursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
 					}
 					cursor.close();
 				}
@@ -232,20 +233,26 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			if (mLocationId == -1) {
 				Toast.makeText(this, "You must set a location", Toast.LENGTH_SHORT).show();
 			} else {
-				SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-				ContentValues widgetValues = new ContentValues();
-				saveWidgetSettingsToProvider(settings, widgetValues);
-				
 				Intent intent = getIntent();
 				String action = intent.getAction();
 				
+				SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+				
+				ContentValues widgetSettings = new ContentValues();
+				saveWidgetSettingsToProvider(settings, widgetSettings);
+				
+				ContentValues viewValues = new ContentValues();
+				viewValues.put(AixViewsColumns.LOCATION, mLocationId);
+				viewValues.put(AixViewsColumns.TYPE, AixViewsColumns.TYPE_DETAILED);
+				
+				ContentResolver resolver = getContentResolver();
+				
 				if (Intent.ACTION_EDIT.equals(action)) {
-					getContentResolver().update(mWidgetUri, widgetValues, null, null);
-					ContentValues values = new ContentValues();
-					values.put(AixViewsColumns.LOCATION, mLocationId);
-					getContentResolver().update(mViewUri, values, null, null);
-					AixService.requestUpdate(Integer.parseInt(mWidgetUri.getLastPathSegment()));
-					startService(new Intent(this, AixService.class));
+					resolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
+					resolver.update(mViewUri, viewValues, null, null);
+					
+					Intent updateIntent = new Intent(AixService.ACTION_UPDATE_WIDGET, mWidgetUri, getApplicationContext(), AixService.class);
+					startService(updateIntent);
 					setResult(Activity.RESULT_OK);
 				} else {
 					int appWidgetId = -1;
@@ -255,23 +262,33 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 								AppWidgetManager.EXTRA_APPWIDGET_ID,
 								AppWidgetManager.INVALID_APPWIDGET_ID);
 						if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-							ContentResolver resolver = getContentResolver();
-							ContentValues values = new ContentValues();
-							values.put(AixViewsColumns.LOCATION, mLocationId);
-							//values.put(AixViewsColumns.UNITS, ((ListPreference)findPreference("measurement_unit")).getValue());
-							Uri viewUri = resolver.insert(AixViews.CONTENT_URI, values);
-							
+							Uri viewUri = resolver.insert(AixViews.CONTENT_URI, viewValues);
 							if (viewUri != null) {
+								// Get the size of the widget
+								AppWidgetManager mgr = AppWidgetManager.getInstance(getApplicationContext());
+								String widgetClassName = mgr.getAppWidgetInfo(appWidgetId).provider.getClassName();
+								
+								ContentValues widgetValues = new ContentValues();
 								widgetValues.put(BaseColumns._ID, appWidgetId);
+								
+								//if (widgetClassName.equals("AixWidget")) {
+									widgetValues.put(AixWidgetsColumns.SIZE, AixWidgetsColumns.SIZE_LARGE_TINY);
+								//}
+								
 								widgetValues.put(AixWidgetsColumns.VIEWS, viewUri.getLastPathSegment());
-								getContentResolver().insert(AixWidgets.CONTENT_URI, widgetValues);
+								mWidgetUri = resolver.insert(AixWidgets.CONTENT_URI, widgetValues);
 								
-								AixService.requestUpdate(appWidgetId);
-								startService(new Intent(this, AixService.class));
-								
-								Intent resultIntent = new Intent();
-								resultIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-								setResult(Activity.RESULT_OK, resultIntent);
+								if (mWidgetUri != null) {
+									resolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
+									
+									Intent updateIntent = new Intent(AixService.ACTION_UPDATE_WIDGET, mWidgetUri, getApplicationContext(), AixService.class);
+									startService(updateIntent);
+									setResult(Activity.RESULT_OK);
+									
+									Intent resultIntent = new Intent();
+									resultIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+									setResult(Activity.RESULT_OK, resultIntent);
+								}
 							}
 						}
 					}
@@ -283,106 +300,46 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 
 	@Override
 	public boolean onPreferenceClick(Preference preference) {
-		Resources resources = getResources();
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		
 		if (preference == mLocationPreference) {
 			Intent intent = new Intent(AixConfigure.this, AixLocationSelectionActivity.class);
 			startActivityForResult(intent, SELECT_LOCATION);
 			return true;
-		} else if (preference == mBackgroundColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_background_color), resources.getColor(R.color.background_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_background_color, color, this);
-			return true;
-		} else if (preference == mTextColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_text_color), resources.getColor(R.color.text_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_text_color, color, this);
-			return true;
-		} else if (preference == mLocationBackgroundColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_location_background_color), resources.getColor(R.color.location_background_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_location_background_color, color, this);
-			return true;
-		} else if (preference == mLocationTextColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_location_text_color), resources.getColor(R.color.location_text_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_location_text_color, color, this);
-			return true;
-		} else if (preference == mGridColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_grid_color), resources.getColor(R.color.grid_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_grid_color, color, this);
-			return true;
-		} else if (preference == mGridOutlineColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_grid_outline_color), resources.getColor(R.color.grid_outline_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_grid_outline_color, color, this);
-			return true;
-		} else if (preference == mMaxRainColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_max_rain_color), resources.getColor(R.color.maximum_rain_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_max_rain_color, color, this);
-			return true;
-		} else if (preference == mMinRainColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_min_rain_color), resources.getColor(R.color.minimum_rain_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_min_rain_color, color, this);
-			return true;
-		} else if (preference == mAboveFreezingColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_above_freezing_color), resources.getColor(R.color.above_freezing_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_above_freezing_color, color, this);
-			return true;
-		} else if (preference == mBelowFreezingColorPreference) {
-			int color = settings.getInt(getString(R.string.preference_below_freezing_color), resources.getColor(R.color.below_freezing_default));
-			ColorPickerView.showColorPickerDialog(
-					this, getLayoutInflater(), R.string.preference_below_freezing_color, color, this);
-			return true;
+		} else {
+			final Resources resources = getResources();
+			
+			Map<String, Integer> colorMap = new HashMap<String, Integer>() {{
+				put(getString(R.string.background_color_int), resources.getColor(R.color.background_default));
+				put(getString(R.string.text_color_int), resources.getColor(R.color.text_default));
+				put(getString(R.string.location_background_color_int), resources.getColor(R.color.location_background_default));
+				put(getString(R.string.location_text_color_int), resources.getColor(R.color.location_text_default));
+				put(getString(R.string.grid_color_int), resources.getColor(R.color.grid_default));
+				put(getString(R.string.grid_outline_color_int), resources.getColor(R.color.grid_outline_default));
+				put(getString(R.string.max_rain_color_int), resources.getColor(R.color.maximum_rain_default));
+				put(getString(R.string.min_rain_color_int), resources.getColor(R.color.minimum_rain_default));
+				put(getString(R.string.above_freezing_color_int), resources.getColor(R.color.above_freezing_default));
+				put(getString(R.string.below_freezing_color_int), resources.getColor(R.color.below_freezing_default));
+				put(getString(R.string.day_color_int), resources.getColor(R.color.day_default));
+				put(getString(R.string.night_color_int), resources.getColor(R.color.night_default));
+			}};
+			
+			if (colorMap.containsKey(preference.getKey())) {
+				int color = settings.getInt(preference.getKey(), colorMap.get(preference.getKey()));
+				ColorPickerView.showColorPickerDialog(
+						this, getLayoutInflater(), preference.getKey(), color, this);
+				return true;
+			}
 		}
 		
 		return false;
 	}
 
 	@Override
-	public void colorSelected(int requestCode, int color) {
+	public void colorSelected(String colorId, int color) {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		Editor editor = settings.edit();
-		
-		switch (requestCode) {
-		case R.string.preference_background_color:
-			editor.putInt(getString(R.string.preference_background_color), color);
-			break;
-		case R.string.preference_text_color:
-			editor.putInt(getString(R.string.preference_text_color), color);
-			break;
-		case R.string.preference_location_background_color:
-			editor.putInt(getString(R.string.preference_location_background_color), color);
-			break;
-		case R.string.preference_location_text_color:
-			editor.putInt(getString(R.string.preference_location_text_color), color);
-			break;
-		case R.string.preference_grid_color:
-			editor.putInt(getString(R.string.preference_grid_color), color);
-			break;
-		case R.string.preference_grid_outline_color:
-			editor.putInt(getString(R.string.preference_grid_outline_color), color);
-			break;
-		case R.string.preference_max_rain_color:
-			editor.putInt(getString(R.string.preference_max_rain_color), color);
-			break;
-		case R.string.preference_min_rain_color:
-			editor.putInt(getString(R.string.preference_min_rain_color), color);
-			break;
-		case R.string.preference_above_freezing_color:
-			editor.putInt(getString(R.string.preference_above_freezing_color), color);
-			break;
-		case R.string.preference_below_freezing_color:
-			editor.putInt(getString(R.string.preference_below_freezing_color), color);
-			break;
-		}
-
+		editor.putInt(colorId, color);
 		editor.commit();
 	}
 	

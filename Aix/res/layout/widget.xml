@@ -24,11 +24,14 @@
         		android:textColor="@color/semi_white" />
 
 	</LinearLayout>
-	
+ 
 	<ImageView
 			android:id="@+id/widgetImage"
 			android:layout_width="fill_parent"
 			android:layout_height="fill_parent"
-			android:visibility="gone" />
-
+			android:visibility="gone"
+			android:scaleType="centerInside" />
+			/>
+			<!-- android:scaleType="fitXY" /> -->
+			
 </LinearLayout>

@@ -9,19 +9,26 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.TimeZone;
+import java.util.zip.GZIPInputStream;
 
 import net.veierland.aix.AixProvider.AixForecasts;
 import net.veierland.aix.AixProvider.AixForecastsColumns;
 import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
+import net.veierland.aix.AixProvider.AixSettingsColumns;
 import net.veierland.aix.AixProvider.AixViews;
+import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
 
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -31,7 +38,10 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
+import widget.AixDetailedWidget;
+
 import android.app.AlarmManager;
+import android.app.IntentService;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
@@ -41,258 +51,257 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.IBinder;
+import android.os.IInterface;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.util.Xml;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.RemoteViews;
 
-public class AixService extends Service implements Runnable {
+public class AixService extends IntentService {
+	
 	private static final String TAG = "AixService";
 	
-	public static final String ACTION_UPDATE_ALL = "net.veierland.aix.UPDATE_ALL";
+	public final static String APPWIDGET_ID = "appWidgetId";
 	
-	private static Object sLock = new Object();
-	private static boolean sThreadRunning = false;
-	private static Queue<Integer> sAppWidgetIds = new LinkedList<Integer>();
+	public final static String ACTION_DELETE_WIDGET = "aix.intent.action.DELETE_WIDGET";
+	public final static String ACTION_UPDATE_ALL = "aix.intent.action.UPDATE_ALL";
+	public final static String ACTION_UPDATE_WIDGET = "aix.intent.action.UPDATE_WIDGET";
 	
-	public static void requestUpdate(int appWidgetId) {
-		synchronized (sLock) {
-			sAppWidgetIds.add(appWidgetId);
-		}
-	}
-	
-	public static void requestUpdate(int[] appWidgetIds) {
-		synchronized (sLock) {
-			for (int appWidgetId : appWidgetIds) {
-				sAppWidgetIds.add(appWidgetId);
-			}
-		}
-	}
-	
-	private static boolean hasMoreUpdates() {
-		synchronized (sLock) {
-			boolean hasMore = !sAppWidgetIds.isEmpty();
-			if (!hasMore) {
-				sThreadRunning = false;
-			}
-			return hasMore;
-		}
-	}
-	
-	private static int getNextUpdate() {
-		synchronized (sLock) {
-			if (sAppWidgetIds.peek() == null) {
-				return AppWidgetManager.INVALID_APPWIDGET_ID;
-			} else {
-				return sAppWidgetIds.poll();
-			}
-		}
-	}
-	
-	@Override
-	public void onStart(Intent intent, int startId) {
-		super.onStart(intent, startId);
-		
-		if (ACTION_UPDATE_ALL.equals(intent.getAction())) {
-			Log.d(TAG, "Requested UPDATE ALL action");
-			AppWidgetManager manager = AppWidgetManager.getInstance(this);
-			requestUpdate(manager.getAppWidgetIds(new ComponentName(this, AixWidget.class)));
-		}
-		
-		synchronized (sLock) {
-			if (!sThreadRunning) {
-				sThreadRunning = true;
-				new Thread(this).start();
-			}
-		}
+	public AixService() {
+		super("net.veierland.aix.AixService");
 	}
 
-	private final static int STATE_INITIAL = 0;
-	private final static int STATE_WIDGET_NOT_FOUND = 1;
-	private final static int STATE_VIEW_NOT_FOUND = 2;
-	private final static int STATE_DOWNLOAD_FAILED = 3;
-	
-	
 	@Override
-	public void run() {
-		Log.d(TAG, "Processing thread started");
-		AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
-		ContentResolver resolver = getContentResolver();
+	protected void onHandleIntent(Intent intent) {
+		String action = intent.getAction();
+		Uri widgetUri = intent.getData();
+		ContentResolver resolver = getApplicationContext().getContentResolver();
+		
+		Log.d(TAG, "action=" + action + ", widgetUri=" + widgetUri);
+		
+		if (action.equals(ACTION_UPDATE_WIDGET)) {
+			updateWhatever(widgetUri);
+		} else if (action.equals(ACTION_UPDATE_ALL)) {
+			AppWidgetManager manager = AppWidgetManager.getInstance(this);
+			int[] appWidgetIds = manager.getAppWidgetIds(new ComponentName(this, AixWidget.class));
+			for (int appWidgetId : appWidgetIds) {
+				updateWhatever(ContentUris.withAppendedId(AixWidgets.CONTENT_URI, appWidgetId));
+			}
+		} else if (action.equals(ACTION_DELETE_WIDGET)) {
+			// TODO also cancel scheduled intent..
+			Cursor widgetCursor = resolver.query(widgetUri, null, null, null, null);
+			
+			if (widgetCursor != null) {
+				Uri viewUri = null;
+				if (widgetCursor.moveToFirst()) {
+					long viewRowId = widgetCursor.getLong(AixWidgetsColumns.VIEWS_COLUMN);
+					if (viewRowId != -1) {
+						viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, viewRowId);
+					}
+				}
+				widgetCursor.close();
+				if (viewUri != null) {
+					resolver.delete(viewUri, null, null);
+				}
+				resolver.delete(widgetUri, null, null);
+			}
+			
+			int widgetId = (int)ContentUris.parseId(widgetUri);
+			resolver.delete(AixWidgetSettings.CONTENT_URI, AixSettingsColumns.ROW_ID + '=' + widgetId, null);
+		}
+	}
+	
+	private void updateWhatever(Uri widgetUri) {
+		ContentResolver resolver = getApplicationContext().getContentResolver();
 		
 		long utcTime = Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTimeInMillis();
 		long updateTime = Long.MAX_VALUE;
 		
-		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		
 		int updateHours = 0;
-		String updateRateString = settings.getString(getString(R.string.preference_update_rate), "0");
+		String updateRateString = settings.getString(getString(R.string.update_rate_string), "0");
 		try {
 			updateHours = Integer.parseInt(updateRateString);
 		} catch (NumberFormatException e) { }
 		
-		boolean wifiOnly = settings.getBoolean(getString(R.string.preference_wifi_only), false);
+		boolean wifiOnly = settings.getBoolean(getString(R.string.wifi_only_bool), false);
+
+		boolean widgetFound = false;
+		String widgetTitle = null, widgetViews = null;
+		int widgetSize = -1;
 		
-		while (hasMoreUpdates()) {
-			// Get widget data
-			int appWidgetId = getNextUpdate();
-			Uri appWidgetUri = ContentUris.withAppendedId(AixWidgets.CONTENT_URI, appWidgetId);			
-			
-			boolean widgetFound = false;
-			String widgetTitle = null, widgetViews = null;
-			int widgetSize = -1;
-			
-			Cursor widgetCursor = resolver.query(appWidgetUri, null, null, null, null);
-			if (widgetCursor != null) {
-				if (widgetCursor.moveToFirst()) {
-					widgetTitle = widgetCursor.getString(AixWidgetsColumns.TITLE_COLUMN);
-					widgetSize = widgetCursor.getInt(AixWidgetsColumns.SIZE_COLUMN);
-					widgetViews = widgetCursor.getString(AixWidgetsColumns.VIEWS_COLUMN);
-					widgetFound = true;
-				}
-				widgetCursor.close();
+		Cursor widgetCursor = resolver.query(widgetUri, null, null, null, null);
+		if (widgetCursor != null) {
+			if (widgetCursor.moveToFirst()) {
+				widgetSize = widgetCursor.getInt(AixWidgetsColumns.SIZE_COLUMN);
+				widgetViews = widgetCursor.getString(AixWidgetsColumns.VIEWS_COLUMN);
+				widgetFound = true;
 			}
-			
-			Uri viewUri = null;
-			boolean weatherUpdated = false;
-			boolean locationFound = false;
-			long lastForecastUpdate = -1, forecastValidTo = -1, nextForecastUpdate = -1;
-			boolean shouldUpdate = false;
-			
-			if (!widgetFound) {
-				// Draw error widget
-				Log.d(TAG, "Error: Could not find widget in database. uri=" + appWidgetUri);
-			} else {
-				// Iterate through widget views and update as appropriate
-				//for (String view : widgetViews.split(":")) {
-					//Uri viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, Long.parseLong(view));
-					viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, Long.parseLong(widgetViews));
-					
-					Cursor locationCursor = resolver.query(
-							Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION),
-							null, null, null, null);
-					
-					if (locationCursor != null) {
-						if (locationCursor.moveToFirst()) {
-							lastForecastUpdate = locationCursor.getLong(AixLocationsColumns.LAST_FORECAST_UPDATE_COLUMN);
-							forecastValidTo = locationCursor.getLong(AixLocationsColumns.FORECAST_VALID_TO_COLUMN);
-							nextForecastUpdate = locationCursor.getLong(AixLocationsColumns.NEXT_FORECAST_UPDATE_COLUMN);
-							locationFound = true;
-						}
-						locationCursor.close();
-					}
-
-					if (locationFound) {
-						if (updateHours == 0) {
-							if (utcTime >= lastForecastUpdate + DateUtils.HOUR_IN_MILLIS &&
-									(utcTime >= nextForecastUpdate || forecastValidTo < utcTime))
-							{
-								shouldUpdate = true;
-							}
-						} else {
-							if (utcTime >= lastForecastUpdate + updateHours * DateUtils.HOUR_IN_MILLIS) {
-								shouldUpdate = true;
-							}
-						}
-						
-						if (shouldUpdate) {
-							if (wifiOnly) {
-								ConnectivityManager connManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-								NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-								if (mWifi.isConnected()) {
-									try {
-										updateWeather(resolver, viewUri);
-										weatherUpdated = true;
-										Log.d(TAG, "updateWeather() successful!");
-									} catch (Exception e) {
-										Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
-										updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
-									}
-								} else {
-									Editor editor = settings.edit();
-									editor.putBoolean("needwifi", true);
-									editor.commit();
-									Log.d(TAG, "WiFi needed, but not connected!");
-								}
-							} else {
-								try {
-									updateWeather(resolver, viewUri);
-									weatherUpdated = true;
-									Log.d(TAG, "updateWeather() successful!");
-								} catch (Exception e) {
-									Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
-									updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
-								}
-							}
-						}
-					}
-				//}
-			}
-			
-			RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.widget);
-			if (!widgetFound || !locationFound || (!weatherUpdated && shouldUpdate && forecastValidTo < utcTime)) {
-				if (widgetFound && !locationFound) {
-					updateView.setViewVisibility(R.id.widgetTextContainer, View.VISIBLE);
-					updateView.setViewVisibility(R.id.widgetImage, View.GONE);
-					updateView.setTextViewText(R.id.widgetText, "Error. Please recreate widget.");
-				} else if (widgetFound && locationFound && !weatherUpdated) {
-					updateView.setViewVisibility(R.id.widgetTextContainer, View.VISIBLE);
-					updateView.setViewVisibility(R.id.widgetImage, View.GONE);
-					updateView.setTextViewText(R.id.widgetText, "No weather data. Retrying in 5 minutes.");
-				}
-			} else {
-				Bitmap bitmap = AixWidget.buildView(this, viewUri, false);
-				
-				if (bitmap == null) {
-					updateView.setViewVisibility(R.id.widgetTextContainer, View.VISIBLE);
-					updateView.setViewVisibility(R.id.widgetImage, View.GONE);
-					updateView.setTextViewText(R.id.widgetText, "Error. Please recreate widget.");
-				} else {
-					updateView.setViewVisibility(R.id.widgetTextContainer, View.GONE);
-					updateView.setViewVisibility(R.id.widgetImage, View.VISIBLE);
-					updateView.setImageViewBitmap(R.id.widgetImage, bitmap);
-				}
-			}
-			
-			Intent intent = new Intent(Intent.ACTION_EDIT, appWidgetUri, AixService.this, AixConfigure.class);
-			intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
-			updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
-
-			appWidgetManager.updateAppWidget(appWidgetId, updateView);
+			widgetCursor.close();
 		}
 		
-		Calendar calendar = Calendar.getInstance();
-		calendar.set(Calendar.MINUTE, 0);
-		calendar.set(Calendar.SECOND, 0);
-		calendar.set(Calendar.MILLISECOND, 0);
-		calendar.add(Calendar.HOUR, 1);
+		Uri viewUri = null;
+		boolean weatherUpdated = false;
+		boolean locationFound = false;
+		long lastForecastUpdate = -1, forecastValidTo = -1, nextForecastUpdate = -1;
+		boolean shouldUpdate = false;
 		
-		updateTime = calcUpdateTime(updateTime, calendar.getTimeInMillis());
+		if (!widgetFound) {
+			// Draw error widget
+			Log.d(TAG, "Error: Could not find widget in database. uri=" + widgetUri);
+		} else {
+			viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, Long.parseLong(widgetViews));
+			
+			Cursor locationCursor = resolver.query(
+					Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION),
+					null, null, null, null);
+			
+			if (locationCursor != null) {
+				if (locationCursor.moveToFirst()) {
+					lastForecastUpdate = locationCursor.getLong(AixLocationsColumns.LAST_FORECAST_UPDATE_COLUMN);
+					forecastValidTo = locationCursor.getLong(AixLocationsColumns.FORECAST_VALID_TO_COLUMN);
+					nextForecastUpdate = locationCursor.getLong(AixLocationsColumns.NEXT_FORECAST_UPDATE_COLUMN);
+					locationFound = true;
+				}
+				locationCursor.close();
+			}
+
+			if (locationFound) {
+				if (updateHours == 0) {
+					if (utcTime >= lastForecastUpdate + DateUtils.HOUR_IN_MILLIS &&
+							(utcTime >= nextForecastUpdate || forecastValidTo < utcTime))
+					{
+						shouldUpdate = true;
+					}
+				} else {
+					if (utcTime >= lastForecastUpdate + updateHours * DateUtils.HOUR_IN_MILLIS) {
+						shouldUpdate = true;
+					}
+				}
+
+				if (shouldUpdate) {
+					if (wifiOnly) {
+						ConnectivityManager connManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+						NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+						if (mWifi.isConnected()) {
+							try {
+								updateWeather(resolver, viewUri);
+								weatherUpdated = true;
+								Log.d(TAG, "updateWeather() successful!");
+							} catch (Exception e) {
+								Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
+								updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+							}
+						} else {
+							Editor editor = settings.edit();
+							editor.putBoolean("needwifi", true);
+							editor.commit();
+							Log.d(TAG, "WiFi needed, but not connected!");
+						}
+					} else {
+						try {
+							updateWeather(resolver, viewUri);
+							weatherUpdated = true;
+							Log.d(TAG, "updateWeather() successful!");
+						} catch (Exception e) {
+							Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
+							updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+						}
+					}
+				}
+			}
 		
-		Intent updateIntent = new Intent(ACTION_UPDATE_ALL);
-		updateIntent.setClass(this, AixService.class);
+			if (!widgetFound || !locationFound || (!weatherUpdated && shouldUpdate && forecastValidTo < utcTime)) {
+				if (widgetFound && !locationFound) {
+					updateWidget(widgetUri, "Error. Please recreate widget.");
+				} else if (widgetFound && locationFound && !weatherUpdated) {
+					updateWidget(widgetUri, "No weather data. Retrying in 5 minutes");
+				}
+			} else {
+				try {
+					Bitmap bitmap = AixDetailedWidget.buildView(getApplicationContext(), widgetUri, viewUri);
+					updateWidget(widgetUri, bitmap);
+				} catch (Exception e) {
+					Log.d(TAG, e.getMessage());
+					updateWidget(widgetUri, "Failed to draw widget");
+				}
+			}
+			
+			// Schedule next update
+			Calendar calendar = Calendar.getInstance();
+			calendar.set(Calendar.MINUTE, 0);
+			calendar.set(Calendar.SECOND, 0);
+			calendar.set(Calendar.MILLISECOND, 0);
+			calendar.add(Calendar.HOUR, 1);
+			
+			updateTime = calcUpdateTime(updateTime, calendar.getTimeInMillis());
+			
+			Intent updateIntent = new Intent(
+					AixService.ACTION_UPDATE_WIDGET, widgetUri,
+					getApplicationContext(), AixService.class);
+			updateIntent.setClass(getApplicationContext(), AixService.class);
+			
+			PendingIntent pendingUpdateIntent =
+				PendingIntent.getService(getApplicationContext(), 0, updateIntent, 0);
+			
+			boolean awakeOnly = settings.getBoolean(getString(R.string.awake_only_bool), false);
+			
+			AlarmManager alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+			alarmManager.set(awakeOnly ? AlarmManager.RTC : AlarmManager.RTC_WAKEUP, updateTime, pendingUpdateIntent);
+			Log.d(TAG, "Scheduling next update for: " + (new SimpleDateFormat().format(updateTime)) + " AwakeOnly=" + awakeOnly);
+		}
+	}
+	
+	private void updateWidget(Uri widgetUri, Bitmap bitmap) {
+		int widgetId = (int)ContentUris.parseId(widgetUri);
 		
-		PendingIntent pendingIntent = PendingIntent.getService(this, 0, updateIntent, 0);
+		Intent editWidgetIntent = new Intent(
+				Intent.ACTION_EDIT, widgetUri, getApplicationContext(), AixConfigure.class);
 		
-		boolean awakeOnly = settings.getBoolean(getString(R.string.preference_awake_only), false);
+		editWidgetIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, editWidgetIntent, 0);
 		
-		AlarmManager alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-		alarmManager.set(awakeOnly ? AlarmManager.RTC : AlarmManager.RTC_WAKEUP, updateTime, pendingIntent);
-		Log.d(TAG, "Scheduling next update for: " + (new SimpleDateFormat().format(updateTime)) + " AwakeOnly=" + awakeOnly);
+		RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.widget);
+		updateView.setViewVisibility(R.id.widgetTextContainer, View.GONE);
+		updateView.setViewVisibility(R.id.widgetImage, View.VISIBLE);
+		updateView.setImageViewBitmap(R.id.widgetImage, bitmap);
+		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
 		
-		stopSelf();
+		AppWidgetManager.getInstance(getApplicationContext()).updateAppWidget(widgetId, updateView);
+	}
+	
+	private void updateWidget(Uri widgetUri, String message) {
+		int widgetId = (int)ContentUris.parseId(widgetUri);
+		
+		Intent editWidgetIntent = new Intent(
+				Intent.ACTION_EDIT, widgetUri, getApplicationContext(), AixConfigure.class);
+		
+		editWidgetIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, editWidgetIntent, 0);
+		
+		RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.widget);
+		updateView.setViewVisibility(R.id.widgetTextContainer, View.VISIBLE);
+		updateView.setViewVisibility(R.id.widgetImage, View.GONE);
+		updateView.setTextViewText(R.id.widgetText, message);
+		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
+		 
+		AppWidgetManager.getInstance(getApplicationContext()).updateAppWidget(widgetId, updateView);
 	}
 	
 	private long calcUpdateTime(long updateTime, long newTime) {
@@ -322,13 +331,11 @@ public class AixService extends Service implements Runnable {
 	private String getTimezone(ContentResolver resolver, long locationId, String latitude, String longitude) throws IOException, Exception {
 		// Check if timezone info needs to be retrieved
 		Cursor timezoneCursor = resolver.query(
-				AixLocations.CONTENT_URI,
-				null,
+				AixLocations.CONTENT_URI, null,
 				BaseColumns._ID + '=' + Long.toString(locationId) + " AND " + AixLocationsColumns.TIME_ZONE + " IS NOT NULL",
-				null,
-				null);
-		String timezoneId = null;
+				null, null);
 		
+		String timezoneId = null;
 		if (timezoneCursor != null) {
 			if (timezoneCursor.moveToFirst()) {
 				timezoneId = timezoneCursor.getString(AixLocationsColumns.TIME_ZONE_COLUMN);
@@ -349,10 +356,6 @@ public class AixService extends Service implements Runnable {
 			try {
 				JSONObject jObject = new JSONObject(input);
 				timezoneId = jObject.getString("timezoneId");
-				//ContentValues values = new ContentValues();
-				//values.put(BaseColumns._ID, locationId);
-				//values.put(AixLocationsColumns.TIME_ZONE, timezoneId);
-				//resolver.insert(ContentUris.withAppendedId(AixLocations.CONTENT_URI, locationId), values);
 			} catch (JSONException e) {
 				Log.d(TAG, "Failed to retrieve timezone data. " + e.getMessage());
 				throw new Exception("Failed to retrieve timezone data");
@@ -408,9 +411,15 @@ public class AixService extends Service implements Runnable {
 				"http://api.met.no/weatherapi/sunrise/1.0/?lat="
 				+ latitude + ";lon=" + longitude + ";from="
 				+ dateFromString + ";to=" + dateToString);
+		httpGet.addHeader("Accept-Encoding", "gzip");
 		HttpClient httpclient = new DefaultHttpClient();
 		HttpResponse response = httpclient.execute(httpGet);
 		InputStream content = response.getEntity().getContent();
+		
+		Header contentEncoding = response.getFirstHeader("Content-Encoding");
+		if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
+			content = new GZIPInputStream(content);
+		}
 		
 		XmlPullParser parser = Xml.newPullParser();
 		
@@ -473,7 +482,7 @@ public class AixService extends Service implements Runnable {
 		if (cursor != null) {
 			if (cursor.moveToFirst()) {
 				found = true;
-				locationId = cursor.getLong(AixLocationsColumns.LOCATIONS_ID_COLUMN);
+				locationId = cursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
 				latString = cursor.getString(AixLocationsColumns.LATITUDE_COLUMN);
 				lonString = cursor.getString(AixLocationsColumns.LONGITUDE_COLUMN);
 			}
@@ -502,7 +511,7 @@ public class AixService extends Service implements Runnable {
 		calendar.add(Calendar.HOUR_OF_DAY, -48);
 		resolver.delete(
 				AixForecasts.CONTENT_URI,
-				AixForecastsColumns.LOCATION + '=' + locationId + " AND " + AixForecastsColumns.TIME_TO + "<" + calendar.getTimeInMillis(),
+				AixForecastsColumns.LOCATION + '=' + locationId + " AND " + AixForecastsColumns.TIME_TO + "<=" + calendar.getTimeInMillis(),
 				null);
 		calendar.add(Calendar.HOUR_OF_DAY, 48);
 		
@@ -531,9 +540,16 @@ public class AixService extends Service implements Runnable {
 		HttpGet httpGet = new HttpGet(
 				"http://api.met.no/weatherapi/locationforecast/1.8/?lat="
 				+ latitude + ";lon=" + longitude);
+		httpGet.addHeader("Accept-Encoding", "gzip");
+		
 		HttpClient httpclient = new DefaultHttpClient();
 		HttpResponse response = httpclient.execute(httpGet);
 		InputStream content = response.getEntity().getContent();
+
+		Header contentEncoding = response.getFirstHeader("Content-Encoding");
+		if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
+			content = new GZIPInputStream(content);
+		}
 		
 		try {
 			parser.setInput(content, null);
@@ -630,12 +646,6 @@ public class AixService extends Service implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-
-	@Override
-	public IBinder onBind(Intent intent) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 }

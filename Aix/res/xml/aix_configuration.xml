@@ -14,7 +14,7 @@
 					android:title="@string/unit_settings_category">
 
 				<ListPreference
-						android:key="@string/preference_temperature_units"
+						android:key="@string/temperature_units_string"
 						android:title="@string/dialog_temperature_units_title"
 						android:persistent="true"
 						android:entries="@array/temperature_units_readable"
@@ -22,9 +22,9 @@
 						android:defaultValue="1" />
 		
 				<ListPreference
-						android:key="@string/preference_precipitation_units"
+						android:key="@string/precipitation_units_string"
 						android:title="@string/dialog_precipitation_units_title"
-						android:summary="@string/preference_precipitation_title"
+						android:summary="@string/precipitation_title"
 						android:persistent="true"
 						android:entries="@array/precipitation_units_readable"
 						android:entryValues="@array/precipitation_units_code"
@@ -43,24 +43,24 @@
 					android:title="@string/color_settings_category_main_title">
 					
 				<Preference
-						android:key="@string/preference_background_color"
-						android:title="@string/preference_background_color_title"
+						android:key="@string/background_color_int"
+						android:title="@string/background_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_text_color"
-						android:title="@string/preference_text_color_title"
-						android:summary="@string/preference_text_color_summary"
+						android:key="@string/text_color_int"
+						android:title="@string/text_color_title"
+						android:summary="@string/text_color_summary"
 						android:persistent="true" />
 	
 				<Preference
-						android:key="@string/preference_location_background_color"
-						android:title="@string/preference_location_background_color_title"
+						android:key="@string/location_background_color_int"
+						android:title="@string/location_background_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_location_text_color"
-						android:title="@string/preference_location_text_color_title"
+						android:key="@string/location_text_color_int"
+						android:title="@string/location_text_color_title"
 						android:persistent="true" />
 			
 			</PreferenceCategory>
@@ -69,13 +69,13 @@
 					android:title="@string/color_settings_category_grid_title">
 			
 				<Preference
-						android:key="@string/preference_grid_color"
-						android:title="@string/preference_grid_color_title"
+						android:key="@string/grid_color_int"
+						android:title="@string/grid_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_grid_outline_color"
-						android:title="@string/preference_grid_outline_color_title"
+						android:key="@string/grid_outline_color_int"
+						android:title="@string/grid_outline_color_title"
 						android:persistent="true" />
 			
 			</PreferenceCategory>
@@ -84,23 +84,33 @@
 					android:title="@string/color_settings_category_indicator_title">
 			
 				<Preference
-						android:key="@string/preference_max_rain_color"
-						android:title="@string/preference_max_rain_color_title"
+						android:key="@string/max_rain_color_int"
+						android:title="@string/max_rain_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_min_rain_color"
-						android:title="@string/preference_min_rain_color_title"
+						android:key="@string/min_rain_color_int"
+						android:title="@string/min_rain_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_above_freezing_color"
-						android:title="@string/preference_above_freezing_color_title"
+						android:key="@string/above_freezing_color_int"
+						android:title="@string/above_freezing_color_title"
 						android:persistent="true" />
 				
 				<Preference
-						android:key="@string/preference_below_freezing_color"
-						android:title="@string/preference_below_freezing_color_title"
+						android:key="@string/below_freezing_color_int"
+						android:title="@string/below_freezing_color_title"
+						android:persistent="true" />
+						
+				<Preference
+						android:key="@string/day_color_int"
+						android:title="@string/day_color_title"
+						android:persistent="true" />
+				
+				<Preference
+						android:key="@string/night_color_int"
+						android:title="@string/night_color_title"
 						android:persistent="true" />
 			
 			</PreferenceCategory>
@@ -121,23 +131,23 @@
 					android:title="@string/system_settings_category">
 			
 				<CheckBoxPreference
-						android:key="@string/preference_awake_only"
-						android:title="@string/preference_awake_only_title"
+						android:key="@string/awake_only_bool"
+						android:title="@string/awake_only_title"
 						android:persistent="true"
-						android:summaryOn="@string/preference_awake_only_summary_on"
-						android:summaryOff="@string/preference_awake_only_summary_off" />
+						android:summaryOn="@string/awake_only_summary_on"
+						android:summaryOff="@string/awake_only_summary_off" />
 				
 				<CheckBoxPreference
-						android:key="@string/preference_wifi_only"
-						android:title="@string/preference_wifi_only_title"
+						android:key="@string/wifi_only_bool"
+						android:title="@string/wifi_only_title"
 						android:persistent="true"
-						android:summaryOn="@string/preference_wifi_only_summary_on"
-						android:summaryOff="@string/preference_wifi_only_summary_off" />
+						android:summaryOn="@string/wifi_only_summary_on"
+						android:summaryOff="@string/wifi_only_summary_off" />
 				
 				<ListPreference
-							android:key="@string/preference_update_rate"
-							android:title="@string/preference_update_rate_title"
-							android:summary="@string/preference_update_rate_summary"
+							android:key="@string/update_rate_string"
+							android:title="@string/update_rate_title"
+							android:summary="@string/update_rate_summary"
 							android:persistent="true"
 							android:entries="@array/preference_update_rates_readable"
 							android:entryValues="@array/preference_update_rates_code"

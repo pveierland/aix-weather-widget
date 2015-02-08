@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+		xmlns:android="http://schemas.android.com/apk/res/android">
+	
+	<PreferenceCategory
+			android:title="@string/header_widget_settings">
+	
+		<ListPreference
+				android:key="measurement_unit"
+				android:title="@string/title_measurement_unit"
+				android:persistent="false"
+				android:entries="@array/measurement_unit_types_readable"
+				android:entryValues="@array/measurement_unit_types_values"
+				android:defaultValue="1" />
+	
+	</PreferenceCategory>
+	
+	<PreferenceCategory
+			android:title="@string/header_location_settings">
+		
+		<Preference
+				android:key="select_location"
+				android:title="@string/select_location" />
+
+	</PreferenceCategory>
+
+</PreferenceScreen>

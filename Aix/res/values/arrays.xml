@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+	<string-array name="top_text_visibility_readable">
+		<item>Never</item>
+		<item>Landscape Only</item>
+		<item>Portrait Only</item>
+		<item>Always</item>
+	</string-array>
+	
+	<string name="top_text_visibility_default">@string/top_text_visibility_portrait</string>
+	
+	<string name="top_text_visibility_never">1</string>
+	<string name="top_text_visibility_landscape">2</string>
+	<string name="top_text_visibility_portrait">3</string>
+	<string name="top_text_visibility_always">4</string>
+	
+	<string-array name="top_text_visibility_code">
+		<item>@string/top_text_visibility_never</item>
+		<item>@string/top_text_visibility_landscape</item>
+		<item>@string/top_text_visibility_portrait</item>
+		<item>@string/top_text_visibility_always</item>
+	</string-array>
+
 	<string-array name="temperature_units_readable">
-		<item>Celsius</item>
-		<item>Fahrenheit</item>
+		<item>@string/temperature_units_celsius</item>
+		<item>@string/temperature_units_fahrenheit</item>
 	</string-array>
 	
 	<string-array name="temperature_units_code">

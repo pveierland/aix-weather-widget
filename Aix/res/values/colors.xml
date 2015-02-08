@@ -6,6 +6,7 @@
     <color name="semi_white">#f888</color>
     <color name="semi_black">#f666</color>
     
+    <color name="border_default">#20000000</color>
     <color name="background_default">#C8222222</color>
     <color name="text_default">#FFFFFFFF</color>
     <color name="pattern_default">#7FFFFFFF</color>

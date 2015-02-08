@@ -102,8 +102,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		AdapterContextMenuInfo adapterMenuInfo = (AdapterContextMenuInfo) (menuInfo);
 		mCursor.moveToPosition(adapterMenuInfo.position);
 		if (mCursor.isAfterLast()) return;
-		menu.setHeaderTitle(String.format(getString(R.string.context_menu_location_title), mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocationsColumns.TITLE))));
-		menu.add(0, CONTEXT_MENU_DELETE, 0, getString(R.string.context_menu_location_delete));
+		menu.setHeaderTitle(String.format(getString(R.string.location_list_context_title), mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocationsColumns.TITLE))));
+		menu.add(0, CONTEXT_MENU_DELETE, 0, getString(R.string.location_list_context_delete));
 	}
 
 	@Override
@@ -125,7 +125,6 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	
 	@Override
 	protected void onPause() {
-		Log.d(TAG, "onPause()");
 		if (mProgressDialog != null) {
 			mLocationSearchTask.cancel(false);
 			mProgressDialog.dismiss();

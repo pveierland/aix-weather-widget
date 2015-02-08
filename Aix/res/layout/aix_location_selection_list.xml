@@ -47,7 +47,7 @@
         		android:layout_height="wrap_content"
         		android:layout_weight="2"
         		android:layout_marginTop="5dip"
-        		android:text="@string/button_add_location_label" />
+        		android:text="@string/button_add_location" />
 
         <View	android:layout_width="0dip"
         		android:layout_height="fill_parent"

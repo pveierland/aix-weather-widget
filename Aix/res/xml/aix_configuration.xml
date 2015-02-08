@@ -15,7 +15,7 @@
 
 				<ListPreference
 						android:key="@string/temperature_units_string"
-						android:title="@string/dialog_temperature_units_title"
+						android:title="@string/temperature_units_title"
 						android:persistent="true"
 						android:entries="@array/temperature_units_readable"
 						android:entryValues="@array/temperature_units_code"
@@ -23,12 +23,17 @@
 		
 				<ListPreference
 						android:key="@string/precipitation_units_string"
-						android:title="@string/dialog_precipitation_units_title"
-						android:summary="@string/precipitation_title"
+						android:title="@string/precipitation_units_title"
 						android:persistent="true"
 						android:entries="@array/precipitation_units_readable"
 						android:entryValues="@array/precipitation_units_code"
 						android:defaultValue="1" />
+						
+				<EditTextPreference
+						android:key="@string/precipitation_scaling_string"
+						android:title="@string/precipitation_scaling_title_mm"
+						android:persistent="true"
+						android:defaultValue="@string/precipitation_scaling_mm_default" />
 			
 			</PreferenceCategory>
 		
@@ -36,32 +41,72 @@
 	
 		<PreferenceScreen
 				android:key="color_settings"
-				android:title="Colors and Transparency"
-				android:summary="Modify style of widget elements">
+				android:title="UI settings"
+				android:summary="Modify widget appearance">
 		
 			<PreferenceCategory
-					android:title="@string/color_settings_category_main_title">
+					android:title="@string/ui_settings_category_widget">
 					
 				<Preference
 						android:key="@string/background_color_int"
 						android:title="@string/background_color_title"
-						android:persistent="true" />
-				
-				<Preference
-						android:key="@string/text_color_int"
-						android:title="@string/text_color_title"
-						android:summary="@string/text_color_summary"
 						android:persistent="true" />
 	
 				<Preference
 						android:key="@string/pattern_color_int"
 						android:title="@string/pattern_color_title"
 						android:persistent="true" />
+						
+				<Preference
+						android:key="@string/text_color_int"
+						android:title="@string/text_color_title"
+						android:persistent="true" />
+				
+				<ListPreference
+						android:key="@string/top_text_visibility_string"
+						android:title="@string/top_text_visibility_title"
+						android:persistent="true"
+						android:entries="@array/top_text_visibility_readable"
+						android:entryValues="@array/top_text_visibility_code"
+						android:defaultValue="@string/top_text_visibility_default" />
+		
+			</PreferenceCategory>
 			
+			<PreferenceCategory
+					android:title="@string/ui_settings_category_border">
+				
+				<CheckBoxPreference
+						android:key="@string/border_enabled_bool"
+						android:title="@string/border_enabled_title"
+						android:persistent="true"
+						android:defaultValue="true"
+						android:summaryOn="@string/border_enabled_summary_on"
+						android:summaryOff="@string/border_enabled_summary_off" />
+				
+				<Preference
+						android:key="@string/border_color_int"
+						android:title="@string/border_color_title"
+						android:dependency="@string/border_enabled_bool"
+						android:persistent="true" />
+				
+				<EditTextPreference
+						android:key="@string/border_thickness_string"
+						android:title="@string/border_thickness_title"
+						android:dependency="@string/border_enabled_bool"
+						android:persistent="true"
+						android:defaultValue="@string/border_thickness_default" />
+				
+				<EditTextPreference
+						android:key="@string/border_rounding_string"
+						android:title="@string/border_rounding_title"
+						android:summary="@string/border_rounding_summary"
+						android:persistent="true"
+						android:defaultValue="@string/border_rounding_default" />
+				
 			</PreferenceCategory>
 
 			<PreferenceCategory
-					android:title="@string/color_settings_category_dayeffect_title">
+					android:title="@string/ui_settings_category_day_effect">
 			
 				<CheckBoxPreference
 						android:key="@string/day_effect_bool"
@@ -86,7 +131,7 @@
 			</PreferenceCategory>
 			
 			<PreferenceCategory
-					android:title="@string/color_settings_category_grid_title">
+					android:title="@string/ui_settings_category_grid">
 			
 				<Preference
 						android:key="@string/grid_color_int"
@@ -101,7 +146,7 @@
 			</PreferenceCategory>
 			
 			<PreferenceCategory
-					android:title="@string/color_settings_category_indicator_title">
+					android:title="@string/ui_settings_category_indicator">
 			
 				<Preference
 						android:key="@string/max_rain_color_int"

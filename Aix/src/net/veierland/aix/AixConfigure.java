@@ -18,11 +18,15 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.EditTextPreference;
+import android.preference.ListPreference;
 import android.preference.Preference;
+import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
@@ -32,7 +36,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class AixConfigure extends PreferenceActivity implements View.OnClickListener, Preference.OnPreferenceClickListener, ColorPickerView.OnColorSelectedListener {
+public class AixConfigure extends PreferenceActivity implements View.OnClickListener, Preference.OnPreferenceClickListener, ColorPickerView.OnColorSelectedListener, OnPreferenceChangeListener, OnSharedPreferenceChangeListener {
 
 	private static final String TAG = "AixConfigure";
 	
@@ -42,32 +46,46 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	private Button mAddWidgetButton = null;
 	private Preference mLocationPreference = null;
 	
+	private Preference mTemperatureUnitPreference = null;
+	private Preference mPrecipitationUnitPreference = null;
+	private EditTextPreference mPrecipitationScalingPreference = null;
+	
 	private Preference mBackgroundColorPreference = null;
-	private Preference mTextColorPreference = null;
 	private Preference mPatternColorPreference = null;
+	private Preference mTextColorPreference = null;
+	private ListPreference mTopTextVisibilityPreference = null;
+	
+	private Preference mBorderColorPreference = null;
+	private EditTextPreference mBorderThicknessPreference = null;
+	private EditTextPreference mBorderRoundingPreference = null;
+	
+	private Preference mDayBackgroundColorPreference = null;
+	private Preference mNightBackgroundColorPreference = null;
+	
 	private Preference mGridColorPreference = null;
 	private Preference mGridOutlineColorPreference = null;
+	
 	private Preference mMaxRainColorPreference = null;
 	private Preference mMinRainColorPreference = null;
 	private Preference mAboveFreezingColorPreference = null;
 	private Preference mBelowFreezingColorPreference = null;
+	
+	private Uri mWidgetUri = null, mViewUri = null;
 	
 	private final static int SET_UNITS = 0;
 	private final static int CHANGE_COLORS = 1;
 	private final static int SYSTEM_SETTINGS = 2;
 	private final static int SELECT_LOCATION = 3;
 	
-	private Uri mWidgetUri = null, mViewUri = null;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		Log.d(TAG, "Creating Configure Activity");
-		
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+		
 		Editor editor = settings.edit();
 		editor.clear();
+		// Preserve global settings
 		editor.putBoolean(getString(R.string.awake_only_bool), settings.getBoolean(getString(R.string.awake_only_bool), false));
 		editor.putBoolean(getString(R.string.wifi_only_bool), settings.getBoolean(getString(R.string.wifi_only_bool), false));
 		editor.putString(getString(R.string.update_rate_string), settings.getString(getString(R.string.update_rate_string), "0"));
@@ -95,8 +113,6 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			}
 			
 			if (mViewUri != null) {
-				Cursor viewCursor = resolver.query(mViewUri, null, null, null, null);
-				
 				Cursor locationCursor = resolver.query(
 						Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION),
 						null, null, null, null);
@@ -113,19 +129,42 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		
 		setContentView(R.layout.aix_configure);
 		addPreferencesFromResource(R.xml.aix_configuration);
-		
+
 		mLocationPreference = findPreference("select_location");
 		mLocationPreference.setOnPreferenceClickListener(this);
 		
 		mAddWidgetButton = (Button) findViewById(R.id.add_widget_button);
 		mAddWidgetButton.setOnClickListener(this);
 		
+		mTemperatureUnitPreference = findPreference(getString(R.string.temperature_units_string));
+		mPrecipitationUnitPreference = findPreference(getString(R.string.precipitation_units_string));
+		mPrecipitationScalingPreference = (EditTextPreference)findPreference(
+				getString(R.string.precipitation_scaling_string));
+		mPrecipitationScalingPreference.setOnPreferenceChangeListener(this);
+		
 		mBackgroundColorPreference = findPreference(getString(R.string.background_color_int));
 		mBackgroundColorPreference.setOnPreferenceClickListener(this);
-		mTextColorPreference = findPreference(getString(R.string.text_color_int));
-		mTextColorPreference.setOnPreferenceClickListener(this);
 		mPatternColorPreference = findPreference(getString(R.string.pattern_color_int));
 		mPatternColorPreference.setOnPreferenceClickListener(this);
+		mTextColorPreference = findPreference(getString(R.string.text_color_int));
+		mTextColorPreference.setOnPreferenceClickListener(this);
+		mTopTextVisibilityPreference = (ListPreference)findPreference(
+				getString(R.string.top_text_visibility_string));
+		
+		mBorderColorPreference = findPreference(getString(R.string.border_color_int));
+		mBorderColorPreference.setOnPreferenceClickListener(this);
+		mBorderThicknessPreference = (EditTextPreference)findPreference(
+				getString(R.string.border_thickness_string));
+		mBorderThicknessPreference.setOnPreferenceChangeListener(this);
+		mBorderRoundingPreference = (EditTextPreference)findPreference(
+				getString(R.string.border_rounding_string));
+		mBorderRoundingPreference.setOnPreferenceChangeListener(this);
+		
+		mDayBackgroundColorPreference = findPreference(getString(R.string.day_color_int));
+		mDayBackgroundColorPreference.setOnPreferenceClickListener(this);
+		mNightBackgroundColorPreference = findPreference(getString(R.string.night_color_int));
+		mNightBackgroundColorPreference.setOnPreferenceClickListener(this);
+		
 		mGridColorPreference = findPreference(getString(R.string.grid_color_int));
 		mGridColorPreference.setOnPreferenceClickListener(this);
 		mGridOutlineColorPreference = findPreference(getString(R.string.grid_outline_color_int));
@@ -138,16 +177,6 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		mAboveFreezingColorPreference.setOnPreferenceClickListener(this);
 		mBelowFreezingColorPreference = findPreference(getString(R.string.below_freezing_color_int));
 		mBelowFreezingColorPreference.setOnPreferenceClickListener(this);
-		
-		findPreference(getString(R.string.day_color_int)).setOnPreferenceClickListener(this);
-		findPreference(getString(R.string.night_color_int)).setOnPreferenceClickListener(this);
-		
-		if (Intent.ACTION_EDIT.equals(action)) {
-			if (mLocationName != null) {
-				mLocationPreference.setSummary(mLocationName);
-			}
-			mAddWidgetButton.setText(getString(R.string.apply_settings));
-		}
 
 		setResult(Activity.RESULT_CANCELED);
 	}
@@ -210,8 +239,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 						locationUri, null, null, null, null);
 				if (cursor != null) {
 					if (cursor.moveToFirst()) {
-						findPreference("select_location").setSummary(cursor.getString(AixLocationsColumns.TITLE_COLUMN));
 						mLocationId = cursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
+						mLocationName = cursor.getString(AixLocationsColumns.TITLE_COLUMN);
 					}
 					cursor.close();
 				}
@@ -219,6 +248,103 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			break;
 		}
 		}
+	}
+	
+	@Override
+	protected void onPause() {
+		super.onPause();
+		PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+				.unregisterOnSharedPreferenceChangeListener(this);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if (Intent.ACTION_EDIT.equals(getIntent().getAction())) {
+			mAddWidgetButton.setText(getString(R.string.apply_settings));
+		}
+		
+		if (mLocationName != null) {
+			mLocationPreference.setSummary(mLocationName);
+		}
+
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+		
+		onSharedPreferenceChanged(settings, getString(R.string.temperature_units_string));
+		onSharedPreferenceChanged(settings, getString(R.string.precipitation_units_string));
+		onSharedPreferenceChanged(settings, getString(R.string.precipitation_scaling_string));
+		onSharedPreferenceChanged(settings, getString(R.string.top_text_visibility_string));
+		onSharedPreferenceChanged(settings, getString(R.string.border_thickness_string));
+		onSharedPreferenceChanged(settings, getString(R.string.border_rounding_string));
+		
+		settings.registerOnSharedPreferenceChangeListener(this);
+	}
+	
+	@Override
+	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+		if (key.equals(getString(R.string.temperature_units_string))) {
+			String temperatureUnit = sharedPreferences.getString(
+					getString(R.string.temperature_units_string), "1");
+			mTemperatureUnitPreference.setSummary(
+					temperatureUnit.equals("2")
+					? getString(R.string.temperature_units_fahrenheit)
+					: getString(R.string.temperature_units_celsius));
+		} else if (key.equals(getString(R.string.precipitation_units_string))) {
+			String precipitationUnit = sharedPreferences.getString(
+					getString(R.string.precipitation_units_string), "1");
+			
+			mPrecipitationUnitPreference.setSummary(
+					precipitationUnit.equals("2")
+					? getString(R.string.precipitation_units_inches)
+					: getString(R.string.precipitation_units_mm));
+			mPrecipitationScalingPreference.setDialogTitle(
+					precipitationUnit.equals("2")
+					? getString(R.string.precipitation_scaling_title_inches)
+					: getString(R.string.precipitation_scaling_title_mm));
+			mPrecipitationScalingPreference.setTitle(
+					precipitationUnit.equals("2")
+					? getString(R.string.precipitation_scaling_title_inches)
+					: getString(R.string.precipitation_scaling_title_mm));
+			
+			String precipitationValue = precipitationUnit.equals("2") ? "0.05" : "1";
+
+			mPrecipitationScalingPreference.setSummary(
+					sharedPreferences.getString(
+							getString(R.string.precipitation_scaling_string), "1")
+					+ " " + (precipitationUnit.equals("2") ? "in" : "mm"));
+			mPrecipitationScalingPreference.setText(precipitationValue);
+		} else if (key.equals(getString(R.string.precipitation_scaling_string))) {
+			String precipitationUnit = sharedPreferences.getString(
+					getString(R.string.precipitation_units_string), "1");
+			String precipitationScaling = sharedPreferences.getString(
+					getString(R.string.precipitation_scaling_string),
+					precipitationUnit.equals("2")
+					? getString(R.string.precipitation_scaling_inches_default)
+					: getString(R.string.precipitation_scaling_mm_default));
+			
+			mPrecipitationScalingPreference.setSummary(
+					precipitationScaling + " " + (precipitationUnit.equals("2") ? "in" : "mm"));
+		} else if (key.equals(getString(R.string.top_text_visibility_string))) {
+			String[] topTextVisibilityStrings = getResources().
+					getStringArray(R.array.top_text_visibility_readable);
+			int index = Integer.parseInt(sharedPreferences.getString(
+					getString(R.string.top_text_visibility_string),
+					getString(R.string.top_text_visibility_default))) - 1;
+			mTopTextVisibilityPreference.setSummary(topTextVisibilityStrings[index]);
+		} else if (key.equals(getString(R.string.border_thickness_string))) {
+			String borderThickness = sharedPreferences.getString(
+					getString(R.string.border_thickness_string),
+					getString(R.string.border_thickness_default));
+			mBorderThicknessPreference.setSummary(borderThickness + "px");
+			mBorderThicknessPreference.setText(borderThickness);
+		} else if (key.equals(getString(R.string.border_rounding_string))) {
+			String borderRounding = sharedPreferences.getString(
+					getString(R.string.border_rounding_string),
+					getString(R.string.border_rounding_default));
+			mBorderRoundingPreference.setSummary(borderRounding + "px");
+			mBorderRoundingPreference.setText(borderRounding);
+		}
+		
 	}
 
 	@Override
@@ -306,6 +432,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			final Resources resources = getResources();
 			
 			Map<String, Integer> colorMap = new HashMap<String, Integer>() {{
+				put(getString(R.string.border_color_int), resources.getColor(R.color.border_default));
 				put(getString(R.string.background_color_int), resources.getColor(R.color.background_default));
 				put(getString(R.string.text_color_int), resources.getColor(R.color.text_default));
 				put(getString(R.string.pattern_color_int), resources.getColor(R.color.pattern_default));
@@ -336,6 +463,58 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		Editor editor = settings.edit();
 		editor.putInt(colorId, color);
 		editor.commit();
+	}
+
+	@Override
+	public boolean onPreferenceChange(Preference preference, Object newValue) {
+		if (preference == mPrecipitationScalingPreference) {
+			try {
+				float f = Float.parseFloat((String)newValue);
+				if (f > 0.0f && f <= 100.0f) {
+					return true;
+				} else {
+					Toast.makeText(getApplicationContext(),
+							getString(R.string.precipitation_units_invalid_range_toast),
+							Toast.LENGTH_SHORT).show();
+				}
+			} catch (NumberFormatException e) {
+				Toast.makeText(getApplicationContext(),
+						getString(R.string.precipitation_units_invalid_number_toast),
+						Toast.LENGTH_SHORT).show();
+			}
+		} else if (preference == mBorderThicknessPreference) {
+			try {
+				float f = Float.parseFloat((String)newValue);
+				if (f >= 0.0f && f <= 20.0f) {
+					return true;
+				} else {
+					Toast.makeText(getApplicationContext(),
+							getString(R.string.border_thickness_invalid_range_toast),
+							Toast.LENGTH_SHORT).show();
+				}
+			} catch (NumberFormatException e) {
+				Toast.makeText(getApplicationContext(),
+						getString(R.string.border_thickness_invalid_number_toast),
+						Toast.LENGTH_SHORT).show();
+			}
+		} else if (preference == mBorderRoundingPreference) {
+			try {
+				float f = Float.parseFloat((String)newValue);
+				if (f >= 0.0f && f <= 20.0f) {
+					return true;
+				} else {
+					Toast.makeText(getApplicationContext(),
+							getString(R.string.border_rounding_invalid_range_toast),
+							Toast.LENGTH_SHORT).show();
+				}
+			} catch (NumberFormatException e) {
+				Toast.makeText(getApplicationContext(),
+						getString(R.string.border_rounding_invalid_number_toast),
+						Toast.LENGTH_SHORT).show();
+			}
+		}
+
+		return false;
 	}
 	
 }

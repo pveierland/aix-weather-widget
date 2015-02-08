@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<!-- 
-	<string name="measurement_unit_celsius">Celsius</string>
-	<string name="measurement_unit_fahrenheit">Fahrenheit</string>
- -->
+
+    <string name="app_name">Aix Weather Widget</string>
+    <string name="app_description">Weather widget showing detailed 24-hour forecasts in a 4x1 format.</string>
+    
+    <string name="widget_name">Aix Weather</string>
+    <string name="widget_loading">Loading Aix...</string>
+    
+    <string name="widget_name_small_tiny">Aix Weather (2x1)</string>
+    <string name="widget_name_small_small">Aix Weather (2x2)</string>
+    <string name="widget_name_large_tiny">Aix Weather (4x1)</string>
+    <string name="widget_name_large_small">Aix Weather (4x2)</string>
 
 	<!-- InfoText -->
 	<string name="pressure_top">MSLP: %1$.0f hPa</string>
@@ -18,43 +25,58 @@
 	<string name="temperature_unit_fahrenheit">\u00B0F</string>
 	<string name="temperature_unit_celsius">\u00B0C</string>
 	<string name="temperature_top">(%1$s%2$s)</string>
-	 
- 	<string name="widget_load_error_please_recreate">Error: Please recreate widget</string>
- 	<string name="widget_no_weather_data">No weather data. Retrying in 5 minutes</string>
- 	<string name="widget_failed_to_draw">Failed to draw widget</string>
- 
- 	<string name="context_menu_location_title">Location: %s</string>
- 	<string name="context_menu_location_delete">Delete</string>
+	
+	
+	
+	
+	<string name="select_location">Select location</string>
+	
+	
+	
+	<!-- Location selector -->
+	<string name="title_select_location">Aix Weather: Select location</string>
+	<string name="button_add_location">Add location</string>
+	
+	<string name="location_list_row_latitude">Latitude:</string>
+	<string name="location_list_row_longitude">Longitude:</string>
+	
+	<string name="location_list_context_title">Location: %s</string>
+ 	<string name="location_list_context_delete">Delete</string>
  	
  	<string name="invalid_search_input_toast">Invalid search input, please try a different search!</string>
- 	
  	<string name="location_search_results_select_dialog_title">Select a location</string>
- 	
  	<string name="location_search_no_results">No results found, please try a different search!</string>
- 	
  	<string name="location_empty_search_string_toast">Error: Empty search string.</string>
- 	
- 	<string name="location_search_progress_dialog_message">Searching...</string>
  	<string name="location_search_progress_dialog_title">Please wait...</string>
+ 	<string name="location_search_progress_dialog_message">Searching...</string>
+	
+	
+	
+	
+	
+	
+ 	<string name="widget_load_error_please_recreate">Error: Please recreate widget</string>
+ 	<string name="widget_no_weather_data">No weather data. Retrying in %d minutes</string>
+ 	<string name="widget_failed_to_draw">Failed to draw widget</string>
+ 
+ 	
  
 	<string name="must_select_location">You must set a location</string>
 	<string name="apply_settings">Apply Settings</string>
 	
+	
+	
+	
 	<string name="header_widget_settings">Widget Settings</string>
+	
+	
+	
+	
 	<string name="header_location_settings">Select location</string>
 	
-	<string name="title_measurement_unit">Measurement unit</string>
 	
-	<string name="color_settings_category_main_title">Main colors</string>
-	<string name="color_settings_category_dayeffect_title">Daylight effect</string>
-	<string name="color_settings_category_grid_title">Grid colors</string>
-	<string name="color_settings_category_indicator_title">Indicator colors</string>
-	
-	<string name="add_location">Add location</string>
-	<string name="app_description">Weather widget showing detailed 24-hour forecasts in a 4x1 format.</string>	
-	
-	<string name="button_add_widget_label">Add widget</string>	
-	<string name="button_add_location_label">Add location</string>
+	<string name="title_configure">Aix Weather: Configure widget</string>
+	<string name="button_add_widget_label">Add widget</string>
 	
 	<string name="location_selector_no_items_title">No locations added</string>
 	<string name="location_selector_no_items_text">Click "add location" to continue.</string>
@@ -65,36 +87,92 @@
 	<string name="dialog_color_alpha">Alpha:</string>
 	<string name="dialog_color_code">HTML color code:</string>
 
-	<string name="select_location">Select location</string>
-
-    <string name="title_configure">Aix Weather: Configure widget</string>
-    <string name="title_select_location">Aix Weather: Select location</string>
-    <string name="title_unitsettings">Aix Weather: Unit Settings</string>
-    
-    <string name="unit_settings_category">Unit settings</string>
-	<string name="unit_settings_precipitation_summary">Each grid in the Y axis represents 1 mm or 0.05 inches of precipitation for the given hour.</string>
-
-	<string name="system_settings_category">System Settings</string>
-
-    <string name="dialog_temperature_units_title">Temperature Unit</string>
-    <string name="dialog_precipitation_units_title">Precipitation Unit</string>
-    
-    <string name="app_name">Aix Weather Widget</string>
-    <string name="widget_name">Aix Weather</string>
-    <string name="widget_loading">Loading Aix...</string>
-    
-    <string name="widget_name_small_tiny">Aix Weather (2x1)</string>
-    <string name="widget_name_small_small">Aix Weather (2x2)</string>
-    <string name="widget_name_large_tiny">Aix Weather (4x1)</string>
-    <string name="widget_name_large_small">Aix Weather (4x2)</string>
-
-	<!-- BEGIN PREFERENCE STRINGS -->
+	<!-- BEGIN UNIT SETTINGS -->
+	<string name="title_unitsettings">Aix Weather: Unit Settings</string>
+	<string name="title_measurement_unit">Measurement unit</string>
+	<string name="unit_settings_category">Unit settings</string>
 	
+	<string name="temperature_units_title">Temperature Unit</string>
+	<string name="temperature_units_celsius">Celsius</string>
+	<string name="temperature_units_fahrenheit">Fahrenheit</string>
+	
+	<string name="precipitation_units_title">Precipitation Unit</string>
+	<string name="precipitation_units_mm">Millimeters</string>
+	<string name="precipitation_units_inches">Inches</string>
+	
+	<string name="precipitation_units_invalid_number_toast">Precipitation scaling must be a number.</string>
+	<string name="precipitation_units_invalid_range_toast">Precipitation scaling must be greater than zero and less than 100.</string>
+	
+	<string name="precipitation_scaling_title_mm">Millimeters per cell</string>
+	<string name="precipitation_scaling_title_inches">Inches per cell</string>
+    <!-- END UNIT SETTINGS -->
+	
+	<!-- BEGIN USER INTERFACE SETTINGS -->
+	<string name="ui_settings_category_widget">Widget settings</string>
+	
+	<string name="background_color_title">Background color</string>
+	<string name="pattern_color_title">Background pattern color</string>
+	<string name="text_color_title">Text color</string>
+	<string name="top_text_visibility_title">Top text visibility</string>
+	
+	<string name="ui_settings_category_border">Border settings</string>
+	<string name="border_enabled_title">Widget border</string>
+	<string name="border_enabled_summary_on">Border enabled.</string>
+	<string name="border_enabled_summary_off">Border disabled.</string>
+	<string name="border_color_title">Border color</string>
+	<string name="border_thickness_title">Border thickness</string>
+	<string name="border_thickness_invalid_number_toast">Border thickness must be a number.</string>
+	<string name="border_thickness_invalid_range_toast">Border thickness must be zero or greater, and less than 20.</string>
+	<string name="border_rounding_title">Widget edge rounding</string>
+	<string name="border_rounding_invalid_number_toast">Widget edge rounding must be a number.</string>
+	<string name="border_rounding_invalid_range_toast">Widget edge rounding must be zero or greater, and less than 20.</string>
+	<string name="border_rounding_summary">Adjust the rounding radius of the widget border.</string>
+	
+	<string name="ui_settings_category_day_effect">Daylight effect</string>
+	<string name="day_effect_title">Day/night effect</string>
+	<string name="day_effect_summary_on">Background effect enabled.</string>
+	<string name="day_effect_summary_off">Background effect disabled.</string>
+	<string name="day_color_title">Day background color</string>
+	<string name="night_color_title">Night background color</string>
+	
+	<string name="ui_settings_category_grid">Grid colors</string>
+	<string name="grid_color_title">Grid color</string>
+	<string name="grid_outline_color_title">Grid outline color</string>
+	
+	<string name="ui_settings_category_indicator">Indicator colors</string>
+	<string name="max_rain_color_title">Maximum rain bar color</string>
+	<string name="min_rain_color_title">Minimum rain bar color</string>
+	<string name="above_freezing_color_title">Above freezing color</string>
+	<string name="below_freezing_color_title">Below freezing color</string>
+	<!-- END USER INTERFACE SETTINGS -->
+
+	<!-- BEGIN SYSTEM SETTINGS -->
+	<string name="system_settings_category">System Settings</string>
+	
+	<string name="awake_only_title">Only when awake</string>
+	<string name="awake_only_summary_on">The device will not be awoken to update weather data.</string>
+	<string name="awake_only_summary_off">Weather data will be updated even when the device is sleeping.</string>
+	
+	<string name="wifi_only_title">WiFi only</string>
+	<string name="wifi_only_summary_on">Weather data will only be updated when a WiFi connection is active.</string>
+	<string name="wifi_only_summary_off">Weather data will be updated using any connection type.</string>
+	
+	<string name="update_rate_title">Update rate</string>
+	<string name="update_rate_summary">Adjust how often weather data will be retrieved</string>
+	<!-- END SYSTEM SETTINGS -->
+	
+	<!-- BEGIN PREFERENCE STRINGS, DO NOT EDIT -->
 	<string name="temperature_units_string">temperature_units_string</string>
     <string name="precipitation_units_string">precipitation_units_string</string>
+    <string name="precipitation_scaling_string">rain_scale_string</string>
     
-    <string name="precipitation_title">Select the unit of measure to use for forecasted rain. For millimetres, each grid is 1 mm of rain. For inches, each grid represents 0.05 inches of rain.</string>
-	
+    <string name="top_text_visibility_string">top_text_visibility_string</string>
+    
+    <string name="border_enabled_bool">border_enabled_bool</string>
+    <string name="border_color_int">border_color_int</string>
+    <string name="border_thickness_string">border_thickness_string</string>
+    <string name="border_rounding_string">border_rounding_string</string>
+    
 	<string name="background_color_int">background_color_int</string>
 	<string name="text_color_int">text_color_int</string>
 	<string name="pattern_color_int">pattern_color_int</string>
@@ -108,35 +186,9 @@
 	<string name="above_freezing_color_int">above_freezing_color_int</string>
 	<string name="below_freezing_color_int">below_freezing_color_int</string>
 	
-	<string name="background_color_title">Background color</string>
-	<string name="text_color_title">Text color</string>
-	<string name="text_color_summary">Used for time and temperature labels</string>
-	<string name="pattern_color_title">Background pattern color</string>
-	<string name="day_effect_title">Day/night effect</string>
-	<string name="day_effect_summary_on">Background effect enabled.</string>
-	<string name="day_effect_summary_off">Background effect disabled.</string>
-	<string name="day_color_title">Day background color</string>
-	<string name="night_color_title">Night background color</string>
-	<string name="grid_color_title">Grid color</string>
-	<string name="grid_outline_color_title">Grid outline color</string>
-	<string name="max_rain_color_title">Maximum rain bar color</string>
-	<string name="min_rain_color_title">Minimum rain bar color</string>
-	<string name="above_freezing_color_title">Above freezing color</string>
-	<string name="below_freezing_color_title">Below freezing color</string>
-
 	<string name="awake_only_bool">global_awake_only</string>
 	<string name="wifi_only_bool">global_wifi_only</string>
 	<string name="update_rate_string">global_update_rate</string>
+	<!-- END PREFERENCE STRINGS, DO NOT EDIT -->
 	
-	<string name="awake_only_title">Only when awake</string>
-	<string name="awake_only_summary_on">The device will not be awoken to update weather data.</string>
-	<string name="awake_only_summary_off">Weather data will be updated even when the device is sleeping.</string>
-	
-	<string name="wifi_only_title">WiFi only</string>
-	<string name="wifi_only_summary_on">Weather data will only be updated when a WiFi connection is active.</string>
-	<string name="wifi_only_summary_off">Weather data will be updated using any connection type.</string>
-	
-	<string name="update_rate_title">Update rate</string>
-	<string name="update_rate_summary">Adjust how often weather data will be retrieved</string>
-
 </resources>

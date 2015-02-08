@@ -10,7 +10,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.UriMatcher;
-import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -19,6 +18,7 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.util.Log;
 
 public class AixProvider extends ContentProvider {
@@ -90,7 +90,9 @@ public class AixProvider extends ContentProvider {
 		
 		public static final String TWIG_SETTINGS = "settings";
 		public static final String TWIG_LOCATION = "location";
-		public static final String TWIG_FORECASTS = "forecasts";
+		public static final String TWIG_POINTDATAFORECASTS = "pointdata_forecasts";
+		public static final String TWIG_INTERVALDATAFORECASTS = "intervaldata_forecasts";
+		public static final String TWIG_SUNMOONDATA = "sunmoondata";
 	}
 	
 	public interface AixLocationsColumns {
@@ -137,39 +139,95 @@ public class AixProvider extends ContentProvider {
 		public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/aixlocation";
 	}
 	
-	public interface AixForecastsColumns {
+	public interface AixPointDataForecastColumns {
 		public static final String LOCATION = "location";
-		public static final String TIME_FROM = "timeFrom";
-		public static final String TIME_TO = "timeTo";
+		public static final String TIME_ADDED = "timeAdded";
+		public static final String TIME = "time";
 		public static final String TEMPERATURE = "temperature";
 		public static final String HUMIDITY = "humidity";
 		public static final String PRESSURE = "pressure";
-		public static final String RAIN_LOWVAL = "rainLowVal";
-		public static final String RAIN_VALUE = "rainValue";
-		public static final String RAIN_HIGHVAL = "rainHighVal";
-		public static final String WEATHER_ICON = "weatherIcon";
-		public static final String SUN_RISE = "sunRise";
-		public static final String SUN_SET = "sunSet";
 		
-		public static final int FORECAST_ID_COLUMN = 0;
 		public static final int LOCATION_COLUMN = 1;
-		public static final int TIME_FROM_COLUMN = 2;
-		public static final int TIME_TO_COLUMN = 3;
+		public static final int TIME_ADDED_COLUMN = 2;
+		public static final int TIME_COLUMN = 3;
 		public static final int TEMPERATURE_COLUMN = 4;
 		public static final int HUMIDITY_COLUMN = 5;
 		public static final int PRESSURE_COLUMN = 6;
-		public static final int RAIN_LOWVAL_COLUMN = 7;
-		public static final int RAIN_VALUE_COLUMN = 8;
-		public static final int RAIN_HIGHVAL_COLUMN = 9;
-		public static final int WEATHER_ICON_COLUMN = 10;
-		public static final int SUN_RISE_COLUMN = 11;
-		public static final int SUN_SET_COLUMN = 12;
+	};
+	
+	public static class AixPointDataForecasts implements BaseColumns, AixPointDataForecastColumns {
+		public static final Uri CONTENT_URI = Uri.parse(
+				"content://" + AUTHORITY + "/aixpointdataforecasts");
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/aixpointdataforecasts";
+		public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/aixpointdataforecast";
 	}
 	
-	public static class AixForecasts implements BaseColumns, AixForecastsColumns {
-		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/aixforecasts");
-		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/aixforecast";
-		public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/aixforecast";
+	public interface AixIntervalDataForecastColumns {
+		public static final String LOCATION = "location";
+		public static final String TIME_ADDED = "timeAdded";
+		public static final String TIME_FROM = "timeFrom";
+		public static final String TIME_TO = "timeTo";
+		public static final String RAIN_VALUE = "rainValue";
+		public static final String RAIN_MINVAL = "rainLowVal";
+		public static final String RAIN_MAXVAL = "rainMaxVal";
+		public static final String WEATHER_ICON = "weatherIcon";
+		
+		public static final int LOCATION_COLUMN = 1;
+		public static final int TIME_ADDED_COLUMN = 2;
+		public static final int TIME_FROM_COLUMN = 3;
+		public static final int TIME_TO_COLUMN = 4;
+		public static final int RAIN_VALUE_COLUMN = 5;
+		public static final int RAIN_MINVAL_COLUMN = 6;
+		public static final int RAIN_MAXVAL_COLUMN = 7;
+		public static final int WEATHER_ICON_COLUMN = 8;
+	};
+	
+	public static class AixIntervalDataForecasts implements BaseColumns, AixIntervalDataForecastColumns {
+		public static final Uri CONTENT_URI = Uri.parse(
+				"content://" + AUTHORITY + "/aixintervaldataforecasts");
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/aixintervaldataforecasts";
+		public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/aixintervaldataforecast";
+	}
+	
+	public interface AixSunMoonDataColumns {
+		public static final String LOCATION = "location";
+		public static final String TIME_ADDED = "timeAdded";
+		public static final String DATE = "date";
+		public static final String SUN_RISE = "sunRise";
+		public static final String SUN_SET = "sunSet";
+		public static final String MOON_RISE = "moonRise";
+		public static final String MOON_SET = "moonSet";
+		public static final String MOON_PHASE = "moonPhase";
+		
+		public static final int NO_MOON_PHASE_DATA = -1;
+		public static final int NEW_MOON = 1;
+		public static final int WAXING_CRESCENT = 2;
+		public static final int FIRST_QUARTER = 3;
+		public static final int WAXING_GIBBOUS = 4;
+		public static final int FULL_MOON = 5;
+		public static final int WANING_GIBBOUS = 6;
+		public static final int LAST_QUARTER = 7;
+		public static final int WANING_CRESCENT = 8;
+		public static final int DARK_MOON = 9;
+		
+		public static final int LOCATION_COLUMN = 1;
+		public static final int TIME_ADDED_COLUMN = 2;
+		public static final int DATE_COLUMN = 3;
+		public static final int SUN_RISE_COLUMN = 4;
+		public static final int SUN_SET_COLUMN = 5;
+		public static final int MOON_RISE_COLUMN = 6;
+		public static final int MOON_SET_COLUMN = 7;
+		public static final int MOON_PHASE_COLUMN = 8;
+	}
+	
+	public static class AixSunMoonData implements BaseColumns, AixSunMoonDataColumns {
+		public static final Uri CONTENT_URI = Uri.parse(
+				"content://" + AUTHORITY + "/aixsunmoondata");
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/aixsunmoondata";
+		public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/aixsunmoondata";
+		
+		public static final long NEVER_RISE = -1;
+		public static final long NEVER_SET = -2;
 	}
 	
 	public interface AixSettingsColumns {
@@ -229,15 +287,19 @@ public class AixProvider extends ContentProvider {
 	private static final String TABLE_AIXVIEWSETTINGS = "aixviewsettings";
 	private static final String TABLE_AIXLOCATIONS = "aixlocations";
 	private static final String TABLE_AIXFORECASTS = "aixforecasts";
+	private static final String TABLE_AIXPOINTDATAFORECASTS = "aixpointdataforecasts";
+	private static final String TABLE_AIXINTERVALDATAFORECASTS = "aixintervaldataforecasts";
+	private static final String TABLE_AIXSUNMOONDATA = "aixsunmoondata";
 	
 	private DatabaseHelper mOpenHelper;
 	
 	private static class DatabaseHelper extends SQLiteOpenHelper {
 		private static final String DATABASE_NAME = "aix_database.db";
-		private static final int DATABASE_VERSION = 7;
-		// 0.1.5 was 7
-		// 0.1.4 was 6
-		// 0.1.3 was 5
+		private static final int DATABASE_VERSION = 8;
+		// 0.1.6 = version 8
+		// 0.1.5 = version 7
+		// 0.1.4 = version 6
+		// 0.1.3 = version 5
 		
 		private Context mContext;
 		
@@ -310,20 +372,36 @@ public class AixProvider extends ContentProvider {
 		}
 
 		private void createForecastTable(SQLiteDatabase db) {
-			db.execSQL("CREATE TABLE " + TABLE_AIXFORECASTS + " ("
+			db.execSQL("CREATE TABLE " + TABLE_AIXPOINTDATAFORECASTS + " ("
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-					+ AixForecastsColumns.LOCATION + " INTEGER,"
-					+ AixForecastsColumns.TIME_FROM + " INTEGER,"
-					+ AixForecastsColumns.TIME_TO + " INTEGER,"
-					+ AixForecastsColumns.TEMPERATURE + " REAL,"
-					+ AixForecastsColumns.HUMIDITY + " REAL,"
-					+ AixForecastsColumns.PRESSURE + " REAL,"
-					+ AixForecastsColumns.RAIN_LOWVAL + " REAL,"
-					+ AixForecastsColumns.RAIN_VALUE + " REAL,"
-					+ AixForecastsColumns.RAIN_HIGHVAL + " REAL,"
-					+ AixForecastsColumns.WEATHER_ICON + " INTEGER,"
-					+ AixForecastsColumns.SUN_RISE + " INTEGER,"
-					+ AixForecastsColumns.SUN_SET + " INTEGER);");
+					+ AixPointDataForecastColumns.LOCATION + " INTEGER,"
+					+ AixPointDataForecastColumns.TIME_ADDED + " INTEGER,"
+					+ AixPointDataForecastColumns.TIME + " INTEGER,"
+					+ AixPointDataForecastColumns.TEMPERATURE + " REAL,"
+					+ AixPointDataForecastColumns.HUMIDITY + " REAL,"
+					+ AixPointDataForecastColumns.PRESSURE + " REAL);");
+			
+			db.execSQL("CREATE TABLE " + TABLE_AIXINTERVALDATAFORECASTS + " ("
+					+ BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+					+ AixIntervalDataForecastColumns.LOCATION + " INTEGER,"
+					+ AixIntervalDataForecastColumns.TIME_ADDED + " INTEGER,"
+					+ AixIntervalDataForecastColumns.TIME_FROM + " INTEGER,"
+					+ AixIntervalDataForecastColumns.TIME_TO + " INTEGER,"
+					+ AixIntervalDataForecastColumns.RAIN_VALUE + " REAL,"
+					+ AixIntervalDataForecastColumns.RAIN_MINVAL + " REAL,"
+					+ AixIntervalDataForecastColumns.RAIN_MAXVAL + " REAL,"
+					+ AixIntervalDataForecastColumns.WEATHER_ICON + " INTEGER);");
+			
+			db.execSQL("CREATE TABLE " + TABLE_AIXSUNMOONDATA + " ("
+					+ BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+					+ AixSunMoonDataColumns.LOCATION + " INTEGER,"
+					+ AixSunMoonDataColumns.TIME_ADDED + " INTEGER,"
+					+ AixSunMoonDataColumns.DATE + " INTEGER,"
+					+ AixSunMoonDataColumns.SUN_RISE + " INTEGER,"
+					+ AixSunMoonDataColumns.SUN_SET + " INTEGER,"
+					+ AixSunMoonDataColumns.MOON_RISE + " INTEGER,"
+					+ AixSunMoonDataColumns.MOON_SET + " INTEGER,"
+					+ AixSunMoonDataColumns.MOON_PHASE + " INTEGER);");
 		}
 		
 		private void migrateProperty(ContentValues values, Cursor cursor, String id, int column) {
@@ -427,8 +505,10 @@ public class AixProvider extends ContentProvider {
 				for (ContentValues location : locations) {
 					db.insert(TABLE_AIXLOCATIONS, null, location);
 				}
-			} else if (oldVersion == 6) {
+			} else if (oldVersion == 6 || oldVersion == 7) {
 				// Humidity and pressure fields were added to forecasts table
+				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXPOINTDATAFORECASTS);
+				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXINTERVALDATAFORECASTS);
 				db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXFORECASTS);
 				createForecastTable(db);
 			} else {
@@ -496,13 +576,33 @@ public class AixProvider extends ContentProvider {
 			count = db.delete(TABLE_AIXVIEWS, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 			break;
 		}
-		case AIXVIEWS_FORECASTS: {
+		case AIXVIEWS_POINTDATAFORECASTS: {
 			long locationId = findLocationFromView(db, uri);
 			if (locationId != -1) {
 				count = db.delete(
-						TABLE_AIXFORECASTS,
-						buildSelectionString(AixForecasts.LOCATION, Long.toString(locationId), selection),
-						selectionArgs);
+						TABLE_AIXPOINTDATAFORECASTS,
+						buildSelectionString(AixPointDataForecastColumns.LOCATION,
+								Long.toString(locationId), selection), selectionArgs);
+			}
+			break;
+		}
+		case AIXVIEWS_INTERVALDATAFORECASTS: {
+			long locationId = findLocationFromView(db, uri);
+			if (locationId != -1) {
+				count = db.delete(
+						TABLE_AIXINTERVALDATAFORECASTS,
+						buildSelectionString(AixIntervalDataForecastColumns.LOCATION,
+								Long.toString(locationId), selection), selectionArgs);
+			}
+			break;
+		}
+		case AIXVIEWS_SUNMOONDATA: {
+			long locationId = findLocationFromView(db, uri);
+			if (locationId != -1) {
+				count = db.delete(
+						TABLE_AIXSUNMOONDATA,
+						buildSelectionString(AixSunMoonDataColumns.LOCATION,
+								Long.toString(locationId), selection), selectionArgs);
 			}
 			break;
 		}
@@ -522,12 +622,28 @@ public class AixProvider extends ContentProvider {
 			count = db.delete(TABLE_AIXLOCATIONS, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 			break;
 		}
-		case AIXFORECASTS: {
-			count = db.delete(TABLE_AIXFORECASTS, selection, selectionArgs);
+		case AIXPOINTDATAFORECASTS: {
+			count = db.delete(TABLE_AIXPOINTDATAFORECASTS, selection, selectionArgs);
 			break;
 		}
-		case AIXFORECASTS_ID: {
-			count = db.delete(TABLE_AIXFORECASTS, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+		case AIXPOINTDATAFORECASTS_ID: {
+			count = db.delete(TABLE_AIXPOINTDATAFORECASTS, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+			break;
+		}
+		case AIXINTERVALDATAFORECASTS: {
+			count = db.delete(TABLE_AIXINTERVALDATAFORECASTS, selection, selectionArgs);
+			break;
+		}
+		case AIXINTERVALDATAFORECASTS_ID: {
+			count = db.delete(TABLE_AIXINTERVALDATAFORECASTS, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+			break;
+		}
+		case AIXSUNMOONDATA: {
+			count = db.delete(TABLE_AIXSUNMOONDATA, selection, selectionArgs);
+			break;
+		}
+		case AIXSUNMOONDATA_ID: {
+			count = db.delete(TABLE_AIXSUNMOONDATA, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 			break;
 		}
 		}
@@ -554,10 +670,14 @@ public class AixProvider extends ContentProvider {
 			return AixViews.CONTENT_ITEM_TYPE;
 		case AIXVIEWS_ID_SETTINGS:
 			return AixViewSettings.CONTENT_TYPE;
-		case AIXVIEWS_FORECASTS:
-			return AixForecasts.CONTENT_TYPE;
 		case AIXVIEWS_LOCATION:
 			return AixLocations.CONTENT_ITEM_TYPE;
+		case AIXVIEWS_POINTDATAFORECASTS:
+			return AixPointDataForecasts.CONTENT_TYPE;
+		case AIXVIEWS_INTERVALDATAFORECASTS:
+			return AixIntervalDataForecasts.CONTENT_TYPE;
+		case AIXVIEWS_SUNMOONDATA:
+			return AixSunMoonData.CONTENT_TYPE;
 		case AIXVIEWSETTINGS:
 			return AixViewSettings.CONTENT_TYPE;
 		case AIXVIEWSETTINGS_ID:
@@ -566,10 +686,18 @@ public class AixProvider extends ContentProvider {
 			return AixLocations.CONTENT_TYPE;
 		case AIXLOCATIONS_ID:
 			return AixLocations.CONTENT_ITEM_TYPE;
-		case AIXFORECASTS:
-			return AixForecasts.CONTENT_TYPE;
-		case AIXFORECASTS_ID:
-			return AixForecasts.CONTENT_ITEM_TYPE;
+		case AIXPOINTDATAFORECASTS:
+			return AixPointDataForecasts.CONTENT_TYPE;
+		case AIXPOINTDATAFORECASTS_ID:
+			return AixPointDataForecasts.CONTENT_ITEM_TYPE;
+		case AIXINTERVALDATAFORECASTS:
+			return AixIntervalDataForecasts.CONTENT_TYPE;
+		case AIXINTERVALDATAFORECASTS_ID:
+			return AixIntervalDataForecasts.CONTENT_ITEM_TYPE;
+		case AIXSUNMOONDATA:
+			return AixSunMoonData.CONTENT_TYPE;
+		case AIXSUNMOONDATA_ID:
+			return AixSunMoonData.CONTENT_ITEM_TYPE;
 		}
 		throw new IllegalStateException();
 	}
@@ -589,24 +717,28 @@ public class AixProvider extends ContentProvider {
 			for (int i = 0; i < files.length; i++) {
 				File f = files[i];
 				String[] s = f.getName().split("_");
-				if (s.length == 4 && s[1].equals(widgetId)) {
+				if (s != null && s.length == 4) {
 					long filetime = Long.parseLong(s[2]);
-					if (filetime < updateTime) {
+					if (	(s[1].equals(widgetId) && filetime < updateTime) ||
+							(filetime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS))
+					{
 						f.delete();
 					}
 				}
 			}
-				
-			boolean isLandscape = (getContext().getResources().getConfiguration().orientation ==
-				   Configuration.ORIENTATION_LANDSCAPE);
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append("aix_");
 			sb.append(widgetId);
 			sb.append('_');
 			sb.append(updateId);
-			if (isLandscape) sb.append("_landscape.png");
-			else sb.append("_portrait.png");
+			
+			String orientation = uri.getPathSegments().get(3);
+			if (orientation != null && orientation.equals("landscape")) {
+				sb.append("_landscape.png");
+			} else {
+				sb.append("_portrait.png");
+			}
 			
 			File file = new File(getContext().getCacheDir(), sb.toString());
 			return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
@@ -688,8 +820,99 @@ public class AixProvider extends ContentProvider {
 			}
 			break;
 		}
-		case AIXFORECASTS: {
-			addForecast(db, values);
+		case AIXPOINTDATAFORECASTS: {
+			long rowId = -1;
+			
+			Cursor cursor = db.query(
+					TABLE_AIXPOINTDATAFORECASTS,
+					null,
+					AixPointDataForecastColumns.LOCATION + "=? AND " +
+					AixPointDataForecastColumns.TIME + "=?",
+					new String[] {
+							values.getAsString(AixPointDataForecastColumns.LOCATION),
+							values.getAsString(AixPointDataForecastColumns.TIME)
+					}, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					rowId = cursor.getLong(0);
+				}
+				cursor.close();
+			}
+			
+			if (rowId != -1) {
+				db.update(TABLE_AIXPOINTDATAFORECASTS, values, BaseColumns._ID + '=' + rowId, null);
+			} else {
+				rowId = db.insert(TABLE_AIXPOINTDATAFORECASTS, null, values);
+			}
+			
+			if (rowId != -1) {
+				resultUri = ContentUris.withAppendedId(AixPointDataForecasts.CONTENT_URI, rowId);
+			}
+			break;
+		}
+		case AIXINTERVALDATAFORECASTS: {
+			long rowId = -1;
+			
+			Cursor cursor = db.query(
+					TABLE_AIXINTERVALDATAFORECASTS,
+					null,
+					AixIntervalDataForecastColumns.LOCATION + "=? AND " +
+					AixIntervalDataForecastColumns.TIME_FROM + "=? AND " +
+					AixIntervalDataForecastColumns.TIME_TO + "=?",
+					new String[] {
+							values.getAsString(AixIntervalDataForecastColumns.LOCATION),
+							values.getAsString(AixIntervalDataForecastColumns.TIME_FROM),
+							values.getAsString(AixIntervalDataForecastColumns.TIME_TO)
+					}, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					rowId = cursor.getLong(0);
+				}
+				cursor.close();
+			}
+			
+			if (rowId != -1) {
+				db.update(TABLE_AIXINTERVALDATAFORECASTS, values, BaseColumns._ID + '=' + rowId, null);
+			} else {
+				rowId = db.insert(TABLE_AIXINTERVALDATAFORECASTS, null, values);
+			}
+			
+			if (rowId != -1) {
+				resultUri = ContentUris.withAppendedId(AixIntervalDataForecasts.CONTENT_URI, rowId);
+			}
+			break;
+		}
+		case AIXSUNMOONDATA: {
+			long rowId = -1;
+			
+			Cursor cursor = db.query(
+					TABLE_AIXSUNMOONDATA,
+					null,
+					AixSunMoonDataColumns.LOCATION + "=? AND " +
+					AixSunMoonDataColumns.DATE + "=?",
+					new String[] {
+							values.getAsString(AixSunMoonDataColumns.LOCATION),
+							values.getAsString(AixSunMoonDataColumns.DATE)
+					}, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					rowId = cursor.getLong(0);
+				}
+				cursor.close();
+			}
+			
+			if (rowId != -1) {
+				// A record already exists for this time and location. Update its values:
+				db.update(TABLE_AIXSUNMOONDATA, values, BaseColumns._ID + '=' + rowId, null);
+			} else {
+				// No record exists for this time. Insert new row:
+				rowId = db.insert(TABLE_AIXSUNMOONDATA, null, values);
+			}
+			
+			if (rowId != -1) {
+				resultUri = ContentUris.withAppendedId(AixSunMoonData.CONTENT_URI, rowId);
+			}
+
 			break;
 		}
 		default:
@@ -711,6 +934,8 @@ public class AixProvider extends ContentProvider {
 	{
 		if (LOGD) Log.d(TAG, "query() with uri=" + uri);
 		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+		
+		int uriMatch = sUriMatcher.match(uri);
 		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
 		switch (sUriMatcher.match(uri)) {
@@ -752,7 +977,6 @@ public class AixProvider extends ContentProvider {
 		}
 		case AIXVIEWS_LOCATION: {
 			long locationId = findLocationFromView(db, uri);
-			
 			if (locationId != -1) {
 				qb.setTables(TABLE_AIXLOCATIONS);
 				qb.appendWhere(BaseColumns._ID + '=' + locationId);
@@ -762,15 +986,38 @@ public class AixProvider extends ContentProvider {
 			}
 			break;
 		}
-		case AIXVIEWS_FORECASTS: {
+		case AIXVIEWS_POINTDATAFORECASTS: {
 			long locationId = findLocationFromView(db, uri);
-			
 			if (locationId != -1) {
-				qb.setTables(TABLE_AIXFORECASTS);
-				qb.appendWhere(AixForecastsColumns.LOCATION + '=' + locationId);
+				qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
+				qb.appendWhere(AixPointDataForecastColumns.LOCATION + '=' + locationId);
+				if (projection == null) projection = buildPointDataProjection(uri);
 			} else {
 				if (LOGD) Log.d(TAG, "query() with uri=" + uri + " failed. No location in view!");
-				return null; // Could not properly service request, as no location was found.
+				return null;
+			}
+			break;
+		}
+		case AIXVIEWS_INTERVALDATAFORECASTS: {
+			long locationId = findLocationFromView(db, uri);
+			if (locationId != -1) {
+				qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
+				qb.appendWhere(AixIntervalDataForecastColumns.LOCATION + '=' + locationId);
+				if (projection == null) projection = buildIntervalDataProjection(uri);
+			} else {
+				if (LOGD) Log.d(TAG, "query() with uri=" + uri + " failed. No location in view!");
+				return null;
+			}
+			break;
+		}
+		case AIXVIEWS_SUNMOONDATA: {
+			long locationId = findLocationFromView(db, uri);
+			if (locationId != -1) {
+				qb.setTables(TABLE_AIXSUNMOONDATA);
+				qb.appendWhere(AixSunMoonDataColumns.LOCATION + '=' + locationId);
+			} else {
+				if (LOGD) Log.d(TAG, "query() with uri=" + uri + " failed. No location in view!");
+				return null;
 			}
 			break;
 		}
@@ -792,12 +1039,32 @@ public class AixProvider extends ContentProvider {
 			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
 			break;
 		}
-		case AIXFORECASTS: {
-			qb.setTables(TABLE_AIXFORECASTS);
+		case AIXPOINTDATAFORECASTS: {
+			qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
+			if (projection == null) projection = buildPointDataProjection(uri);
 			break;
 		}
-		case AIXFORECASTS_ID: {
-			qb.setTables(TABLE_AIXFORECASTS);
+		case AIXPOINTDATAFORECASTS_ID: {
+			qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
+			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			if (projection == null) projection = buildPointDataProjection(uri);
+			break;
+		}
+		case AIXINTERVALDATAFORECASTS: {
+			qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
+			break;
+		}
+		case AIXINTERVALDATAFORECASTS_ID: {
+			qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
+			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			break;
+		}
+		case AIXSUNMOONDATA: {
+			qb.setTables(TABLE_AIXSUNMOONDATA);
+			break;
+		}
+		case AIXSUNMOONDATA_ID: {
+			qb.setTables(TABLE_AIXSUNMOONDATA);
 			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
 			break;
 		}
@@ -844,8 +1111,14 @@ public class AixProvider extends ContentProvider {
 		case AIXLOCATIONS_ID: {
 			return db.update(TABLE_AIXLOCATIONS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 		}
-		case AIXFORECASTS_ID: {
-			return db.update(TABLE_AIXFORECASTS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+		case AIXPOINTDATAFORECASTS_ID: {
+			return db.update(TABLE_AIXPOINTDATAFORECASTS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+		}
+		case AIXINTERVALDATAFORECASTS_ID: {
+			return db.update(TABLE_AIXINTERVALDATAFORECASTS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+		}
+		case AIXSUNMOONDATA_ID: {
+			return db.update(TABLE_AIXSUNMOONDATA, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 		}
 		default:
 			if (LOGD) Log.d(TAG, "update() with uri=" + uri + " not matched");
@@ -866,7 +1139,9 @@ public class AixProvider extends ContentProvider {
 	private static final int AIXVIEWS_ID = 302;
 	private static final int AIXVIEWS_ID_SETTINGS = 303;
 	private static final int AIXVIEWS_LOCATION = 304;
-	private static final int AIXVIEWS_FORECASTS = 305;
+	private static final int AIXVIEWS_POINTDATAFORECASTS = 305;
+	private static final int AIXVIEWS_INTERVALDATAFORECASTS = 306;
+	private static final int AIXVIEWS_SUNMOONDATA = 307;
 	
 	private static final int AIXVIEWSETTINGS = 401;
 	private static final int AIXVIEWSETTINGS_ID = 402;
@@ -874,114 +1149,115 @@ public class AixProvider extends ContentProvider {
 	private static final int AIXLOCATIONS = 501;
 	private static final int AIXLOCATIONS_ID = 502;
 	
-	private static final int AIXFORECASTS = 601;
-	private static final int AIXFORECASTS_ID = 602;
+	private static final int AIXPOINTDATAFORECASTS = 601;
+	private static final int AIXPOINTDATAFORECASTS_ID = 602;
 	
-	private static final int AIXRENDER = 777;
+	private static final int AIXINTERVALDATAFORECASTS = 701;
+	private static final int AIXINTERVALDATAFORECASTS_ID = 702;
+	
+	private static final int AIXSUNMOONDATA = 801;
+	private static final int AIXSUNMOONDATA_ID = 802;
+	
+	private static final int AIXRENDER = 999;
 	
 	static {
-		/* URI for retrieving all widgets */
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets", AIXWIDGETS);
-		/* URI for retrieving a specific widget by ID */
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets/#", AIXWIDGETS_ID);
-		
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets/#/settings", AIXWIDGETS_ID_SETTINGS);
 		
 		sUriMatcher.addURI(AUTHORITY, "aixwidgetsettings", AIXWIDGETSETTINGS);
 		sUriMatcher.addURI(AUTHORITY, "aixwidgetsettings/#", AIXWIDGETSETTINGS_ID);
 		
-		/* URI for retrieving all views */
 		sUriMatcher.addURI(AUTHORITY, "aixviews", AIXVIEWS);
-		/* URI for retrieving a specific view by ID */
 		sUriMatcher.addURI(AUTHORITY, "aixviews/#", AIXVIEWS_ID);
-		
 		sUriMatcher.addURI(AUTHORITY, "aixviews/#/settings", AIXVIEWS_ID_SETTINGS);
-		
-		/* URI for retrieving the location for a specific view by ID */
 		sUriMatcher.addURI(AUTHORITY, "aixviews/#/location", AIXVIEWS_LOCATION);
-		/* URI for retrieving all forecasts for a specific view by ID */
-		sUriMatcher.addURI(AUTHORITY, "aixviews/#/forecasts", AIXVIEWS_FORECASTS);
+		sUriMatcher.addURI(AUTHORITY, "aixviews/#/pointdata_forecasts", AIXVIEWS_POINTDATAFORECASTS);
+		sUriMatcher.addURI(AUTHORITY, "aixviews/#/intervaldata_forecasts", AIXVIEWS_INTERVALDATAFORECASTS);
+		sUriMatcher.addURI(AUTHORITY, "aixviews/#/sunmoondata", AIXVIEWS_SUNMOONDATA);
 		
 		sUriMatcher.addURI(AUTHORITY, "aixviewsettings", AIXVIEWSETTINGS);
 		sUriMatcher.addURI(AUTHORITY, "aixviewsettings/#", AIXVIEWSETTINGS_ID);
 		
-		/* URI for retrieving all locations */
 		sUriMatcher.addURI(AUTHORITY, "aixlocations", AIXLOCATIONS);
-		/* URI for retrieving a specific location by ID */
 		sUriMatcher.addURI(AUTHORITY, "aixlocations/#", AIXLOCATIONS_ID);
 		
-		/* URI for retrieving all forecasts */
-		sUriMatcher.addURI(AUTHORITY, "aixforecasts", AIXFORECASTS);
-		/* URI for retrieving a specific forecast by ID */
-		sUriMatcher.addURI(AUTHORITY, "aixforecasts/#", AIXFORECASTS_ID);
+		sUriMatcher.addURI(AUTHORITY, "aixpointdataforecasts", AIXPOINTDATAFORECASTS);
+		sUriMatcher.addURI(AUTHORITY, "aixpointdataforecasts/#", AIXPOINTDATAFORECASTS_ID);
 		
-		sUriMatcher.addURI(AUTHORITY, "aixrender/#/#", AIXRENDER);
+		sUriMatcher.addURI(AUTHORITY, "aixintervaldataforecasts", AIXINTERVALDATAFORECASTS);
+		sUriMatcher.addURI(AUTHORITY, "aixintervaldataforecasts/#", AIXINTERVALDATAFORECASTS_ID);
+		
+		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata", AIXSUNMOONDATA);
+		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata/#", AIXSUNMOONDATA_ID);
+		
+		sUriMatcher.addURI(AUTHORITY, "aixrender/#/#/*", AIXRENDER);
 	}
 	
-	public Uri addForecast(SQLiteDatabase db, ContentValues values) {
-		Uri resultUri = null;
-		long rowId = -1;
-		
-		if (	values.containsKey(AixForecastsColumns.SUN_RISE) ||
-				values.containsKey(AixForecastsColumns.SUN_SET))
-		{
-			// Sun stuff
-			Cursor cursor = db.query(
-					TABLE_AIXFORECASTS,
-					null,
-					AixForecastsColumns.LOCATION + "=?" + " AND " +
-					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
-					AixForecastsColumns.TIME_TO + "=?" + " AND " +
-					AixForecastsColumns.SUN_RISE + " IS NOT NULL AND " +
-					AixForecastsColumns.SUN_SET + " IS NOT NULL",
-					new String[] {
-							values.getAsString(AixForecastsColumns.LOCATION),
-							values.getAsString(AixForecastsColumns.TIME_FROM),
-							values.getAsString(AixForecastsColumns.TIME_TO)
-					}, null, null, null);
-			if (cursor != null) {
-				if (cursor.moveToFirst()) {
-					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
-				}
-				cursor.close();
-			}
-		} else {
-			Cursor cursor = db.query(
-					TABLE_AIXFORECASTS,
-					null,
-					AixForecastsColumns.LOCATION + "=?" + " AND " +
-					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
-					AixForecastsColumns.TIME_TO + "=?" + " AND " +
-					AixForecastsColumns.SUN_RISE + " IS NULL AND " +
-					AixForecastsColumns.SUN_SET + " IS NULL",
-					new String[] {
-							values.getAsString(AixForecastsColumns.LOCATION),
-							values.getAsString(AixForecastsColumns.TIME_FROM),
-							values.getAsString(AixForecastsColumns.TIME_TO)
-					}, null, null, null);
-			if (cursor != null) {
-				if (cursor.moveToFirst()) {
-					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
-				}
-				cursor.close();
-			}
-		}
-		
-		if (rowId != -1) {
-			// A record already exists for this time and location. Update its values:
-			values.put(BaseColumns._ID, Long.toString(rowId));
-			db.replace(TABLE_AIXFORECASTS, null, values);
-		} else {
-			// No record exists for this time. Insert new row:
-			rowId = db.insert(TABLE_AIXFORECASTS, AixForecastsColumns.LOCATION, values);
-		}
-		
-		if (rowId != -1) {
-			resultUri = ContentUris.withAppendedId(AixForecasts.CONTENT_URI, rowId);
-		}
-		
-		return resultUri;
-	}
+//	public Uri addForecast(SQLiteDatabase db, ContentValues values) {
+//		Uri resultUri = null;
+//		long rowId = -1;
+//		
+//		if (	values.containsKey(AixForecastsColumns.SUN_RISE) ||
+//				values.containsKey(AixForecastsColumns.SUN_SET))
+//		{
+//			// Sun stuff
+//			Cursor cursor = db.query(
+//					TABLE_AIXFORECASTS,
+//					null,
+//					AixForecastsColumns.LOCATION + "=?" + " AND " +
+//					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
+//					AixForecastsColumns.TIME_TO + "=?" + " AND " +
+//					AixForecastsColumns.SUN_RISE + " IS NOT NULL AND " +
+//					AixForecastsColumns.SUN_SET + " IS NOT NULL",
+//					new String[] {
+//							values.getAsString(AixForecastsColumns.LOCATION),
+//							values.getAsString(AixForecastsColumns.TIME_FROM),
+//							values.getAsString(AixForecastsColumns.TIME_TO)
+//					}, null, null, null);
+//			if (cursor != null) {
+//				if (cursor.moveToFirst()) {
+//					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
+//				}
+//				cursor.close();
+//			}
+//		} else {
+//			Cursor cursor = db.query(
+//					TABLE_AIXFORECASTS,
+//					null,
+//					AixForecastsColumns.LOCATION + "=?" + " AND " +
+//					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
+//					AixForecastsColumns.TIME_TO + "=?" + " AND " +
+//					AixForecastsColumns.SUN_RISE + " IS NULL AND " +
+//					AixForecastsColumns.SUN_SET + " IS NULL",
+//					new String[] {
+//							values.getAsString(AixForecastsColumns.LOCATION),
+//							values.getAsString(AixForecastsColumns.TIME_FROM),
+//							values.getAsString(AixForecastsColumns.TIME_TO)
+//					}, null, null, null);
+//			if (cursor != null) {
+//				if (cursor.moveToFirst()) {
+//					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
+//				}
+//				cursor.close();
+//			}
+//		}
+//		
+//		if (rowId != -1) {
+//			// A record already exists for this time and location. Update its values:
+//			values.put(BaseColumns._ID, Long.toString(rowId));
+//			db.replace(TABLE_AIXFORECASTS, null, values);
+//		} else {
+//			// No record exists for this time. Insert new row:
+//			rowId = db.insert(TABLE_AIXFORECASTS, AixForecastsColumns.LOCATION, values);
+//		}
+//		
+//		if (rowId != -1) {
+//			resultUri = ContentUris.withAppendedId(AixForecasts.CONTENT_URI, rowId);
+//		}
+//		
+//		return resultUri;
+//	}
 	
 	private long addSetting(SQLiteDatabase db, String table, String id, Entry<String, Object> entry) {
 		long rowId = -1;
@@ -1011,6 +1287,45 @@ public class AixProvider extends ContentProvider {
 		}
 		
 		return rowId;
+	}
+	
+	private String[] buildPointDataProjection(Uri uri) {
+		String temperatureUnit = uri.getQueryParameter("tu");
+		String temperatureQuery = AixPointDataForecastColumns.TEMPERATURE;
+		if (temperatureUnit != null && temperatureUnit.toLowerCase().equals("f")) {
+			temperatureQuery = '(' + temperatureQuery + "*9.0/5.0+32)";
+		}
+		return new String[] {
+				BaseColumns._ID,
+				AixPointDataForecastColumns.LOCATION,
+				AixPointDataForecastColumns.TIME_ADDED,
+				AixPointDataForecastColumns.TIME,
+				temperatureQuery,
+				AixPointDataForecastColumns.HUMIDITY,
+				AixPointDataForecastColumns.PRESSURE
+		};
+	}
+	
+	private String[] buildIntervalDataProjection(Uri uri) {
+		String precipitationUnit = uri.getQueryParameter("pu");
+		String rainQuery = AixIntervalDataForecastColumns.RAIN_VALUE;
+		String rainMinQuery = AixIntervalDataForecastColumns.RAIN_MINVAL;
+		String rainMaxQuery = AixIntervalDataForecastColumns.RAIN_MAXVAL;
+		
+		if (precipitationUnit != null && precipitationUnit.toLowerCase().equals("i")) {
+			rainQuery = '(' + rainQuery + "/25.4)";
+			rainMinQuery = '(' + rainMinQuery + "/25.4)";
+			rainMaxQuery = '(' + rainMaxQuery + "/25.4)";
+		}
+		return new String[] {
+				BaseColumns._ID,
+				AixIntervalDataForecastColumns.LOCATION,
+				AixIntervalDataForecastColumns.TIME_ADDED,
+				AixIntervalDataForecastColumns.TIME_FROM,
+				AixIntervalDataForecastColumns.TIME_TO,
+				rainQuery, rainMinQuery, rainMaxQuery,
+				AixIntervalDataForecastColumns.WEATHER_ICON
+		};
 	}
 	
 	private String buildSelectionString(String property, String value, String selection) {

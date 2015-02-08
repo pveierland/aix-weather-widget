@@ -23,7 +23,7 @@
 	
 		<TextView
 				android:textAppearance="?android:attr/textAppearanceSmall"
-				android:text="Latitude:"
+				android:text="@string/location_list_row_latitude"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:paddingLeft="6dip"
@@ -37,7 +37,7 @@
 	
 		<TextView
 				android:textAppearance="?android:attr/textAppearanceSmall"
-				android:text="Longitude:"
+				android:text="@string/location_list_row_longitude"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:paddingRight="2dip" />

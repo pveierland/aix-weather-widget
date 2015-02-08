@@ -11,20 +11,21 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
-import net.veierland.aix.AixProvider.AixForecasts;
-import net.veierland.aix.AixProvider.AixForecastsColumns;
+import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
+import net.veierland.aix.AixProvider.AixIntervalDataForecasts;
 import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
+import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
+import net.veierland.aix.AixProvider.AixPointDataForecasts;
 import net.veierland.aix.AixProvider.AixSettingsColumns;
+import net.veierland.aix.AixProvider.AixSunMoonData;
+import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
@@ -45,36 +46,26 @@ import org.xmlpull.v1.XmlPullParserException;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.appwidget.AppWidgetManager;
-import android.appwidget.AppWidgetProviderInfo;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.IBinder;
-import android.os.IInterface;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Xml;
-import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -98,7 +89,7 @@ public class AixService extends IntentService {
 		Uri widgetUri = intent.getData();
 		ContentResolver resolver = getApplicationContext().getContentResolver();
 		
-		Log.d(TAG, "action=" + action + ", widgetUri=" + widgetUri);
+		//Log.d(TAG, "action=" + action + ", widgetUri=" + widgetUri);
 		
 		if (action.equals(ACTION_UPDATE_WIDGET)) {
 			updateWhatever(widgetUri);
@@ -109,7 +100,6 @@ public class AixService extends IntentService {
 				updateWhatever(ContentUris.withAppendedId(AixWidgets.CONTENT_URI, appWidgetId));
 			}
 		} else if (action.equals(ACTION_DELETE_WIDGET)) {
-			// TODO also cancel scheduled intent..
 			Cursor widgetCursor = resolver.query(widgetUri, null, null, null, null);
 			
 			if (widgetCursor != null) {
@@ -226,7 +216,7 @@ public class AixService extends IntentService {
 						shouldUpdate = true;
 					}
 				}
-
+				
 				if (shouldUpdate) {
 					if (wifiOnly) {
 						ConnectivityManager connManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
@@ -275,8 +265,9 @@ public class AixService extends IntentService {
 					try {
 						String portraitFileName = "aix_" + widgetId + "_" + now + "_portrait.png";
 						
-						Bitmap bitmap = AixDetailedWidget.buildView(
-								getApplicationContext(), widgetUri, viewUri, false);
+						AixDetailedWidget widget = AixDetailedWidget.build(getApplicationContext(), widgetUri, viewUri);
+						
+						Bitmap bitmap = widget.render(false);
 						File file = new File(getCacheDir(), portraitFileName);
 						FileOutputStream out = new FileOutputStream(file);
 						bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
@@ -284,31 +275,38 @@ public class AixService extends IntentService {
 						out.close();
 						
 						String landscapeFileName = "aix_" + widgetId + "_" + now + "_landscape.png";
-						bitmap = AixDetailedWidget.buildView(
-								getApplicationContext(), widgetUri, viewUri, true);
+						bitmap = widget.render(true);
 						file = new File(getCacheDir(), landscapeFileName);
 						out = new FileOutputStream(file);
 						bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
 						out.flush();
 						out.close();
 						
-						Uri uri = Uri.parse("content://net.veierland.aix/aixrender/" + widgetId + "/" + now);
-						updateWidget(widgetId, widgetUri, uri, layout);
+						String uriString = "content://net.veierland.aix/aixrender/" + widgetId + '/' + now;
+						Uri portraitUri = Uri.parse(uriString + "/portrait");
+						Uri landscapeUri = Uri.parse(uriString + "/landscape");
+						updateWidget(widgetId, widgetUri, portraitUri, landscapeUri, layout);
 					} catch (AixWidgetDrawException e) {
 						switch (e.getErrorCode()) {
 						case AixWidgetDrawException.INVALID_WIDGET_SIZE:
 							updateWidget(widgetUri, getString(R.string.widget_load_error_please_recreate), layout);
 							return;
+						case AixWidgetDrawException.GRAPH_DIMENSION_FAIL:
+							updateWidget(widgetUri, "Failed to calculate dimensions.", layout);
+							return;
 						default:
-							updateWidget(widgetUri, getString(R.string.widget_no_weather_data), layout);
-							ContentValues values = new ContentValues();
-							values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
-							values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
-							values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
-							resolver.update(Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION), values, null, null);
-							updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+							updateWidget(widgetUri, getString(R.string.widget_no_weather_data, 5), layout);
 							break;
 						}
+						
+						ContentValues values = new ContentValues();
+						values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
+						values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
+						values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
+						resolver.update(Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION), values, null, null);
+						
+						updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+						
 						Log.d(TAG, e.toString());
 						e.printStackTrace();
 					}
@@ -346,11 +344,13 @@ public class AixService extends IntentService {
 		}
 	}
 	
-	private void updateWidget(int widgetId, Uri widgetUri, Uri imageUri, int layoutId) {
+	private void updateWidget(int widgetId, Uri widgetUri, Uri portraitUri, Uri landscapeUri, int layoutId) {
 		RemoteViews updateView = new RemoteViews(getPackageName(), layoutId);
 		updateView.setViewVisibility(R.id.widgetTextContainer, View.GONE);
 		updateView.setViewVisibility(R.id.widgetImageContainer, View.VISIBLE);
-		updateView.setImageViewUri(R.id.widgetImage, imageUri);
+		
+		updateView.setImageViewUri(R.id.widgetImagePortrait, portraitUri);
+		updateView.setImageViewUri(R.id.widgetImageLandscape, landscapeUri);
 
 		Intent editWidgetIntent = new Intent(
 				Intent.ACTION_EDIT, widgetUri, getApplicationContext(), AixConfigure.class);
@@ -408,8 +408,9 @@ public class AixService extends IntentService {
 	private String getTimezone(ContentResolver resolver, long locationId, String latitude, String longitude) throws IOException, Exception {
 		// Check if timezone info needs to be retrieved
 		Cursor timezoneCursor = resolver.query(
-				AixLocations.CONTENT_URI, null,
-				BaseColumns._ID + '=' + Long.toString(locationId) + " AND " + AixLocationsColumns.TIME_ZONE + " IS NOT NULL",
+				AixLocations.CONTENT_URI,
+				null,
+				BaseColumns._ID + '=' + Long.toString(locationId),
 				null, null);
 		
 		String timezoneId = null;
@@ -442,37 +443,48 @@ public class AixService extends IntentService {
 		return timezoneId;
 	}
 	
-	private void getSunTimes(ContentResolver resolver, long locationId, String latitude, String longitude) throws IOException {
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-		Calendar utcCalendar = Calendar.getInstance(utc);
-		utcCalendar.set(Calendar.HOUR_OF_DAY, 0);
-		utcCalendar.set(Calendar.MINUTE, 0);
-		utcCalendar.set(Calendar.SECOND, 0);
-		utcCalendar.set(Calendar.MILLISECOND, 0);
+	private void getSunTimes(ContentResolver resolver, TimeZone utc, long locationId,
+			String latitude, String longitude) throws IOException, Exception
+	{
+		Calendar calendar = Calendar.getInstance(utc);
+		long timeNow = calendar.getTimeInMillis();
+
+		calendar.set(Calendar.HOUR_OF_DAY, 0);
+		calendar.set(Calendar.MINUTE, 0);
+		calendar.set(Calendar.SECOND, 0);
+		calendar.set(Calendar.MILLISECOND, 0);
 
 		int numDaysBuffered = 5;
 		
-		utcCalendar.add(Calendar.DAY_OF_YEAR, -1);
-		long dateFrom = utcCalendar.getTimeInMillis();
-		utcCalendar.add(Calendar.DAY_OF_YEAR, numDaysBuffered - 1);
-		long dateTo = utcCalendar.getTimeInMillis();
+		calendar.add(Calendar.DAY_OF_YEAR, -1);
+		long dateFrom = calendar.getTimeInMillis();
+		calendar.add(Calendar.DAY_OF_YEAR, numDaysBuffered - 1);
+		long dateTo = calendar.getTimeInMillis();
 		
-		int numExists = 0;
-		Cursor sunCursor = null;
+		int numExists = -1;
+		Cursor cursor = null;
 		
-		sunCursor = resolver.query(
-				AixForecasts.CONTENT_URI,
+		cursor = resolver.query(
+				AixSunMoonData.CONTENT_URI,
 				null,
-				AixForecastsColumns.LOCATION + "=" + locationId + " AND " +
-				AixForecastsColumns.TIME_FROM + ">=" + dateFrom + " AND " +
-				AixForecastsColumns.TIME_TO + "<=" + dateTo + " AND " +
-				AixForecastsColumns.SUN_RISE + " IS NOT NULL", null, null);
-
-		if (sunCursor != null) {
-			numExists = sunCursor.getCount();
-			sunCursor.close();
+				AixSunMoonDataColumns.LOCATION + "=" + locationId + " AND " +
+				AixSunMoonDataColumns.DATE + ">=" + dateFrom + " AND " +
+				AixSunMoonDataColumns.DATE + "<=" + dateTo,
+				null, null);
+		if (cursor != null) {
+			numExists = cursor.getCount();
+			cursor.close();
 		}
-		if (numExists >= numDaysBuffered) return;
+		
+		Log.d(TAG, "getSunTimes(): For location " + locationId + " there are " + numExists +
+				" existing data sets");
+		
+		if (numExists == -1) {
+			throw new Exception("getSunTimes(): Failed to query database for pre-existing sun/moon data.");
+		} else if (numExists > numDaysBuffered) {
+			Log.d(TAG, "getSunTimes(): Enough data sets exists");
+			return;
+		}
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 		SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
@@ -499,51 +511,99 @@ public class AixService extends IntentService {
 		}
 		
 		XmlPullParser parser = Xml.newPullParser();
+		parser.setInput(content, null);
+		int eventType = parser.getEventType();
 		
-		try {
-			parser.setInput(content, null);
-			int eventType = parser.getEventType();
-			ContentValues contentValues = new ContentValues();
-			
-			while (eventType != XmlPullParser.END_DOCUMENT) {
-				switch (eventType) {
-				case XmlPullParser.END_TAG:
-					if (parser.getName().equals("time") && contentValues != null) {
-						resolver.insert(AixForecasts.CONTENT_URI, contentValues);
-					}
-					break;
-				case XmlPullParser.START_TAG:
-					if (parser.getName().equals("time")) {
-						String date = parser.getAttributeValue(null, "date");
-						try {
-							long dateParsed = dateFormat.parse(date).getTime();
-							contentValues.clear();
-							contentValues.put(AixForecastsColumns.LOCATION, locationId);
-							contentValues.put(AixForecastsColumns.TIME_FROM, dateParsed);
-							contentValues.put(AixForecastsColumns.TIME_TO, dateParsed);
-						} catch (Exception e) {
-							contentValues = null;
-						}
-					} else if (parser.getName().equals("sun")) {
-						if (contentValues != null) {
-							try {
-								long sunRise = timeFormat.parse(parser.getAttributeValue(null, "rise")).getTime();
-								long sunSet = timeFormat.parse(parser.getAttributeValue(null, "set")).getTime();
-								contentValues.put(AixForecastsColumns.SUN_RISE, sunRise);
-								contentValues.put(AixForecastsColumns.SUN_SET, sunSet);
-							} catch (Exception e) {
-								contentValues = null;
-							}
-						}
-					}
-					break;
+		ContentValues contentValues = new ContentValues();
+		
+		while (eventType != XmlPullParser.END_DOCUMENT) {
+			switch (eventType) {
+			case XmlPullParser.END_TAG:
+				if (	parser.getName().equals("time") &&
+						contentValues.containsKey(AixSunMoonDataColumns.LOCATION))
+				{
+					resolver.insert(AixSunMoonData.CONTENT_URI, contentValues);
 				}
-				eventType = parser.next();
+				break;
+			case XmlPullParser.START_TAG:
+				if (parser.getName().equals("time")) {
+					contentValues.clear();
+					try {
+						String date = parser.getAttributeValue(null, "date");
+						long dateParsed = dateFormat.parse(date).getTime();
+						
+						contentValues.put(AixSunMoonDataColumns.LOCATION, locationId);
+						contentValues.put(AixSunMoonDataColumns.TIME_ADDED, timeNow);
+						contentValues.put(AixSunMoonDataColumns.DATE, dateParsed);
+					} catch (Exception e) {
+					}
+				} else if (parser.getName().equals("sun")) {
+					String neverRiseValue = parser.getAttributeValue(null, "never_rise");
+					String neverSetValue = parser.getAttributeValue(null, "never_set");
+					if (neverRiseValue != null && neverRiseValue.equalsIgnoreCase("true")) {
+						contentValues.put(AixSunMoonDataColumns.SUN_RISE, AixSunMoonData.NEVER_RISE);
+						contentValues.putNull(AixSunMoonDataColumns.SUN_SET);
+					} else if (neverSetValue != null && neverSetValue.equalsIgnoreCase("true")) {
+						contentValues.put(AixSunMoonDataColumns.SUN_SET, AixSunMoonData.NEVER_SET);
+						contentValues.putNull(AixSunMoonDataColumns.SUN_RISE);
+					} else {
+						try {
+							long sunRise = timeFormat.parse(parser.getAttributeValue(null, "rise")).getTime();
+							long sunSet = timeFormat.parse(parser.getAttributeValue(null, "set")).getTime();
+							contentValues.put(AixSunMoonDataColumns.SUN_RISE, sunRise);
+							contentValues.put(AixSunMoonDataColumns.SUN_SET, sunSet);
+						} catch (Exception e) {
+							Log.d(TAG, "getSunTimes(): Exception thrown when parsing sun data (" +
+									e.getMessage() + ")");
+						}
+					}
+				} else if (parser.getName().equals("moon")) {
+					String neverRiseValue = parser.getAttributeValue(null, "never_rise");
+					String neverSetValue = parser.getAttributeValue(null, "never_set");
+					if (neverRiseValue != null && neverRiseValue.equalsIgnoreCase("true")) {
+						contentValues.put(AixSunMoonDataColumns.MOON_RISE, AixSunMoonData.NEVER_RISE);
+						contentValues.putNull(AixSunMoonDataColumns.MOON_SET);
+					} else if (neverSetValue != null && neverSetValue.equalsIgnoreCase("true")) {
+						contentValues.put(AixSunMoonDataColumns.MOON_SET, AixSunMoonData.NEVER_SET);
+						contentValues.putNull(AixSunMoonDataColumns.MOON_RISE);
+					} else {
+						try {
+							long moonRise = timeFormat.parse(parser.getAttributeValue(null, "rise")).getTime();
+							long moonSet = timeFormat.parse(parser.getAttributeValue(null, "set")).getTime();
+							contentValues.put(AixSunMoonDataColumns.MOON_RISE, moonRise);
+							contentValues.put(AixSunMoonDataColumns.MOON_SET, moonSet);
+						} catch (Exception e) {
+							Log.d(TAG, "getSunTimes(): Exception thrown when parsing moon data (" +
+									e.getMessage() + ")");
+						}
+					}
+					
+					Map<String, Integer> moonPhaseMap = new HashMap<String, Integer>() {{
+						put("new moon", AixSunMoonData.NEW_MOON);
+						put("waxing crescent", AixSunMoonData.WAXING_CRESCENT);
+						put("first quarter", AixSunMoonData.FIRST_QUARTER);
+						put("waxing gibbous", AixSunMoonData.WAXING_GIBBOUS);
+						put("full moon", AixSunMoonData.FULL_MOON);
+						put("waning gibbous", AixSunMoonData.WANING_GIBBOUS);
+						put("third quarter", AixSunMoonData.LAST_QUARTER);
+						put("waning crescent", AixSunMoonData.WANING_CRESCENT);
+					}};
+					
+					String moonPhase = parser.getAttributeValue(null, "phase");
+					int moonPhaseData = AixSunMoonData.NO_MOON_PHASE_DATA;
+					
+					if (moonPhase != null) {
+						moonPhase = moonPhase.toLowerCase();
+						if (moonPhaseMap.containsKey(moonPhase)) {
+							moonPhaseData = moonPhaseMap.get(moonPhase);
+						}
+					}
+					
+					contentValues.put(AixSunMoonDataColumns.MOON_PHASE, moonPhaseData);
+				}
+				break;
 			}
-		} catch (XmlPullParserException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+			eventType = parser.next();
 		}
 	}
 	
@@ -579,31 +639,40 @@ public class AixService extends IntentService {
 			throw new BadDataException();
 		}
 		
-		// Set a calendar up to the current time
-		Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-		calendar.set(Calendar.MINUTE, 0);
-		calendar.set(Calendar.SECOND, 0);
-		calendar.set(Calendar.MILLISECOND, 0);
+		TimeZone utc = TimeZone.getTimeZone("UTC");
+		Calendar calendar = Calendar.getInstance(utc);
+		long timeNow = calendar.getTimeInMillis();
+		AixUtils.truncateHour(calendar);
 		
-		calendar.add(Calendar.HOUR_OF_DAY, -48);
+		calendar.add(Calendar.HOUR_OF_DAY, -12);
 		resolver.delete(
-				AixForecasts.CONTENT_URI,
-				AixForecastsColumns.LOCATION + '=' + locationId + " AND " + AixForecastsColumns.TIME_TO + "<=" + calendar.getTimeInMillis(),
+				AixPointDataForecasts.CONTENT_URI,
+				AixPointDataForecastColumns.TIME + "<=" + calendar.getTimeInMillis(),
 				null);
-		calendar.add(Calendar.HOUR_OF_DAY, 48);
-		
+		resolver.delete(
+				AixIntervalDataForecasts.CONTENT_URI,
+				AixIntervalDataForecastColumns.TIME_TO + "<=" + calendar.getTimeInMillis(),
+				null);
+		calendar.add(Calendar.HOUR_OF_DAY, -36);
+		resolver.delete(
+				AixSunMoonData.CONTENT_URI,
+				AixSunMoonDataColumns.DATE + "<=" + calendar.getTimeInMillis(),
+				null);
 		String timeZoneId = null;
 		
 		timeZoneId = getTimezone(resolver, locationId, latString, lonString);
 		
+		Log.d(TAG, "timezoneId=" + timeZoneId);
+		
 		try {
-			getSunTimes(resolver, locationId, latString, lonString);
+			getSunTimes(resolver, utc, locationId, latString, lonString);
 		} catch (Exception e) {
+			e.printStackTrace();
 			Log.d(TAG, e.getMessage());
 		}
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-		dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+		dateFormat.setTimeZone(utc);
 		
 		// Parse weather data
 		XmlPullParser parser = Xml.newPullParser();
@@ -628,6 +697,8 @@ public class AixService extends IntentService {
 			content = new GZIPInputStream(content);
 		}
 		
+		Uri contentProviderUri = null;
+		
 		try {
 			parser.setInput(content, null);
 			int eventType = parser.getEventType();
@@ -635,22 +706,33 @@ public class AixService extends IntentService {
 			while (eventType != XmlPullParser.END_DOCUMENT) {
 				switch (eventType) {
 				case XmlPullParser.END_TAG:
-					if (parser.getName().equals("time") && contentValues != null) {
-						resolver.insert(AixForecasts.CONTENT_URI, contentValues);
+					if (parser.getName().equals("time") && contentValues != null && contentProviderUri != null) {
+						resolver.insert(contentProviderUri, contentValues);
 					}
 					break;
 				case XmlPullParser.START_TAG:
 					if (parser.getName().equals("time")) {
+						contentValues.clear();
+						
 						String fromString = parser.getAttributeValue(null, "from");
 						String toString = parser.getAttributeValue(null, "to");
 						
 						try {
     						long from = dateFormat.parse(fromString).getTime();
 							long to = dateFormat.parse(toString).getTime();
-							contentValues.clear();
-    						contentValues.put(AixForecastsColumns.LOCATION, locationId);
-    						contentValues.put(AixForecastsColumns.TIME_FROM, from);
-    						contentValues.put(AixForecastsColumns.TIME_TO, to);
+							
+							if (from != to) {
+								contentProviderUri = AixIntervalDataForecasts.CONTENT_URI;
+								contentValues.put(AixIntervalDataForecastColumns.LOCATION, locationId);
+								contentValues.put(AixIntervalDataForecastColumns.TIME_ADDED, timeNow);
+								contentValues.put(AixIntervalDataForecastColumns.TIME_FROM, from);
+								contentValues.put(AixIntervalDataForecastColumns.TIME_TO, to);
+							} else {
+								contentProviderUri = AixPointDataForecasts.CONTENT_URI;
+								contentValues.put(AixPointDataForecastColumns.LOCATION, locationId);
+								contentValues.put(AixPointDataForecastColumns.TIME_ADDED, timeNow);
+								contentValues.put(AixPointDataForecastColumns.TIME, from);
+							}
 						} catch (Exception e) {
 							Log.d(TAG, "Error parsing from & to values. from="
 									+ fromString + " to=" + toString);
@@ -658,38 +740,38 @@ public class AixService extends IntentService {
 						}
 					} else if (parser.getName().equals("temperature")) {
 						if (contentValues != null) {
-							contentValues.put(AixForecastsColumns.TEMPERATURE,
+							contentValues.put(AixPointDataForecastColumns.TEMPERATURE,
 									Float.parseFloat(parser.getAttributeValue(null, "value")));
 						}
 					} else if (parser.getName().equals("humidity")) {
 						if (contentValues != null) {
-							contentValues.put(AixForecastsColumns.HUMIDITY,
+							contentValues.put(AixPointDataForecastColumns.HUMIDITY,
 									Float.parseFloat(parser.getAttributeValue(null, "value")));
 						}
 					} else if (parser.getName().equals("pressure")) {
 						if (contentValues != null) {
-							contentValues.put(AixForecastsColumns.PRESSURE,
+							contentValues.put(AixPointDataForecastColumns.PRESSURE,
 									Float.parseFloat(parser.getAttributeValue(null, "value")));
 						}
 					} else if (parser.getName().equals("symbol")) {
 						if (contentValues != null) {
-							contentValues.put(AixForecastsColumns.WEATHER_ICON,
+							contentValues.put(AixIntervalDataForecastColumns.WEATHER_ICON,
 									Integer.parseInt(parser.getAttributeValue(null, "number")));
 						}
 					} else if (parser.getName().equals("precipitation")) {
 						if (contentValues != null) {
-							contentValues.put(AixForecastsColumns.RAIN_VALUE,
+							contentValues.put(AixIntervalDataForecastColumns.RAIN_VALUE,
 									Float.parseFloat(
 											parser.getAttributeValue(null, "value")));
 							try {
-								contentValues.put(AixForecastsColumns.RAIN_LOWVAL,
+								contentValues.put(AixIntervalDataForecastColumns.RAIN_MINVAL,
     									Float.parseFloat(
     											parser.getAttributeValue(null, "minvalue")));
 							} catch (Exception e) {
 								/* LOW VALUE IS OPTIONAL */
 							}
 							try {
-    							contentValues.put(AixForecastsColumns.RAIN_HIGHVAL,
+    							contentValues.put(AixIntervalDataForecastColumns.RAIN_MAXVAL,
     									Float.parseFloat(
     											parser.getAttributeValue(null, "maxvalue")));
 							} catch (Exception e) {
@@ -722,7 +804,7 @@ public class AixService extends IntentService {
 			if (timeZoneId != null) {
 				contentValues.put(AixLocationsColumns.TIME_ZONE, timeZoneId);
 			}
-			contentValues.put(AixLocationsColumns.LAST_FORECAST_UPDATE, calendar.getTimeInMillis());
+			contentValues.put(AixLocationsColumns.LAST_FORECAST_UPDATE, timeNow);
 			contentValues.put(AixLocationsColumns.FORECAST_VALID_TO, forecastValidTo);
 			contentValues.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, nextUpdate);
 			resolver.update(Uri.withAppendedPath(viewUri, AixViews.TWIG_LOCATION), contentValues, null, null);

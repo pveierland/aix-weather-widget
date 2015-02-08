@@ -123,7 +123,7 @@
     			android:layout_height="wrap_content"
     			android:layout_weight="1"
     			android:maxWidth="55dip"
-    			android:maxHeight="40px"
+    			android:maxHeight="27dip"
     			aix:borderWidth="1px"
 	    		aix:borderColor="#fff"
 	    		aix:mode="color" />

@@ -1,5 +1,23 @@
 package net.veierland.aix.widget;
 
+import static net.veierland.aix.AixUtils.ABOVE_FREEZING_COLOR;
+import static net.veierland.aix.AixUtils.BACKGROUND_COLOR;
+import static net.veierland.aix.AixUtils.BELOW_FREEZING_COLOR;
+import static net.veierland.aix.AixUtils.BORDER_COLOR;
+import static net.veierland.aix.AixUtils.DAY_COLOR;
+import static net.veierland.aix.AixUtils.GRID_COLOR;
+import static net.veierland.aix.AixUtils.GRID_OUTLINE_COLOR;
+import static net.veierland.aix.AixUtils.MAX_RAIN_COLOR;
+import static net.veierland.aix.AixUtils.MIN_RAIN_COLOR;
+import static net.veierland.aix.AixUtils.NIGHT_COLOR;
+import static net.veierland.aix.AixUtils.PATTERN_COLOR;
+import static net.veierland.aix.AixUtils.TEXT_COLOR;
+import static net.veierland.aix.AixUtils.TOP_TEXT_ALWAYS;
+import static net.veierland.aix.AixUtils.TOP_TEXT_LANDSCAPE;
+import static net.veierland.aix.AixUtils.TOP_TEXT_PORTRAIT;
+import static net.veierland.aix.AixUtils.WEATHER_ICONS_DAY;
+import static net.veierland.aix.AixUtils.WEATHER_ICONS_NIGHT;
+import static net.veierland.aix.AixUtils.WEATHER_ICONS_POLAR;
 import static net.veierland.aix.AixUtils.hcap;
 import static net.veierland.aix.AixUtils.isPrime;
 import static net.veierland.aix.AixUtils.lcap;
@@ -7,9 +25,11 @@ import static net.veierland.aix.AixUtils.truncateDay;
 import static net.veierland.aix.AixUtils.truncateHour;
 
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -21,14 +41,13 @@ import net.veierland.aix.AixProvider.AixLocationsColumns;
 import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
 import net.veierland.aix.AixProvider.AixSunMoonData;
 import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
-import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgetSettings;
 import net.veierland.aix.AixProvider.AixWidgets;
-import net.veierland.aix.AixProvider.AixWidgetsColumns;
 import net.veierland.aix.IntervalData;
 import net.veierland.aix.PointData;
 import net.veierland.aix.R;
 import net.veierland.aix.SunMoonData;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -60,306 +79,184 @@ import android.util.Log;
 public class AixDetailedWidget {
 	
 	private static final String TAG = "AixDetailedWidget";
-
-	private static final int BORDER_COLOR = 0;
-	private static final int BACKGROUND_COLOR = 1;
-	private static final int TEXT_COLOR = 2;
-	private static final int PATTERN_COLOR = 3;
-	private static final int DAY_COLOR = 4;
-	private static final int NIGHT_COLOR = 5;
-	private static final int GRID_COLOR = 6;
-	private static final int GRID_OUTLINE_COLOR = 7;
-	private static final int MAX_RAIN_COLOR = 8;
-	private static final int MIN_RAIN_COLOR = 9;
-	private static final int ABOVE_FREEZING_COLOR = 10;
-	private static final int BELOW_FREEZING_COLOR = 11;
-
-	private static final int[] weatherIconsDay = {
-			R.drawable.weather_icon_day_sun,
-			R.drawable.weather_icon_day_polar_lightcloud,
-			R.drawable.weather_icon_day_partlycloud,
-			R.drawable.weather_icon_cloud,
-			R.drawable.weather_icon_day_lightrainsun,
-			R.drawable.weather_icon_day_polar_lightrainthundersun,
-			R.drawable.weather_icon_day_polar_sleetsun,
-			R.drawable.weather_icon_day_snowsun,
-			R.drawable.weather_icon_lightrain,
-			R.drawable.weather_icon_rain,
-			R.drawable.weather_icon_rainthunder,
-			R.drawable.weather_icon_sleet,
-			R.drawable.weather_icon_snow,
-			R.drawable.weather_icon_snowthunder,
-			R.drawable.weather_icon_fog };
 	
-	private static final int[] weatherIconsNight = {
-			R.drawable.weather_icon_night_sun,
-			R.drawable.weather_icon_night_lightcloud,
-			R.drawable.weather_icon_night_partlycloud,
-			R.drawable.weather_icon_cloud,
-			R.drawable.weather_icon_night_lightrainsun,
-			R.drawable.weather_icon_night_lightrainthundersun,
-			R.drawable.weather_icon_night_sleetsun,
-			R.drawable.weather_icon_night_snowsun,
-			R.drawable.weather_icon_lightrain,
-			R.drawable.weather_icon_rain,
-			R.drawable.weather_icon_rainthunder,
-			R.drawable.weather_icon_sleet,
-			R.drawable.weather_icon_snow,
-			R.drawable.weather_icon_snowthunder,
-			R.drawable.weather_icon_fog };
+	/* Initial Properties */
 	
-	private static final int[] weatherIconsPolar = {
-			R.drawable.weather_icon_polar_sun,
-			R.drawable.weather_icon_day_polar_lightcloud,
-			R.drawable.weather_icon_polar_partlycloud,
-			R.drawable.weather_icon_cloud,
-			R.drawable.weather_icon_polar_lightrainsun,
-			R.drawable.weather_icon_day_polar_lightrainthundersun,
-			R.drawable.weather_icon_day_polar_sleetsun,
-			R.drawable.weather_icon_polar_snowsun,
-			R.drawable.weather_icon_lightrain,
-			R.drawable.weather_icon_rain,
-			R.drawable.weather_icon_rainthunder,
-			R.drawable.weather_icon_sleet,
-			R.drawable.weather_icon_snow,
-			R.drawable.weather_icon_snowthunder,
-			R.drawable.weather_icon_fog };
+	private final int mNumHours;
+	private final int mNumWeatherDataBufferHours;
 	
 	private final Context mContext;
-	private final Uri mWidgetUri, mViewUri;
-	private final int mNumHours, mNumWeatherDataBufferHours;
 	
-	private int mWidgetRows, mWidgetColumns;
+	private final Uri mLocationUri;
+	private final Uri mWidgetUri;
 	
+	/* Settings */
+	
+	private boolean mDrawBorder = true;
+	private boolean mDrawDayLightEffect = true;
+	private boolean mUseFahrenheit = false;
+	private boolean mUseInches = false;
+	
+	private int mTopTextVisibility = 0;
 	private int[] mColors;
+	
+	private float mBorderRounding = Float.NaN;
+	private float mBorderThickness = Float.NaN;
+	private float mPrecipitationScale = Float.NaN;
+	
+	/* Common Properties */
+	
+	private float mDP;
+	
+	private float mIconHeight;
+	private float mIconSpacingY;
+	private float mIconWidth;
+	private float mLabelTextSize;
+	private float mTextSize;
+	
+	private int mNumHoursBetweenSamples;
+	private int mWidgetColumns;
+	private int mWidgetHeight;
+	private int mWidgetRows;
+	private int mWidgetWidth;
+	
+	private long mTimeFrom;
+	private long mTimeNow;
+	private long mTimeTo;	
+	
+	private ArrayList<IntervalData> mIntervalData;
+	private ArrayList<PointData> mPointData;
+	private ArrayList<SunMoonData> mSunMoonData;
+	
+	private ContentResolver mResolver;
+	
+	private Paint mAboveFreezingTemperaturePaint;
+	private Paint mBackgroundPaint;
+	private Paint mBelowFreezingTemperaturePaint;
+	private Paint mBorderPaint;
+	private Paint mGridOutlinePaint;
+	private Paint mGridPaint;
+	private Paint mLabelPaint;
+	private Paint mPatternPaint;
+	private Paint mTextPaint;
+	
+	private Paint mMinRainPaint, mMaxRainPaint;
 	
 	private String mLocationName;
 	
 	private TimeZone mLocationTimeZone;
 	private TimeZone mUtcTimeZone = TimeZone.getTimeZone("UTC");
 	
-	private long mTimeNow, mTimeFrom, mTimeTo;
-	private int mNumHoursBetweenSamples;
-	private ArrayList<PointData> mPointData;
-	private ArrayList<SunMoonData> mSunMoonData;
-	private ArrayList<IntervalData> mIntervalData;
-	
-	private boolean mUseFahrenheit = false, mUseInches = false, mDrawDayLightEffect = true;
-	
-	private float mPrecipitationScale = Float.NaN;
-	
-	private boolean mDrawBorder = true;
-	private float mBorderThickness = Float.NaN, mBorderRounding = Float.NaN;
-	
-	private static final int TOP_TEXT_NEVER = 1;
-	private static final int TOP_TEXT_LANDSCAPE = 2;
-	private static final int TOP_TEXT_PORTRAIT = 3;
-	private static final int TOP_TEXT_ALWAYS = 4;
-	
-	private int mTopTextVisibility = 0;
+	/* Render Properties */
 
-	private float mMaxTemperature, mMinTemperature;
+	private float mTemperatureValueMax, mTemperatureValueMin;
+	private float mTemperatureRangeMax, mTemperatureRangeMin;
 	
-	private Paint mBorderPaint, mBackgroundPaint, mPatternPaint, mTextPaint, mLabelPaint;
-	private Paint mGridPaint, mGridOutlinePaint;
-	private Paint mAboveFreezingTemperaturePaint, mBelowFreezingTemperaturePaint;
-	private Paint mMinRainPaint, mMaxRainPaint;
+	private int mNumHorizontalCells, mNumVerticalCells;
+	private float mCellSizeX, mCellSizeY;
 	
-	private AixDetailedWidget(final Context context, final Uri widgetUri, final Uri viewUri) {
+	private String[] mTemperatureLabels;
+
+	private Rect mGraphRect = new Rect();
+	private Rect mWidgetBounds = new Rect();
+	
+	private RectF mBackgroundRect = new RectF();
+	private RectF mBorderRect = new RectF();
+	
+	private AixDetailedWidget(final Context context, final Uri widgetUri, final Uri locationUri, final int widgetSize) {
 		mContext = context;
 		mWidgetUri = widgetUri;
-		mViewUri = viewUri;
+		mLocationUri = locationUri;
 		
 		mNumHours = 24;
 		mNumWeatherDataBufferHours = 6;
+		
+		mWidgetColumns = (widgetSize - 1) / 4 + 1;
+		mWidgetRows = (widgetSize - 1) % 4 + 1;
 	}
 	
-	public static AixDetailedWidget build(final Context context, final Uri widgetUri, final Uri viewUri) throws AixWidgetDrawException {
-		AixDetailedWidget widget = new AixDetailedWidget(context, widgetUri, viewUri);
+	public static AixDetailedWidget build(final Context context, final Uri widgetUri, final Uri locationUri, final int widgetSize) throws AixWidgetDrawException {
+		AixDetailedWidget widget = new AixDetailedWidget(context, widgetUri, locationUri, widgetSize);
 		return widget.initialize();
 	}
 	
 	private AixDetailedWidget initialize() throws AixWidgetDrawException {
-		setupWidgetSize();
+		mResolver = mContext.getContentResolver();
+		
 		setupLocation();
 		loadConfiguration();
 		setupTimesAndPointData();
 		setupIntervalData();
-		setupEpochAndTimes();
 		setupSampleTimes();
+		setupEpochAndTimes();
 		validatePointData();
 		setupSunMoonData();
 		setupPaints();
-
+		
+		DisplayMetrics dm = mContext.getResources().getDisplayMetrics();
+		mDP = dm.density;
+		
+		mTextSize = 10.0f * mDP;
+		mLabelTextSize = 9.0f * mDP;
+		mIconHeight = 19.0f * mDP;
+		mIconWidth = 19.0f * mDP;
+		mIconSpacingY = 2.0f * mDP;
+		
+		setupPaintDimensions();
+		
 		return this;
 	}
 	
 	public Bitmap render(boolean isLandscape) throws AixWidgetDrawException {
-		DisplayMetrics dm = mContext.getResources().getDisplayMetrics();
-		final float dp = dm.density;
-		
-		int widgetWidth = (int)Math.round(((isLandscape
-				? (106.0f * mWidgetColumns) : (80.0f * mWidgetColumns)) - 2.0f) * dp);
-		int widgetHeight = (int)Math.round(((isLandscape
-				? (74.0f * mWidgetRows) : (100.0f * mWidgetRows)) - 2.0f) * dp);
-
-		//Log.d(TAG, "widgetWidth=" + widgetWidth + " widgetHeight=" + widgetHeight);
-		
-		boolean isWidgetWidthOdd = widgetWidth % 2 == 1;
-		boolean isWidgetHeightOdd = widgetHeight % 2 == 1;
-		
-		Rect widgetBounds = new Rect(
-				isWidgetWidthOdd ? 1 : 0,
-				isWidgetHeightOdd ? 1 : 0,
-				widgetWidth, widgetHeight);
-		
-		Bitmap bitmap = Bitmap.createBitmap(widgetWidth, widgetHeight, Bitmap.Config.ARGB_8888);
+		setupWidgetDimensions(isLandscape);
+		Bitmap bitmap = Bitmap.createBitmap(mWidgetWidth, mWidgetHeight, Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
 		
 		float borderPadding = 1.0f;
+		mBorderRect.set(
+				Math.round(mWidgetBounds.left + borderPadding),
+				Math.round(mWidgetBounds.top + borderPadding),
+				Math.round(mWidgetBounds.right - borderPadding),
+				Math.round(mWidgetBounds.bottom - borderPadding));
 		
 		float widgetBorder = Math.round(borderPadding + mBorderRounding + (mBorderThickness - mBorderRounding));
-		
-		RectF backgroundRect = new RectF(
-				(float)widgetBounds.left + widgetBorder,
-				(float)widgetBounds.top + widgetBorder,
-				(float)widgetBounds.right - widgetBorder,
-				(float)widgetBounds.bottom - widgetBorder);
-		
-		float[] degreesPerCellOptions = { 0.5f, 1.0f, 2.0f, 2.5f, 5.0f, 10.0f,
-				20.0f, 25.0f, 50.0f, 100.0f };
-		int dPcIndex = 0;
-
-		float textLabelWidth = 0.0f;
-		int numHorizontalCells = mNumHours, numVerticalCells = 2;
-		float cellSizeX = 10.0f, cellSizeY = 10.0f;
-		Rect graphRect = new Rect();
-
-		float iconHeight = 19.0f * dp, iconWidth = 19.0f * dp, iconSpacingY = 2.0f * dp;
-		float tempRangeMax = 0.0f, tempRangeMin = 0.0f;
-
-		String[] tempLabels = null;
-
-		final float textSize = 10.0f * dp;
-		final float labelTextSize = 9.0f * dp;
-		
-		setupPaintDimensions(dp, textSize, labelTextSize);
-		
-		float degreesPerCell;
+		mBackgroundRect.set(
+				Math.round(mWidgetBounds.left + widgetBorder),
+				Math.round(mWidgetBounds.top + widgetBorder),
+				Math.round(mWidgetBounds.right - widgetBorder),
+				Math.round(mWidgetBounds.bottom - widgetBorder));
 		
 		boolean drawTopText = (mTopTextVisibility == TOP_TEXT_ALWAYS ||
 				(isLandscape && mTopTextVisibility == TOP_TEXT_LANDSCAPE) ||
 				(!isLandscape && mTopTextVisibility == TOP_TEXT_PORTRAIT));
 		
-		while (true) {
-			if (dPcIndex == degreesPerCellOptions.length) {
-				throw AixWidgetDrawException.buildGraphDimensionFailure();
-			}
-			
-			graphRect.left = (int)Math.round(backgroundRect.left + textLabelWidth + 5.0f * dp);
-			if (drawTopText) {
-				graphRect.top = (int)Math.round(backgroundRect.top + labelTextSize + 4.0f * dp);
-			} else {
-				graphRect.top = (int)Math.round(backgroundRect.top + labelTextSize / 2.0f + 2.0f * dp);
-			}
-			graphRect.right = (int)Math.round(backgroundRect.right - 5.0f * dp);
-			graphRect.bottom = (int)Math.round(backgroundRect.bottom - labelTextSize - 6.0f * dp);
-			
-			for (int j = 2; j <= 100; j++) {
-				if (mNumHours % j == 0) {
-					if ((float)graphRect.width() / (float)j >= 8.0f * dp) {
-						numHorizontalCells = j;
-					} else {
-						break;
-					}
-				}
-			}
-			
-			cellSizeX = (float)(graphRect.right - graphRect.left) / (float) numHorizontalCells;
-			degreesPerCell = degreesPerCellOptions[dPcIndex];
-			
-			int numCellsReq = (int) Math.ceil(mMaxTemperature / degreesPerCell) - (int) Math.floor(mMinTemperature / degreesPerCell);
-			float tCellSizeY = ((float)graphRect.height() - iconHeight - iconSpacingY) / ((mMaxTemperature / degreesPerCell) - (float)Math.floor(mMinTemperature / degreesPerCell));
-			numVerticalCells = Math.max((int)Math.ceil((float)graphRect.height() / tCellSizeY), 1);
-			
-			cellSizeY = (graphRect.bottom - graphRect.top) / (float) numVerticalCells;
-			
-			if (2.0f * dp > cellSizeY * ((mMinTemperature / degreesPerCell - Math.floor(mMinTemperature / degreesPerCell)))) {
-				numVerticalCells++;
-			}
-			
-			if (((float)graphRect.height() / (float) numVerticalCells) < mLabelPaint.getTextSize()) {
-				while (isPrime(numVerticalCells)) numVerticalCells++;
-			}
-			
-			cellSizeY = (float)graphRect.height() / (float) numVerticalCells;
-			
-			if (cellSizeY < 8.0f * dp) {
-				dPcIndex++;
-				continue;
-			}
-			
-			// Center range as far as possible (need to fix proper centering)
-			int startCell = numVerticalCells - numCellsReq;
-			while ((startCell > 0) && (iconHeight > cellSizeY// + iconSpacingY > cellSizeY
-					* (numVerticalCells - numCellsReq - startCell + (Math
-					.ceil(mMaxTemperature / degreesPerCell) - mMaxTemperature / degreesPerCell))))
-			{
-				startCell--;
-			}
-			
-			tempRangeMin = degreesPerCell * (float)(Math.floor(mMinTemperature / degreesPerCell) - startCell);
-			tempRangeMax = tempRangeMin + degreesPerCell * numVerticalCells;
-			
-			tempLabels = new String[numVerticalCells + 1];
-
-			float newTextLabelWidth = 0.0f;
-			
-			boolean isAllBelow10 = true;
-			
-			for (int j = 0; j <= numVerticalCells; j++) {
-				float num = tempRangeMin + degreesPerCell * j;
-				if (Math.abs(num) >= 10.0f) isAllBelow10 = false;
-				String formatting = Math.round(degreesPerCell) != degreesPerCell
-						? "%.1f\u00B0" : "%.0f\u00B0";
-				tempLabels[j] = String.format(formatting, num);
-				newTextLabelWidth = Math.max(newTextLabelWidth,
-						mLabelPaint.measureText(tempLabels[j]));
-			}
-			
-			if (isAllBelow10) newTextLabelWidth += dp;
-
-			if (newTextLabelWidth > textLabelWidth) {
-				textLabelWidth = newTextLabelWidth;
-			} else {
-				break;
-			}
-		}
+		calculateDimensions(isLandscape, drawTopText);
 		
-		Rect graphRectInner = new Rect(graphRect.left + 1, graphRect.top + 1, graphRect.right, graphRect.bottom);
-		Rect graphRectOuter = new Rect(graphRect.left, graphRect.top, graphRect.right + 1, graphRect.bottom + 1);
-		
-		drawBackground(canvas, dp, widgetBounds, backgroundRect, borderPadding);
-		drawGrid(canvas, graphRect, numHorizontalCells, numVerticalCells, cellSizeX, cellSizeY);
+		drawBackground(canvas);
+		drawGrid(canvas);
 
 		if (mDrawDayLightEffect) {
-			drawDayAndNight(canvas, graphRect);
+			drawDayAndNight(canvas);
 		}
 		
 		Path minRainPath = new Path();
 		Path maxRainPath = new Path();
-		buildRainPaths(minRainPath, maxRainPath, graphRect, numHorizontalCells, numVerticalCells, cellSizeX, cellSizeY);
-		drawRainPaths(canvas, dp, minRainPath, maxRainPath, graphRect);
+		buildRainPaths(minRainPath, maxRainPath);
+		drawRainPaths(canvas, minRainPath, maxRainPath);
 		
-		Path temperaturePath = CatmullRom.buildPath(mPointData, mTimeFrom, mTimeTo, tempRangeMax, tempRangeMin, graphRect);
+		Path temperaturePath = CatmullRom.buildPath(mPointData, mTimeFrom, mTimeTo, mTemperatureRangeMax, mTemperatureRangeMin);
 		if (temperaturePath != null) {
-			drawTemperature(canvas, dp, temperaturePath, tempRangeMax, tempRangeMin, graphRect, graphRectInner);
+			Matrix scaleMatrix = new Matrix();
+			scaleMatrix.setScale(mGraphRect.width(), mGraphRect.height());
+			temperaturePath.transform(scaleMatrix);
+			temperaturePath.offset(mGraphRect.left, mGraphRect.top);
+			drawTemperature(canvas, temperaturePath);
 		}
 		
-		drawGridOutline(canvas, graphRect);
-		drawTemperatureLabels(canvas, dp, tempLabels, graphRect, numVerticalCells, cellSizeY);
-		drawHourLabels(canvas, dp, backgroundRect, graphRect, numHorizontalCells, cellSizeX);
-		drawWeatherIcons(canvas, dp, iconHeight, iconWidth, iconSpacingY, graphRect, numHorizontalCells, cellSizeX, tempRangeMin, tempRangeMax);
+		drawGridOutline(canvas);
+		drawTemperatureLabels(canvas);
+		drawHourLabels(canvas);
+		drawWeatherIcons(canvas);
 		
 		if (drawTopText) {
 			float pressure = Float.NaN, humidity = Float.NaN, temperature = Float.NaN;
@@ -376,25 +273,23 @@ public class AixDetailedWidget {
 				}
 			}
 			
-			drawInfoText(canvas, dp, pressure, humidity, temperature, backgroundRect, graphRect);
+			drawInfoText(canvas, pressure, humidity, temperature);
 		}
 		
 		return bitmap;
 	}
-	
-	private void buildRainPaths(Path minRainPath, Path maxRainPath, Rect graphRect,
-			int numHorizontalCells, int numVerticalCells, float cellSizeX, float cellSizeY)
-	{
-		float[] rainValues = new float[numHorizontalCells];
-		float[] rainMinValues = new float[numHorizontalCells];
-		float[] rainMaxValues = new float[numHorizontalCells];
+
+	private void buildRainPaths(Path minRainPath, Path maxRainPath) {
+		float[] rainValues = new float[mNumHorizontalCells];
+		float[] rainMinValues = new float[mNumHorizontalCells];
+		float[] rainMaxValues = new float[mNumHorizontalCells];
 		
 		Arrays.fill(rainValues, Float.NaN);
 		Arrays.fill(rainMinValues, Float.NaN);
 		Arrays.fill(rainMaxValues, Float.NaN);
 		
-		int[] pointers = new int[numHorizontalCells];
-		int[] precision = new int[numHorizontalCells];
+		int[] pointers = new int[mNumHorizontalCells];
+		int[] precision = new int[mNumHorizontalCells];
 		
 		Arrays.fill(pointers, -1);
 		
@@ -402,18 +297,18 @@ public class AixDetailedWidget {
 			IntervalData d = mIntervalData.get(i);
 			if (d.timeFrom == d.timeTo) continue;
 			
-			int startCell = (int)Math.floor((float)numHorizontalCells *
+			int startCell = (int)Math.floor((float)mNumHorizontalCells *
 					(float)(d.timeFrom - mTimeFrom) / (float)(mTimeTo - mTimeFrom));
 			
-			if (startCell >= numHorizontalCells) continue;
+			if (startCell >= mNumHorizontalCells) continue;
 			
-			float endCellPos = (float)numHorizontalCells *
+			float endCellPos = (float)mNumHorizontalCells *
 					(float)(d.timeTo - mTimeFrom) / (float)(mTimeTo - mTimeFrom);
 			int endCell = (endCellPos == Math.round(endCellPos))
 					? (int)endCellPos - 1 : (int)Math.ceil(endCellPos);
 			
 			startCell = lcap(startCell, 0);
-			endCell = hcap(endCell, numHorizontalCells - 1);
+			endCell = hcap(endCell, mNumHorizontalCells - 1);
 			
 			for (int j = startCell; j <= endCell; j++) {
 				if (pointers[j] == -1) {
@@ -444,8 +339,10 @@ public class AixDetailedWidget {
 			}
 		}
 		
+		RectF rainRect = new RectF();
+		
 		int i = 0;
-		while (i < numHorizontalCells) {
+		while (i < mNumHorizontalCells) {
 			float minVal = Float.NaN, maxVal = Float.NaN;
 			
 			if (!Float.isNaN(rainMinValues[i]) && !Float.isNaN(rainMaxValues[i])) {
@@ -460,27 +357,27 @@ public class AixDetailedWidget {
 				continue;
 			}
 			
-			minVal = hcap(minVal / mPrecipitationScale, numVerticalCells);
+			minVal = hcap(minVal / mPrecipitationScale, mNumVerticalCells);
 			
 			int endCell = i + 1;
-			while (	(endCell < numHorizontalCells) &&
+			while (	(endCell < mNumHorizontalCells) &&
 					(pointers[i] == pointers[endCell]) &&
 					(pointers[endCell] != -2))
 			{
 				endCell++;
 			}
 			
-			RectF rainRect = new RectF(
-					graphRect.left + Math.round(i * cellSizeX) + 1.0f,
-					graphRect.bottom - minVal * cellSizeY,
-					graphRect.left + Math.round(endCell * cellSizeX),
-					graphRect.bottom);
+			rainRect.set(
+					mGraphRect.left + Math.round(i * mCellSizeX) + 1.0f,
+					mGraphRect.bottom - minVal * mCellSizeY,
+					mGraphRect.left + Math.round(endCell * mCellSizeX),
+					mGraphRect.bottom);
 			minRainPath.addRect(rainRect, Path.Direction.CCW);
 			
-			if (!Float.isNaN(maxVal) && maxVal > minVal && minVal < numVerticalCells) {
-				maxVal = hcap(maxVal / mPrecipitationScale, numVerticalCells);
+			if (!Float.isNaN(maxVal) && maxVal > minVal && minVal < mNumVerticalCells) {
+				maxVal = hcap(maxVal / mPrecipitationScale, mNumVerticalCells);
 				rainRect.bottom = rainRect.top;
-				rainRect.top = graphRect.bottom - maxVal * cellSizeY;
+				rainRect.top = mGraphRect.bottom - maxVal * mCellSizeY;
 				maxRainPath.addRect(rainRect, Path.Direction.CCW);
 			}
 			
@@ -488,30 +385,117 @@ public class AixDetailedWidget {
 		}
 	}
 	
-	private void drawBackground(Canvas canvas, final float dp, Rect widgetBounds,
-			RectF backgroundRect, float borderPadding)
-	{
-		if (mBorderThickness > 0.0f) {
-			RectF borderRect = new RectF(
-					Math.round(widgetBounds.left + borderPadding),
-					Math.round(widgetBounds.top + borderPadding),
-					Math.round(widgetBounds.right - borderPadding),
-					Math.round(widgetBounds.bottom - borderPadding));
+	private void calculateDimensions(final boolean isLandscape, final boolean drawTopText) {
+		float[] degreesPerCellOptions = { 0.5f, 1.0f, 2.0f, 2.5f, 5.0f, 10.0f,
+				20.0f, 25.0f, 50.0f, 100.0f };
+		int dPcIndex = 0;
+
+		float textLabelWidth = 0.0f;
+		
+		mNumHorizontalCells = mNumHours;
+		mNumVerticalCells = 2;
+		
+		float degreesPerCell;
+		
+		while (true) {
+			mGraphRect.left = (int)Math.round(mBackgroundRect.left + textLabelWidth + 5.0f * mDP);
+			if (drawTopText) {
+				mGraphRect.top = (int)Math.round(mBackgroundRect.top + mLabelTextSize + 4.0f * mDP);
+			} else {
+				mGraphRect.top = (int)Math.round(mBackgroundRect.top + mLabelTextSize / 2.0f + 2.0f * mDP);
+			}
+			mGraphRect.right = (int)Math.round(mBackgroundRect.right - 5.0f * mDP);
+			mGraphRect.bottom = (int)Math.round(mBackgroundRect.bottom - mLabelTextSize - 6.0f * mDP);
 			
-			canvas.save();
-			canvas.clipRect(backgroundRect, Region.Op.DIFFERENCE);
-			canvas.drawRoundRect(borderRect, mBorderRounding, mBorderRounding, mBorderPaint);
-			canvas.restore();
+			for (int j = 2; j <= 100; j++) {
+				if (mNumHours % j == 0) {
+					if ((float)mGraphRect.width() / (float)j >= 8.0f * mDP) {
+						mNumHorizontalCells = j;
+					} else {
+						break;
+					}
+				}
+			}
 			
-			canvas.drawRect(backgroundRect, mBackgroundPaint);
-			canvas.drawRect(backgroundRect, mPatternPaint);
-		} else {
-			canvas.drawRoundRect(backgroundRect, mBorderRounding, mBorderRounding, mBackgroundPaint);
-			canvas.drawRoundRect(backgroundRect, mBorderRounding, mBorderRounding, mPatternPaint);
+			mCellSizeX = (float)(mGraphRect.right - mGraphRect.left) / (float) mNumHorizontalCells;
+			degreesPerCell = degreesPerCellOptions[dPcIndex];
+			
+			int numCellsReq = (int) Math.ceil(mTemperatureValueMax / degreesPerCell) - (int) Math.floor(mTemperatureValueMin / degreesPerCell);
+			float tCellSizeY = ((float)mGraphRect.height() - mIconHeight - mIconSpacingY) / ((mTemperatureValueMax / degreesPerCell) - (float)Math.floor(mTemperatureValueMin / degreesPerCell));
+			mNumVerticalCells = Math.max((int)Math.ceil((float)mGraphRect.height() / tCellSizeY), 1);
+			
+			mCellSizeY = (mGraphRect.bottom - mGraphRect.top) / (float) mNumVerticalCells;
+			
+			if (2.0f * mDP > mCellSizeY * ((mTemperatureValueMin / degreesPerCell - Math.floor(mTemperatureValueMin / degreesPerCell)))) {
+				mNumVerticalCells++;
+			}
+			
+			if (((float)mGraphRect.height() / (float) mNumVerticalCells) < mLabelPaint.getTextSize()) {
+				while (isPrime(mNumVerticalCells)) mNumVerticalCells++;
+			}
+			
+			mCellSizeY = (float)mGraphRect.height() / (float) mNumVerticalCells;
+			
+			if (mCellSizeY < 8.0f * mDP) {
+				dPcIndex++;
+				continue;
+			}
+			
+			// Center range as far as possible (need to fix proper centering)
+			int startCell = mNumVerticalCells - numCellsReq;
+			while ((startCell > 0) && (mIconHeight > mCellSizeY// + iconSpacingY > cellSizeY
+					* (mNumVerticalCells - numCellsReq - startCell + (Math
+					.ceil(mTemperatureValueMax / degreesPerCell) - mTemperatureValueMax / degreesPerCell))))
+			{
+				startCell--;
+			}
+			
+			mTemperatureRangeMin = degreesPerCell * (float)(Math.floor(mTemperatureValueMin / degreesPerCell) - startCell);
+			mTemperatureRangeMax = mTemperatureRangeMin + degreesPerCell * mNumVerticalCells;
+			
+			mTemperatureLabels = new String[mNumVerticalCells + 1];
+
+			float newTextLabelWidth = 0.0f;
+			
+			boolean isAllBelow10 = true;
+			
+			for (int j = 0; j <= mNumVerticalCells; j++) {
+				float num = mTemperatureRangeMin + degreesPerCell * j;
+				if (Math.abs(num) >= 10.0f) isAllBelow10 = false;
+				String formatting = Math.round(degreesPerCell) != degreesPerCell
+						? "%.1f\u00B0" : "%.0f\u00B0";
+				mTemperatureLabels[j] = String.format(formatting, num);
+				newTextLabelWidth = Math.max(newTextLabelWidth,
+						mLabelPaint.measureText(mTemperatureLabels[j]));
+			}
+			
+			if (isAllBelow10) newTextLabelWidth += mDP;
+
+			if (newTextLabelWidth > textLabelWidth) {
+				textLabelWidth = newTextLabelWidth;
+			} else {
+				break;
+			}
 		}
 	}
 	
-	private void drawDayAndNight(Canvas canvas, Rect graphRect)
+	private void drawBackground(Canvas canvas)
+	{
+		if (mBorderThickness > 0.0f) {
+			canvas.save();
+			canvas.clipRect(mBackgroundRect, Region.Op.DIFFERENCE);
+			canvas.drawRoundRect(mBorderRect, mBorderRounding, mBorderRounding, mBorderPaint);
+			canvas.restore();
+			
+			canvas.drawRect(mBackgroundRect, mBackgroundPaint);
+			canvas.drawRect(mBackgroundRect, mPatternPaint);
+		} else {
+			canvas.drawRoundRect(mBackgroundRect, mBorderRounding, mBorderRounding, mBackgroundPaint);
+			canvas.drawRoundRect(mBackgroundRect, mBorderRounding, mBorderRounding, mPatternPaint);
+		}
+	}
+	
+	private void drawDayAndNight(Canvas canvas)
 	{
 		if (mSunMoonData == null) return;
 		
@@ -519,11 +503,11 @@ public class AixDetailedWidget {
 		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange;
 		
 		canvas.save();
-		canvas.clipRect(graphRect.left + 1, graphRect.top, graphRect.right, graphRect.bottom);
+		canvas.clipRect(mGraphRect.left + 1, mGraphRect.top, mGraphRect.right, mGraphRect.bottom);
 		
 		Matrix matrix = new Matrix();
-		matrix.setScale(graphRect.width(), graphRect.height());
-		matrix.postTranslate(graphRect.left + 1, graphRect.top);
+		matrix.setScale(mGraphRect.width(), mGraphRect.height());
+		matrix.postTranslate(mGraphRect.left + 1, mGraphRect.top);
 		canvas.setMatrix(matrix);
 		
 		final int DAY = 1, NIGHT = 2;
@@ -622,64 +606,61 @@ public class AixDetailedWidget {
 		canvas.restore();
 	}
 	
-	private void drawGrid(Canvas canvas, Rect graphRect, int numHorizontalCells,
-			int numVerticalCells, float cellSizeX, float cellSizeY)
-	{
+	private void drawGrid(Canvas canvas) {
 		Path gridPath = new Path();
 		
-		for (int i = 1; i <= numHorizontalCells; i++) {
-			float xPos = graphRect.left + Math.round(i * cellSizeX);
-			gridPath.moveTo(xPos, graphRect.bottom);
-			gridPath.lineTo(xPos, graphRect.top);
+		for (int i = 1; i <= mNumHorizontalCells; i++) {
+			float xPos = mGraphRect.left + Math.round(i * mCellSizeX);
+			gridPath.moveTo(xPos, mGraphRect.bottom);
+			gridPath.lineTo(xPos, mGraphRect.top);
 		}
 
-		for (int i = 1; i <= numVerticalCells; i++) {
-			float yPos = graphRect.bottom - Math.round(i * cellSizeY);
-			gridPath.moveTo(graphRect.left, yPos);
-			gridPath.lineTo(graphRect.right, yPos);
+		for (int i = 1; i <= mNumVerticalCells; i++) {
+			float yPos = mGraphRect.bottom - Math.round(i * mCellSizeY);
+			gridPath.moveTo(mGraphRect.left, yPos);
+			gridPath.lineTo(mGraphRect.right, yPos);
 		}
 		
 		int rightOffset = mDrawDayLightEffect ? 0 : 1;
 		
 		canvas.save();
 		canvas.clipRect(
-				graphRect.left + 1,
-				graphRect.top,
-				graphRect.right + rightOffset,
-				graphRect.bottom,
+				mGraphRect.left + 1,
+				mGraphRect.top,
+				mGraphRect.right + rightOffset,
+				mGraphRect.bottom,
 				Region.Op.REPLACE);
 		canvas.drawPath(gridPath, mGridPaint);
 		canvas.restore();
 	}
 	
-	private void drawGridOutline(Canvas canvas, Rect graphRect) {
+	private void drawGridOutline(Canvas canvas) {
 		Path gridOutline = new Path();
-		gridOutline.moveTo(graphRect.left, graphRect.top);
-		gridOutline.lineTo(graphRect.left, graphRect.bottom);
-		gridOutline.lineTo(graphRect.right, graphRect.bottom);
+		gridOutline.moveTo(mGraphRect.left, mGraphRect.top);
+		gridOutline.lineTo(mGraphRect.left, mGraphRect.bottom);
+		gridOutline.lineTo(mGraphRect.right + 1, mGraphRect.bottom);
 		
 		if (mDrawDayLightEffect) {
-			gridOutline.lineTo(graphRect.right, graphRect.top);
+			gridOutline.moveTo(mGraphRect.right, mGraphRect.top);
+			gridOutline.lineTo(mGraphRect.right, mGraphRect.bottom);
 		}
 		
 		canvas.drawPath(gridOutline, mGridOutlinePaint);
 	}
 	
-	private void drawHourLabels(Canvas canvas, final float dp, RectF backgroundRect, Rect graphRect,
-			int numHorizontalCells, float cellSizeX)
-	{
+	private void drawHourLabels(Canvas canvas) {
 		// Draw time stamp labels and horizontal notches
-		float notchHeight = 3.5f * dp;
-		float labelTextPaddingY = 1.5f * dp;
+		float notchHeight = 3.5f * mDP;
+		float labelTextPaddingY = 1.5f * mDP;
 		
 		mLabelPaint.setTextAlign(Paint.Align.CENTER);
 		
-		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
+		Calendar calendar = Calendar.getInstance(mLocationTimeZone);
 		calendar.setTimeInMillis(mTimeFrom);
-		calendar.setTimeZone(mLocationTimeZone);
 		
 		int startHour = calendar.get(Calendar.HOUR_OF_DAY);
-		float hoursPerCell = (float)mNumHours / (float)numHorizontalCells;
+
+		float hoursPerCell = (float)mNumHours / (float)mNumHorizontalCells;
 		int numCellsBetweenHorizontalLabels = mNumHoursBetweenSamples < hoursPerCell
 				? 1 : (int)Math.floor((float)mNumHoursBetweenSamples / hoursPerCell);
 		
@@ -698,14 +679,14 @@ public class AixDetailedWidget {
 			/* Ensure that labels can be evenly spaced, given the number of cells, and make
 			 * sure that each label step is a full number of hours.
 			 */
-			while ((numHorizontalCells % numCellsBetweenHorizontalLabels != 0) ||
+			while ((mNumHorizontalCells % numCellsBetweenHorizontalLabels != 0) ||
 					((numCellsBetweenHorizontalLabels * hoursPerCell) !=
 							Math.round(numCellsBetweenHorizontalLabels * hoursPerCell)))
 			{
 				numCellsBetweenHorizontalLabels++;
 			}
 			
-			float spaceBetweenLabels = numCellsBetweenHorizontalLabels * cellSizeX;
+			float spaceBetweenLabels = numCellsBetweenHorizontalLabels * mCellSizeX;
 			if (spaceBetweenLabels > longLabelWidth * 1.25f) {
 				break;
 			} else if (!use24hours && spaceBetweenLabels > shortLabelWidth * 1.25f) {
@@ -717,12 +698,12 @@ public class AixDetailedWidget {
 		}
 		
 		for (int i = numCellsBetweenHorizontalLabels;
-				 i < numHorizontalCells;
+				 i < mNumHorizontalCells;
 				 i+= numCellsBetweenHorizontalLabels)
 		{
-			float notchX = graphRect.left + Math.round(i * cellSizeX);
-			canvas.drawLine(notchX, (float)graphRect.bottom - notchHeight / 2.0f,
-					notchX, (float)graphRect.bottom + notchHeight / 2.0f, mGridOutlinePaint);
+			float notchX = mGraphRect.left + Math.round(i * mCellSizeX);
+			canvas.drawLine(notchX, (float)mGraphRect.bottom - notchHeight / 2.0f,
+					notchX, (float)mGraphRect.bottom + notchHeight / 2.0f, mGridOutlinePaint);
 			
 			int hour = startHour + (int)(hoursPerCell * i);
 			
@@ -739,17 +720,16 @@ public class AixDetailedWidget {
 					hourLabel = String.format("%2d %s", hour12, am ? "am" : "pm" );
 				}
 			}
-			canvas.drawText(hourLabel, notchX, (float)Math.floor(((float)graphRect.bottom + backgroundRect.bottom) / 2.0f + mLabelPaint.getTextSize() / 2.0f), mLabelPaint);
+			canvas.drawText(hourLabel, notchX, (float)Math.floor(((float)mGraphRect.bottom + mBackgroundRect.bottom) / 2.0f + mLabelPaint.getTextSize() / 2.0f), mLabelPaint);
 		}
 	}
 
-	private void drawInfoText(Canvas canvas, final float dp, float pressure, float humidity,
-			float temperature, RectF backgroundRect, Rect graphRect)
+	private void drawInfoText(Canvas canvas, float pressure, float humidity, float temperature)
 	{
-		final float locationLabelTextSize = 10.0f * dp;
+		final float locationLabelTextSize = 10.0f * mDP;
 		
-		float topTextSidePadding = 1.0f * dp;
-		float topTextBottomPadding = 3.0f * dp;
+		float topTextSidePadding = 1.0f * mDP;
+		float topTextBottomPadding = 3.0f * mDP;
 		
 		String pressureString = "";
 		if (!Float.isNaN(pressure)) {
@@ -781,7 +761,7 @@ public class AixDetailedWidget {
 					R.string.temperature_top, temperatureFormatted, temperatureUnit);
 		}
 		
-		float topTextSpace = graphRect.width() - topTextSidePadding * 2.0f;
+		float topTextSpace = mGraphRect.width() - topTextSidePadding * 2.0f;
 		
 		String ellipsis = "...";
 		String spacing = "       ";
@@ -846,8 +826,8 @@ public class AixDetailedWidget {
 		
 		mTextPaint.setTextAlign(Align.LEFT);
 		canvas.drawText(sb.toString(),
-				graphRect.left + topTextSidePadding,
-				backgroundRect.top + mTextPaint.getTextSize(),
+				mGraphRect.left + topTextSidePadding,
+				mBackgroundRect.top + mTextPaint.getTextSize(),
 				mTextPaint);
 		
 		sb.setLength(0);
@@ -870,13 +850,12 @@ public class AixDetailedWidget {
 
 		mTextPaint.setTextAlign(Align.RIGHT);
 		canvas.drawText(sb.toString(),
-				graphRect.right - topTextSidePadding,
-				backgroundRect.top + mTextPaint.getTextSize(),
+				mGraphRect.right - topTextSidePadding,
+				mBackgroundRect.top + mTextPaint.getTextSize(),
 				mTextPaint);
 	}
 	
-	private void drawRainPaths(Canvas canvas, final float dp, Path minRainPath, Path maxRainPath,
-			Rect graphRect)
+	private void drawRainPaths(Canvas canvas, Path minRainPath, Path maxRainPath)
 	{
 		canvas.drawPath(minRainPath, mMinRainPaint);
 		canvas.save();
@@ -884,41 +863,42 @@ public class AixDetailedWidget {
 		
 		// TODO Technique works, but too expensive?
 		float dimensions = (float)Math.sin(Math.toRadians(45)) *
-						   (graphRect.height() + graphRect.width());
+						   (mGraphRect.height() + mGraphRect.width());
 		float dimensions2 = dimensions / 2.0f;
-		float ggx = graphRect.left + graphRect.width() / 2.0f;
-		float ggy = graphRect.top + graphRect.height() / 2.0f;
+		float ggx = mGraphRect.left + mGraphRect.width() / 2.0f;
+		float ggy = mGraphRect.top + mGraphRect.height() / 2.0f;
 	
 		Matrix transform = new Matrix();
 		transform.setRotate(-45.0f, ggx, ggy);
 		canvas.setMatrix(transform);
 		
-		float ypos = graphRect.top - (dimensions - graphRect.height()) / 2.0f;
-		float ytest = graphRect.bottom + (dimensions - graphRect.height()) / 2.0f;
+		float ypos = mGraphRect.top - (dimensions - mGraphRect.height()) / 2.0f;
+		float ytest = mGraphRect.bottom + (dimensions - mGraphRect.height()) / 2.0f;
 		while (ypos < ytest) {
 			canvas.drawLine(ggx - dimensions2, ypos, ggx + dimensions2, ypos, mMaxRainPaint);
-			ypos += 2.0f * dp;
+			ypos += 2.0f * mDP;
 		}
 		canvas.restore();
 	}
 	
-	private void drawTemperature(Canvas canvas, final float dp, Path temperaturePath,
-			float tempRangeMax, float tempRangeMin, Rect graphRect, Rect graphRectInner)
+	private void drawTemperature(Canvas canvas, Path temperaturePath)
 	{
 		float freezingTemperature = mUseFahrenheit ? 32.0f : 0.0f;
 		
+		Rect graphRectInner = new Rect(mGraphRect.left + 1, mGraphRect.top + 1, mGraphRect.right, mGraphRect.bottom);
+		
 		canvas.save();
-		if (tempRangeMin >= freezingTemperature) {
+		if (mTemperatureRangeMin >= freezingTemperature) {
 			// All positive
 			canvas.clipRect(graphRectInner);
 			canvas.drawPath(temperaturePath, mAboveFreezingTemperaturePaint);
-		} else if (tempRangeMax <= freezingTemperature) {
+		} else if (mTemperatureRangeMax <= freezingTemperature) {
 			// All negative
 			canvas.clipRect(graphRectInner);
 			canvas.drawPath(temperaturePath, mBelowFreezingTemperaturePaint);
 		} else {
-			float freezingPosY = (float)Math.floor(graphRect.height() *
-					(freezingTemperature - tempRangeMin) / (tempRangeMax - tempRangeMin));
+			float freezingPosY = (float)Math.floor(mGraphRect.height() *
+					(freezingTemperature - mTemperatureRangeMin) / (mTemperatureRangeMax - mTemperatureRangeMin));
 			
 			canvas.clipRect(graphRectInner.left, graphRectInner.top,
 					graphRectInner.right, graphRectInner.bottom - freezingPosY);
@@ -931,54 +911,51 @@ public class AixDetailedWidget {
 		canvas.restore();
 	}
 	
-	private void drawTemperatureLabels(Canvas canvas, final float dp, String[] labels,
-			Rect graphRect, int numVerticalCells, float cellSizeY)
-	{
-		float labelTextPaddingX = 2.5f * dp;
-		float notchWidth = 3.5f * dp;
+	private void drawTemperatureLabels(Canvas canvas) {
+		float labelTextPaddingX = 2.5f * mDP;
+		float notchWidth = 3.5f * mDP;
 		
 		// Find the minimum number of cells between each label
 		int numCellsBetweenVerticalLabels = 1;
-		while (numCellsBetweenVerticalLabels * cellSizeY < mLabelPaint.getTextSize()) {
+		while (numCellsBetweenVerticalLabels * mCellSizeY < mLabelPaint.getTextSize()) {
 			numCellsBetweenVerticalLabels++;
 		}
 		// Ensure that labels can be evenly spaced, given the number of cells
-		while (numVerticalCells % numCellsBetweenVerticalLabels != 0) {
+		while (mNumVerticalCells % numCellsBetweenVerticalLabels != 0) {
 			numCellsBetweenVerticalLabels++;
 		}
 		
-		if (labels.length < numVerticalCells) return;
+		if (mTemperatureLabels.length < mNumVerticalCells) return;
 		
 		mLabelPaint.setTextAlign(Paint.Align.RIGHT);
 		
-		for (int i = 0; i <= numVerticalCells; i += numCellsBetweenVerticalLabels) {
-			float notchY = graphRect.bottom - Math.round(i * cellSizeY);
+		Rect bounds = new Rect();
+		
+		for (int i = 0; i <= mNumVerticalCells; i += numCellsBetweenVerticalLabels) {
+			float notchY = mGraphRect.bottom - Math.round(i * mCellSizeY);
 			canvas.drawLine(
-					graphRect.left - notchWidth / 2, notchY,
-					graphRect.left + notchWidth / 2, notchY,
+					mGraphRect.left - notchWidth / 2, notchY,
+					mGraphRect.left + notchWidth / 2, notchY,
 					mGridOutlinePaint);
 			
-			Rect bounds = new Rect();
-			mLabelPaint.getTextBounds(labels[i], 0, labels[i].length(), bounds);
+			mLabelPaint.getTextBounds(mTemperatureLabels[i], 0, mTemperatureLabels[i].length(), bounds);
 			
 			canvas.drawText(
-					labels[i],
-					graphRect.left - labelTextPaddingX,
-					graphRect.bottom - bounds.centerY()
-							- (float)(i * graphRect.height()) / (float)numVerticalCells,
+					mTemperatureLabels[i],
+					mGraphRect.left - labelTextPaddingX,
+					mGraphRect.bottom - bounds.centerY()
+							- (float)(i * mGraphRect.height()) / (float)mNumVerticalCells,
 					mLabelPaint);
 		}
 	}
 	
-	private void drawWeatherIcons(Canvas canvas, final float dp, float iconHeight, float iconWidth,
-			float iconSpacingY, Rect graphRect, int numHorizontalCells, float cellSizeX,
-			float tempRangeMin, float tempRangeMax)
+	private void drawWeatherIcons(Canvas canvas)
 	{
 		// Calculate number of cells per icon
-		float hoursPerCell = (float)mNumHours / (float)numHorizontalCells;
+		float hoursPerCell = (float)mNumHours / (float)mNumHorizontalCells;
 		int numCellsPerIcon = (int)Math.ceil((float)mNumHoursBetweenSamples / hoursPerCell);
 		
-		while (	(numCellsPerIcon * cellSizeX < iconWidth) ||
+		while (	(numCellsPerIcon * mCellSizeX < mIconWidth) ||
 				((float)mNumHours % (numCellsPerIcon * hoursPerCell) != 0.0f))
 		{
 			numCellsPerIcon++;
@@ -986,12 +963,12 @@ public class AixDetailedWidget {
 		
 		int hoursPerIcon = (int)(numCellsPerIcon * hoursPerCell);
 		
-		float iconWidthValOver4 = iconWidth * (mTimeTo - mTimeFrom) / graphRect.width() / 4.0f;
+		float iconWidthValOver4 = mIconWidth * (mTimeTo - mTimeFrom) / mGraphRect.width() / 4.0f;
 		
 		long loMarker = mTimeFrom + hoursPerIcon * DateUtils.HOUR_IN_MILLIS / 2;
 		long hiMarker = mTimeTo - hoursPerIcon * DateUtils.HOUR_IN_MILLIS / 2;
 		
-		float tempRange = tempRangeMax - tempRangeMin;
+		float tempRange = mTemperatureRangeMax - mTemperatureRangeMin;
 		
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		
@@ -1010,34 +987,34 @@ public class AixDetailedWidget {
 					continue;
 				}
 				
-				int iconX = Math.round(graphRect.left - iconWidth / 2.0f +
+				int iconX = Math.round(mGraphRect.left - mIconWidth / 2.0f +
 						Math.round(((float)(iconTimePos - mTimeFrom) /
-								((float)DateUtils.HOUR_IN_MILLIS * hoursPerCell)) * cellSizeX));
-				int iconY = Math.round((float)graphRect.bottom - iconHeight - iconSpacingY -
-						(float)graphRect.height() * (val - tempRangeMin) / tempRange);
+								((float)DateUtils.HOUR_IN_MILLIS * hoursPerCell)) * mCellSizeX));
+				int iconY = Math.round((float)mGraphRect.bottom - mIconHeight - mIconSpacingY -
+						(float)mGraphRect.height() * (val - mTemperatureRangeMin) / tempRange);
 				
-				iconY = lcap(iconY, graphRect.top);
-				iconY = hcap(iconY, graphRect.bottom - (int)Math.ceil(iconHeight));
+				iconY = lcap(iconY, mGraphRect.top);
+				iconY = hcap(iconY, mGraphRect.bottom - (int)Math.ceil(mIconHeight));
 				
 				Rect dest = new Rect(iconX, iconY,
-						Math.round(iconX + iconWidth), Math.round(iconY + iconHeight));
+						Math.round(iconX + mIconWidth), Math.round(iconY + mIconHeight));
 				
 				calendar.setTimeInMillis(iconTimePos);
 				truncateDay(calendar);
 				long iconDate = calendar.getTimeInMillis();
 				
-				int[] weatherIcons = weatherIconsNight;
+				int[] weatherIcons = WEATHER_ICONS_NIGHT;
 				
 				for (SunMoonData smd : mSunMoonData) {
 					if (smd.mDate == iconDate) {
 						if (smd.mSunRise == AixSunMoonData.NEVER_RISE) {
-							weatherIcons = weatherIconsPolar;
+							weatherIcons = WEATHER_ICONS_POLAR;
 						} else if (smd.mSunSet == AixSunMoonData.NEVER_SET) {
-							weatherIcons = weatherIconsDay;
+							weatherIcons = WEATHER_ICONS_DAY;
 						}
 					}
 					if (smd.mSunRise < iconTimePos && smd.mSunSet > iconTimePos) {
-						weatherIcons = weatherIconsDay;
+						weatherIcons = WEATHER_ICONS_DAY;
 					}
 				}
 				
@@ -1231,10 +1208,11 @@ public class AixDetailedWidget {
 		mColors[BELOW_FREEZING_COLOR] = resources.getColor(R.color.below_freezing);
 		
 		// Get widget settings
-		Cursor widgetSettingsCursor = mContext.getContentResolver().query(
+		Cursor widgetSettingsCursor = mResolver.query(
 				Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS),
 				null, null, null, null);
 		
+		@SuppressWarnings("serial")
 		Map<String, Integer> colorNameMap = new HashMap<String, Integer>() {{
 			put(context.getString(R.string.border_color_int), BORDER_COLOR);
 			put(context.getString(R.string.background_color_int), BACKGROUND_COLOR);
@@ -1325,11 +1303,11 @@ public class AixDetailedWidget {
 	private void setupIntervalData() {
 		ArrayList<IntervalData> intervalData = new ArrayList<IntervalData>();
 		
-		Uri.Builder builder = mViewUri.buildUpon();
-		builder.appendPath(AixViews.TWIG_INTERVALDATAFORECASTS);
+		Uri.Builder builder = mLocationUri.buildUpon();
+		builder.appendPath(AixLocations.TWIG_INTERVALDATAFORECASTS);
 		builder.appendQueryParameter("pu", mUseInches ? "i" : "m");
 
-		Cursor cursor = mContext.getContentResolver().query(
+		Cursor cursor = mResolver.query(
 				builder.build(), null,
 				AixIntervalDataForecastColumns.TIME_TO + ">? AND " +
 				AixIntervalDataForecastColumns.TIME_FROM + "<?",
@@ -1355,9 +1333,8 @@ public class AixDetailedWidget {
 	private void setupLocation() throws AixWidgetDrawException {
 		String locationName = null;
 		TimeZone locationTimeZone = null;
-		
-		Uri locationUri = Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION); 
-		Cursor locationCursor = mContext.getContentResolver().query(locationUri, null, null, null, null);
+		 
+		Cursor locationCursor = mResolver.query(mLocationUri, null, null, null, null);
 		
 		if (locationCursor != null) {
 			if (locationCursor.moveToFirst()) {
@@ -1380,14 +1357,13 @@ public class AixDetailedWidget {
 		mLocationTimeZone = locationTimeZone;
 	}
 	
-	private void setupPaintDimensions(final float dp,
-			final float textSize, final float labelTextSize)
+	private void setupPaintDimensions()
 	{
-		mTextPaint.setTextSize(textSize);
-		mLabelPaint.setTextSize(labelTextSize);
-		mAboveFreezingTemperaturePaint.setStrokeWidth(2.0f * dp);
-		mBelowFreezingTemperaturePaint.setStrokeWidth(2.0f * dp);
-		mMaxRainPaint.setStrokeWidth(1.0f * dp);
+		mTextPaint.setTextSize(mTextSize);
+		mLabelPaint.setTextSize(mLabelTextSize);
+		mAboveFreezingTemperaturePaint.setStrokeWidth(2.0f * mDP);
+		mBelowFreezingTemperaturePaint.setStrokeWidth(2.0f * mDP);
+		mMaxRainPaint.setStrokeWidth(1.0f * mDP);
 	}
 	
 	private void setupPaints() {
@@ -1464,8 +1440,8 @@ public class AixDetailedWidget {
 		long dateTo = calendar.getTimeInMillis();
 		
 		ArrayList<SunMoonData> sunMoonData = new ArrayList<SunMoonData>();
-		Cursor c = mContext.getContentResolver().query(
-				Uri.withAppendedPath(mViewUri, AixViews.TWIG_SUNMOONDATA),
+		Cursor c = mResolver.query(
+				Uri.withAppendedPath(mLocationUri, AixLocations.TWIG_SUNMOONDATA),
 				null,
 				AixSunMoonDataColumns.DATE + ">=? AND " +
 				AixSunMoonDataColumns.DATE + "<=?",
@@ -1483,6 +1459,89 @@ public class AixDetailedWidget {
 		mSunMoonData = sunMoonData;
 	}
 	
+	private void setupEpochAndTimes() {
+		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
+		calendar.setTimeInMillis(mTimeNow);
+		truncateHour(calendar);
+		calendar.add(Calendar.HOUR_OF_DAY, 1);
+		
+		long nextHour = calendar.getTimeInMillis();
+		
+		long firstIntervalSampleAfter = Long.MAX_VALUE;
+		
+		for (IntervalData inter : mIntervalData) {
+			if (inter.weatherIcon == 0) continue;
+			if (inter.timeFrom > nextHour) {
+				firstIntervalSampleAfter = Math.min(firstIntervalSampleAfter, inter.timeFrom);
+			}
+		}
+		
+		long epoch = Math.min(nextHour, firstIntervalSampleAfter - mNumHoursBetweenSamples * DateUtils.HOUR_IN_MILLIS);
+		
+		long firstPointSample = Long.MAX_VALUE;
+		
+		for (PointData p : mPointData) {
+			firstPointSample = Math.min(firstPointSample, p.mTime);
+		}
+		
+		if (firstPointSample != Long.MAX_VALUE) {
+			epoch = Math.max(epoch, firstPointSample);
+		}
+				
+		// Update timeFrom and timeTo to correct values given the epoch
+		calendar.setTimeInMillis(epoch);
+		//calendar.setTimeInMillis(timeTemp);
+		mTimeFrom = calendar.getTimeInMillis();
+		calendar.add(Calendar.HOUR_OF_DAY, mNumHours);
+		mTimeTo = calendar.getTimeInMillis();
+		
+		SimpleDateFormat sdf = new SimpleDateFormat();
+		sdf.setTimeZone(mLocationTimeZone);
+		
+		Log.d(TAG, mLocationName + " (" + mLocationTimeZone.getDisplayName() + "): " + sdf.format(new Date(mTimeNow)) +
+				" nextHour=" + sdf.format(new Date(nextHour)) +
+				" -> firstIntervalSampleAfter=" + sdf.format(new Date(firstIntervalSampleAfter)) +
+				",firstPointSample=" + sdf.format(new Date(firstPointSample)) +
+				",numHoursBetweenSamples=" + mNumHoursBetweenSamples +
+				" -> timeFrom=" + sdf.format(new Date(mTimeFrom)) +
+				",timeTo=" + sdf.format(new Date(mTimeTo))); 
+	}
+	
+	private void setupSampleTimes() throws AixWidgetDrawException {
+		long sampleResolutionHrs = Long.MAX_VALUE;
+		
+		long lastIntervalPos = -1;
+		for (IntervalData inter : mIntervalData) {
+			if (inter.weatherIcon != 0) {
+				long intervalPos = (inter.timeFrom + inter.timeTo) / 2;
+				if (lastIntervalPos != -1 && lastIntervalPos != intervalPos) {
+					sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(intervalPos - lastIntervalPos));
+				}
+				lastIntervalPos = intervalPos;
+			}
+		}
+		
+		sampleResolutionHrs = Math.round((double)sampleResolutionHrs / (double)DateUtils.HOUR_IN_MILLIS);
+
+		if (sampleResolutionHrs > 6) {
+			sampleResolutionHrs = Long.MAX_VALUE;
+			long lastPointPos = -1;
+			for (PointData p : mPointData) {
+				if (lastPointPos != -1 && lastPointPos != p.mTime) {
+					sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(p.mTime - lastPointPos));
+				}
+				lastPointPos = p.mTime;
+			}
+			sampleResolutionHrs = Math.round((double)sampleResolutionHrs / (double)DateUtils.HOUR_IN_MILLIS);
+		}
+		
+		if ((sampleResolutionHrs < 1) || (sampleResolutionHrs > mNumHours / 2)) {
+			throw AixWidgetDrawException.buildMissingWeatherDataException();
+		}
+		
+		mNumHoursBetweenSamples = (int)sampleResolutionHrs;
+	}
+	
 	private void setupTimesAndPointData() throws AixWidgetDrawException {
 		// Set up time variables
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
@@ -1497,11 +1556,11 @@ public class AixDetailedWidget {
 		// Get temperature values
 		ArrayList<PointData> pointData = new ArrayList<PointData>();
 		
-		Uri.Builder builder = mViewUri.buildUpon();
-		builder.appendPath(AixViews.TWIG_POINTDATAFORECASTS);
+		Uri.Builder builder = mLocationUri.buildUpon();
+		builder.appendPath(AixLocations.TWIG_POINTDATAFORECASTS);
 		builder.appendQueryParameter("tu", mUseFahrenheit ? "f" : "c");
 
-		Cursor cursor = mContext.getContentResolver().query(
+		Cursor cursor = mResolver.query(
 				builder.build(),
 				null,
 				AixPointDataForecastColumns.TIME + ">=? AND " +
@@ -1522,118 +1581,19 @@ public class AixDetailedWidget {
 		mPointData = pointData;
 	}
 	
-	private void setupEpochAndTimes() {
-		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
-		truncateHour(calendar);
-		calendar.add(Calendar.HOUR_OF_DAY, 1);
-		long nextHour = calendar.getTimeInMillis();
+	private void setupWidgetDimensions(final boolean isLandscape) {
+		mWidgetWidth = (int)Math.round(((isLandscape
+				? (106.0f * mWidgetColumns) : (80.0f * mWidgetColumns)) - 2.0f) * mDP);
+		mWidgetHeight = (int)Math.round(((isLandscape
+				? (74.0f * mWidgetRows) : (100.0f * mWidgetRows)) - 2.0f) * mDP);
 		
-		long iconEpoch = 0;
-		long compare = Long.MIN_VALUE;
-		long intervalSize = Long.MAX_VALUE;
+		boolean isWidgetWidthOdd = mWidgetWidth % 2 == 1;
+		boolean isWidgetHeightOdd = mWidgetHeight % 2 == 1;
 		
-		for (IntervalData inter : mIntervalData) {
-			if (inter.weatherIcon == 0) continue;
-			long diff = nextHour - inter.timeFrom;
-			long interval = inter.timeTo - inter.timeFrom;
-			
-			if (interval < intervalSize) {
-				iconEpoch = 0;
-				intervalSize = interval;
-			}
-			
-			if ((interval == intervalSize) && ((diff >= 0 && (compare < 0 || diff < compare)) || (diff < 0 && diff > compare))) {
-				intervalSize = interval;
-				compare = diff;
-				iconEpoch = inter.timeFrom;
-			}
-		}
-		
-		long pointEpoch = 0;
-		compare = Long.MIN_VALUE;
-
-		for (PointData p : mPointData) {
-			long diff = calendar.getTimeInMillis() - p.mTime;
-			if ((diff >= 0 && (compare < 0 || diff < compare)) || (diff < 0 && diff > compare)) {
-				compare = diff;
-				pointEpoch = p.mTime;
-			}
-		}
-		
-		long epoch = Math.max(iconEpoch, pointEpoch);
-		
-		if (epoch == 0) {
-			// TODO Should probably throw an error here
-			epoch = nextHour;
-		}
-		
-		// Update timeFrom and timeTo to correct values given the epoch
-		calendar.setTimeInMillis(epoch);
-		//calendar.setTimeInMillis(timeTemp);
-		mTimeFrom = calendar.getTimeInMillis();
-		calendar.add(Calendar.HOUR_OF_DAY, mNumHours);
-		mTimeTo = calendar.getTimeInMillis();
-	}
-	
-	private void setupSampleTimes() throws AixWidgetDrawException {
-		long lastPointPos = -1;
-		long lastIntervalPos = -1;
-		
-		long sampleResolutionHrs = Long.MAX_VALUE;
-		
-		for (IntervalData inter : mIntervalData) {
-			if (inter.weatherIcon != 0) {
-				if (inter.timeFrom == inter.timeTo) {
-					if (lastPointPos != -1) {
-						sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(inter.timeFrom - lastPointPos));
-					}
-					lastPointPos = inter.timeFrom;
-				} else {
-					long intervalPos = (inter.timeFrom + inter.timeTo) / 2;
-					if (lastIntervalPos != -1) {
-						sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(intervalPos - lastIntervalPos));
-					}
-					lastIntervalPos = intervalPos;
-				}
-			}
-		}
-		
-		sampleResolutionHrs = Math.round(sampleResolutionHrs / DateUtils.HOUR_IN_MILLIS);
-		
-		if (sampleResolutionHrs > 6) {
-			lastPointPos = -1;
-			for (PointData p : mPointData) {
-				if (lastPointPos != -1) {
-					sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.round((p.mTime - lastPointPos) / DateUtils.HOUR_IN_MILLIS));
-				}
-				lastPointPos = p.mTime;
-			}
-		}
-		
-		if ((sampleResolutionHrs < 1) || (sampleResolutionHrs > mNumHours / 2)) {
-			throw AixWidgetDrawException.buildMissingWeatherDataException();
-		}
-		
-		mNumHoursBetweenSamples = (int)sampleResolutionHrs;
-	}
-	
-	private void setupWidgetSize() throws AixWidgetDrawException {
-		// Get widget size
-		int widgetSize = 0;
-		Cursor widgetCursor = mContext.getContentResolver().query(mWidgetUri, null, null, null, null);
-		if (widgetCursor != null) {
-			if (widgetCursor.moveToFirst()) {
-				widgetSize = widgetCursor.getInt(AixWidgetsColumns.SIZE_COLUMN);
-			}
-			widgetCursor.close();
-		}
-		
-		if (widgetSize == AixWidgetsColumns.SIZE_INVALID) {
-			throw AixWidgetDrawException.buildInvalidWidgetSizeException();
-		}
-		
-		mWidgetColumns = (widgetSize - 1) / 4 + 1;
-		mWidgetRows = (widgetSize - 1) % 4 + 1;
+		mWidgetBounds.set(
+				isWidgetWidthOdd ? 1 : 0,
+				isWidgetHeightOdd ? 1 : 0,
+				mWidgetWidth, mWidgetHeight);
 	}
 	
 	private void validatePointData() throws AixWidgetDrawException {
@@ -1652,7 +1612,7 @@ public class AixDetailedWidget {
 			}
 		}
 		
-		if (Float.isInfinite(mMaxTemperature) || Float.isInfinite(minTemperature)) {
+		if (Float.isInfinite(mTemperatureValueMax) || Float.isInfinite(minTemperature)) {
 			throw AixWidgetDrawException.buildMissingWeatherDataException();
 		}
 		
@@ -1661,8 +1621,8 @@ public class AixDetailedWidget {
 			throw AixWidgetDrawException.buildMissingWeatherDataException();
 		}
 		
-		mMaxTemperature = maxTemperature;
-		mMinTemperature = minTemperature;
+		mTemperatureValueMax = maxTemperature;
+		mTemperatureValueMin = minTemperature;
 	}
 	
 	private static class CatmullRom {
@@ -1697,7 +1657,7 @@ public class AixDetailedWidget {
 		}
 		
 		private static Path buildPath(ArrayList<PointData> pointData, long startTime, long endTime,
-				float tempRangeMax, float tempRangeMin, Rect graphRect)
+				float tempRangeMax, float tempRangeMin)
 		{
 			if (pointData.size() <= 0) return null;
 			Path path = new Path();
@@ -1718,11 +1678,6 @@ public class AixDetailedWidget {
 				PointF b2 = getB2(points, i - 1, 2.0f);
 				path.cubicTo(b1.x, b1.y, b2.x, b2.y, points[i].x, points[i].y);
 			}
-			
-			Matrix scaleMatrix = new Matrix();
-			scaleMatrix.setScale(graphRect.width(), graphRect.height());
-			path.transform(scaleMatrix);
-			path.offset(graphRect.left, graphRect.top);
 			
 			return path;
 		}

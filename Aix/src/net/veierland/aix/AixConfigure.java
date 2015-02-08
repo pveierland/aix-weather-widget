@@ -48,6 +48,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	private long mLocationId = -1;
 	private String mLocationName = null;
 	
+	private ContentResolver mResolver;
+	
 	private Button mAddWidgetButton = null;
 	private Preference mLocationPreference = null;
 	
@@ -62,7 +64,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	private EditTextPreference mBorderThicknessPreference = null;
 	private EditTextPreference mBorderRoundingPreference = null;
 	
-	private Uri mWidgetUri = null, mViewUri = null;
+	private Uri mWidgetUri = null, mViewUri = null, mLocationUri = null;
 	
 	private final static int SET_UNITS = 0;
 	private final static int CHANGE_COLORS = 1;
@@ -87,8 +89,9 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		String action = intent.getAction();
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		
+		mResolver = getContentResolver();
+		
 		if (Intent.ACTION_EDIT.equals(action)) {
-			ContentResolver resolver = getContentResolver();
 			mWidgetUri = intent.getData();
 			
 			if (mWidgetUri == null) {
@@ -96,7 +99,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 				return;
 			}
 			
-			Cursor widgetCursor = resolver.query(mWidgetUri, null, null, null, null);
+			Cursor widgetCursor = mResolver.query(mWidgetUri, null, null, null, null);
 				
 			if (widgetCursor != null) {
 				if (widgetCursor.moveToFirst()) {
@@ -113,26 +116,35 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 				return;
 			}
 			
-			Cursor locationCursor = resolver.query(
-					Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION),
-					null, null, null, null);
+			Cursor viewCursor = mResolver.query(mViewUri, null, null, null, null);
+			if (viewCursor != null) {
+				if (viewCursor.moveToFirst()) {
+					mLocationId = viewCursor.getInt(AixViews.LOCATION_COLUMN);
+				}
+				viewCursor.close();
+			}
+			
+			if (mLocationId <= 0) {
+				Toast.makeText(this, "Error: Please recreate widget", Toast.LENGTH_SHORT).show();
+				finish();
+				return;
+			}
+			
+			mLocationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, mLocationId);
+			
+			Cursor locationCursor = mResolver.query(mLocationUri, null, null, null, null);
 			if (locationCursor != null) {
 				if (locationCursor.moveToFirst()) {
-					mLocationId = locationCursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
+					//mLocationId = locationCursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
 					mLocationName = locationCursor.getString(AixLocationsColumns.TITLE_COLUMN);
 				}
 				locationCursor.close();
 			}
 			
-			
 			clearSettings(settings);
-			
-//			editor.putBoolean(getString(R.string.awake_only_bool), settings.getBoolean(getString(R.string.awake_only_bool), false));
-//			editor.putBoolean(getString(R.string.wifi_only_bool), settings.getBoolean(getString(R.string.wifi_only_bool), false));
-//			editor.putString(getString(R.string.update_rate_string), settings.getString(getString(R.string.update_rate_string), "0"));
-//			editor.putString(getString(R.string.provider_string), settings.getString(getString(R.string.provider_string), "1"));
+
 			Editor editor = settings.edit();
-			loadWidgetSettingsFromProvider(resolver, mWidgetUri, editor);
+			loadWidgetSettingsFromProvider(mWidgetUri, editor);
 			editor.commit();
 		} else {
 			loadSettingsBackup(settings);
@@ -191,8 +203,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		}
 	}
 
-	private void loadWidgetSettingsFromProvider(ContentResolver resolver, Uri widgetUri, Editor editor) {
-		Cursor widgetSettingsCursor = resolver.query(
+	private void loadWidgetSettingsFromProvider(Uri widgetUri, Editor editor) {
+		Cursor widgetSettingsCursor = mResolver.query(
 				Uri.withAppendedPath(widgetUri, AixWidgets.TWIG_SETTINGS),
 				null, null, null, null);
 		
@@ -336,9 +348,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		switch (requestCode) {
 		case SELECT_LOCATION: {
 			if (resultCode == Activity.RESULT_OK) {
-				Uri locationUri = Uri.parse(data.getStringExtra("location"));
-				Cursor cursor = getContentResolver().query(
-						locationUri, null, null, null, null);
+				mLocationUri = Uri.parse(data.getStringExtra("location"));
+				Cursor cursor = mResolver.query(mLocationUri, null, null, null, null);
 				if (cursor != null) {
 					if (cursor.moveToFirst()) {
 						mLocationId = cursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
@@ -377,10 +388,8 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			viewValues.put(AixViewsColumns.LOCATION, mLocationId);
 			viewValues.put(AixViewsColumns.TYPE, AixViewsColumns.TYPE_DETAILED);
 			
-			ContentResolver resolver = getContentResolver();
-			
-			resolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
-			resolver.update(mViewUri, viewValues, null, null);
+			mResolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
+			mResolver.update(mViewUri, viewValues, null, null);
 			
 			saveSettingsBackup(settings);
 			
@@ -390,10 +399,10 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 				clearWidgetStates(settings);
 				updateIntent = new Intent(AixService.ACTION_UPDATE_ALL, null, getApplicationContext(), AixService.class);
 			} else {
-				if (mLocationChanged) {
+				//if (mLocationChanged) {
 					int appWidgetId = (int)ContentUris.parseId(mWidgetUri);
 					if (appWidgetId != 0) clearWidgetDrawState(settings, appWidgetId);
-				}
+				//}
 				updateIntent = new Intent(AixService.ACTION_UPDATE_WIDGET, mWidgetUri, getApplicationContext(), AixService.class);
 			}
 			
@@ -412,7 +421,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		mProviderChanged = false;
 		
 		if (mLocationId != -1) {
-			Cursor locationCursor = getContentResolver().query(
+			Cursor locationCursor = mResolver.query(
 					AixLocations.CONTENT_URI,
 					null, BaseColumns._ID + "=" + mLocationId, null, null);
 			if (locationCursor != null) {
@@ -516,7 +525,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		
 		Intent intent = getIntent();
 		String action = intent.getAction();
-				
+		
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 				
 		ContentValues widgetSettings = new ContentValues();
@@ -526,11 +535,9 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 		viewValues.put(AixViewsColumns.LOCATION, mLocationId);
 		viewValues.put(AixViewsColumns.TYPE, AixViewsColumns.TYPE_DETAILED);
 		
-		ContentResolver resolver = getContentResolver();
-		
 		int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
 		if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-			Uri viewUri = resolver.insert(AixViews.CONTENT_URI, viewValues);
+			Uri viewUri = mResolver.insert(AixViews.CONTENT_URI, viewValues);
 			if (viewUri != null) {
 				// Get the size of the widget
 				//AppWidgetManager mgr = AppWidgetManager.getInstance(getApplicationContext());
@@ -546,10 +553,10 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 				//}
 				
 				widgetValues.put(AixWidgetsColumns.VIEWS, viewUri.getLastPathSegment());
-				mWidgetUri = resolver.insert(AixWidgets.CONTENT_URI, widgetValues);
+				mWidgetUri = mResolver.insert(AixWidgets.CONTENT_URI, widgetValues);
 				
 				if (mWidgetUri != null) {
-					resolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
+					mResolver.insert(Uri.withAppendedPath(mWidgetUri, AixWidgets.TWIG_SETTINGS), widgetSettings);
 					
 					Intent updateIntent = new Intent(AixService.ACTION_UPDATE_WIDGET, mWidgetUri, getApplicationContext(), AixService.class);
 					startService(updateIntent);
@@ -639,15 +646,14 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 			
 			return true;
 		} else if (preference == mProviderPreference) {
-			ContentResolver resolver = getContentResolver();
-			resolver.delete(AixPointDataForecasts.CONTENT_URI, null, null);
-			resolver.delete(AixIntervalDataForecasts.CONTENT_URI, null, null);
+			mResolver.delete(AixPointDataForecasts.CONTENT_URI, null, null);
+			mResolver.delete(AixIntervalDataForecasts.CONTENT_URI, null, null);
 			
 			ContentValues values = new ContentValues();
 			values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
 			values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
 			values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
-			resolver.update(AixLocations.CONTENT_URI, values, null, null);
+			mResolver.update(AixLocations.CONTENT_URI, values, null, null);
 			
 			mProviderChanged = true;
 			return true;

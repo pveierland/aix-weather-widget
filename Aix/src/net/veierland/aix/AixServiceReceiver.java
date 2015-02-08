@@ -20,7 +20,7 @@ public class AixServiceReceiver extends BroadcastReceiver {
 		if (intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
 			NetworkInfo networkInfo = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
 			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-			if (settings.getBoolean("globaL_needwifi", false)) {
+			if (settings.getBoolean("global_needwifi", false)) {
 				Editor editor = settings.edit();
 				editor.putBoolean("global_needwifi", false);
 				editor.commit();

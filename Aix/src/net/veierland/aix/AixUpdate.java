@@ -21,7 +21,6 @@ import static net.veierland.aix.AixUtils.WEATHER_ICON_RAINTHUNDER;
 import static net.veierland.aix.AixUtils.WEATHER_ICON_SLEET;
 import static net.veierland.aix.AixUtils.WEATHER_ICON_SNOW;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -105,6 +104,8 @@ public class AixUpdate {
 	private final static int PROVIDER_NWS = 3;
 	
 	private int[] mViews;
+	private int[] mViewLocations;
+	private int[] mViewTypes;
 	
 	private long mCurrentLocalTime;
 	private long mCurrentUtcTime;
@@ -120,8 +121,8 @@ public class AixUpdate {
 	
 	private Uri mLandscapeUri;
 	private Uri mPortraitUri;
-	private Uri mViewUri;
 	private Uri mWidgetUri;
+	private Uri mLocationUri;
 	
 	private float mLatitude;
 	private float mLongitude;
@@ -147,6 +148,7 @@ public class AixUpdate {
 	
 	public void process() throws Exception {
 		Log.d(TAG, "process() started!");
+		
 		mCurrentLocalTime = System.currentTimeMillis();
 		mCurrentUtcTime = Calendar.getInstance(mUtcTimeZone).getTimeInMillis();
 		
@@ -157,6 +159,7 @@ public class AixUpdate {
 			updateWidgetRemoteViews("Error: Please recreate widget", true);
 			return;
 		}
+		getViewInfo();
 		if (!getLocationInfo()) {
 			Log.d(TAG, "No location info found!");
 			updateWidgetRemoteViews("No location data!", true);
@@ -232,23 +235,19 @@ public class AixUpdate {
 			e.printStackTrace();
 		}
 		
-		/*
 		try {
 			AixService.deleteCacheFiles(mContext, mAppWidgetId);
 		} catch (Exception e) {
-			Toast.makeText(mContext, "SOMETHING BAD HAPPENED (3)", Toast.LENGTH_SHORT).show();
 			Log.d(TAG, "Error occured when clearing cache files. " + e.getMessage());
 			e.printStackTrace();
 		}
-
-		*/
 		
-		try {
-			AixService.deleteTemporaryFiles(mContext, mAppWidgetId);
-		} catch (Exception e) {
-			Log.d(TAG, "Error occured when clearing temporary files. " + e.getMessage());
-			e.printStackTrace();
-		}
+//		try {
+//			AixService.deleteTemporaryFiles(mContext, mAppWidgetId, mPortraitFileName, mLandscapeFileName);
+//		} catch (Exception e) {
+//			Log.d(TAG, "Error occured when clearing temporary files. " + e.getMessage());
+//			e.printStackTrace();
+//		}
 		
 		scheduleUpdate(updateTime);
 		
@@ -325,13 +324,28 @@ public class AixUpdate {
 		return isWidgetFound;
 	}
 	
+	private void getViewInfo() throws Exception {
+		mViewLocations = new int[mViews.length];
+		mViewTypes = new int[mViews.length];
+		
+		for (int i = 0; i < mViews.length; i++) {
+			Uri viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, mViews[i]);
+			Cursor viewCursor = mResolver.query(viewUri, null, null, null, null);
+			if (viewCursor != null) {
+				if (viewCursor.moveToFirst()) {
+					mViewLocations[i] = viewCursor.getInt(AixViews.LOCATION_COLUMN);
+					mViewTypes[i] = viewCursor.getInt(AixViews.TYPE_COLUMN);
+				}
+				viewCursor.close();
+			}
+		}
+	}
+	
 	private boolean getLocationInfo() {
 		boolean isLocationFound = false;
 		
-		mViewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, mViews[0]);
-		Cursor locationCursor = mResolver.query(
-				Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION),
-				null, null, null, null);
+		mLocationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, mViewLocations[0]);
+		Cursor locationCursor = mResolver.query(mLocationUri, null, null, null, null);
 		
 		if (locationCursor != null) {
 			if (locationCursor.moveToFirst()) {
@@ -350,13 +364,12 @@ public class AixUpdate {
 			try {
 				mLatitude = Float.parseFloat(mLatitudeString);
 				mLongitude = Float.parseFloat(mLongitudeString);
-				return true;
+				isLocationFound = true;
 			} catch (NumberFormatException e) {
 				Log.d(TAG, "Error parsing lat/lon! lat=" + mLatitudeString + " lon=" + mLongitudeString);
-				return false;
 			}
 		}
-		return false;
+		return isLocationFound;
 	}
 	
 	private void scheduleUpdate(long updateTime) {
@@ -380,37 +393,13 @@ public class AixUpdate {
 	}
 	
 	private void renderWidget() throws AixWidgetDrawException, IOException {
-		/*
 		mPortraitFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_portrait.png";
 		mLandscapeFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_landscape.png";
 		
-		AixDetailedWidget widget = AixDetailedWidget.build(mContext.getApplicationContext(), mWidgetUri, mViewUri);
+		AixDetailedWidget widget = AixDetailedWidget.build(mContext.getApplicationContext(), mWidgetUri, mLocationUri, mWidgetSize);
 		
 		mPortraitUri = renderWidget(widget, mPortraitFileName, false);
 		mLandscapeUri = renderWidget(widget, mLandscapeFileName, true);
-		*/
-		mPortraitFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_portrait.png";
-		
-		AixDetailedWidget widget = AixDetailedWidget.build(mContext.getApplicationContext(), mWidgetUri, mViewUri);
-		
-		Bitmap bitmap = widget.render(false);
-		File file = new File(mContext.getCacheDir(), mPortraitFileName);
-		FileOutputStream out = new FileOutputStream(file);
-		bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-		out.flush();
-		out.close();
-		
-		mLandscapeFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_landscape.png";
-		bitmap = widget.render(true);
-		file = new File(mContext.getCacheDir(), mLandscapeFileName);
-		out = new FileOutputStream(file);
-		bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-		out.flush();
-		out.close();
-		
-		String uriString = "content://net.veierland.aix/aixrender/" + mAppWidgetId + '/' + mCurrentLocalTime;
-		mPortraitUri = Uri.parse(uriString + "/portrait");
-		mLandscapeUri = Uri.parse(uriString + "/landscape");
 	}
 	
 	private Uri renderWidget(AixDetailedWidget widget, String fileName, boolean isLandscape) throws AixWidgetDrawException, IOException {
@@ -420,7 +409,10 @@ public class AixUpdate {
 		bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
 		out.flush();
 		out.close();
-		return Uri.parse("file://" + mContext.getFileStreamPath(fileName));
+		
+		String orientation = isLandscape ? "/landscape" : "/portrait";
+		return Uri.parse("content://net.veierland.aix/aixrender/" +
+				mAppWidgetId + '/' + mCurrentLocalTime + orientation);
 	}
 
 	private void updateWidgetRemoteViews() {
@@ -502,7 +494,7 @@ public class AixUpdate {
 		values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
 		values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
 		values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
-		mResolver.update(Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION), values, null, null);
+		mResolver.update(mLocationUri, values, null, null);
 	}
 	
 	private String getTimezone() throws IOException, Exception {
@@ -536,7 +528,7 @@ public class AixUpdate {
 				timezoneId = jObject.getString("timezoneId");
 				
 				String countryCode = jObject.getString("countryCode");
-				Log.d(TAG, "countryCode=" + countryCode);
+				Log.d(TAG, "timezoneId=" + timezoneId + ",countryCode=" + countryCode);
 				if (!TextUtils.isEmpty(countryCode)) {
 					String widgetCountryCode = "global_country_" + mAppWidgetId;
 					SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(mContext);
@@ -718,7 +710,7 @@ public class AixUpdate {
 	}
 	
 	private void updateData() throws BadDataException, IOException, Exception {
-		Log.d(TAG, "updateData() started uri=" + mViewUri);
+		Log.d(TAG, "updateData() started uri=" + mLocationUri);
 		
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		long timeNow = calendar.getTimeInMillis();
@@ -761,7 +753,7 @@ public class AixUpdate {
 	}
 	
 	private void updateWeatherDataMET(long timeNow, String timeZoneId) throws BadDataException, IOException, Exception {
-		Log.d(TAG, "updateWeatherDataMET(" + timeNow + "," + timeZoneId + "): started uri=" + mViewUri);
+		Log.d(TAG, "updateWeatherDataMET(" + timeNow + "," + timeZoneId + "): started uri=" + mLocationUri);
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 		dateFormat.setTimeZone(mUtcTimeZone);
@@ -902,7 +894,7 @@ public class AixUpdate {
 			contentValues.put(AixLocationsColumns.LAST_FORECAST_UPDATE, timeNow);
 			contentValues.put(AixLocationsColumns.FORECAST_VALID_TO, forecastValidTo);
 			contentValues.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, nextUpdate);
-			mResolver.update(Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION), contentValues, null, null);
+			mResolver.update(mLocationUri, contentValues, null, null);
 
 			// Remove duplicates from weather data
 			Log.d(TAG, "Removed " + mResolver.update(AixPointDataForecasts.CONTENT_URI, null, null, null) + " redundant points from db.");
@@ -991,11 +983,17 @@ public class AixUpdate {
 	private static final int PARSE_WEATHER_ICONS_LINK_MASK = PARSE_WEATHER_ICONS_FLAG;
 	
 	private void updateWeatherDataNOAA(long timeNow, String timeZoneId) throws BadDataException, IOException, Exception {
-		Log.d(TAG, "updateWeatherDataNOAA(" + timeNow + "," + timeZoneId + "): started uri=" + mViewUri);
+		Log.d(TAG, "updateWeatherDataNOAA(" + timeNow + "," + timeZoneId + "): started uri=" + mLocationUri);
+		
+		updateWidgetRemoteViews("Downloading weather data...", false);
+		
+		String url = "http://www.weather.gov/forecasts/xml/sample_products/browser_interface/ndfdXMLclient.php?lat="
+				+ mLatitudeString + "&lon=" + mLongitudeString + "&product=time-series";
+		
+		Log.d(TAG, url);
 		
 		// Retrieve weather data
-		HttpGet httpGet = new HttpGet("http://www.weather.gov/forecasts/xml/sample_products/browser_interface/ndfdXMLclient.php?lat="
-				+ mLatitudeString + "&lon=" + mLongitudeString + "&product=time-series");//&temp=temp&qpf=qpf&icons=icons&rh=rh");
+		HttpGet httpGet = new HttpGet(url);//&temp=temp&qpf=qpf&icons=icons&rh=rh");
 		httpGet.addHeader("Accept-Encoding", "gzip");
 
 		HttpResponse response = setupHttpClient().execute(httpGet);
@@ -1005,8 +1003,6 @@ public class AixUpdate {
 		if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
 			content = new GZIPInputStream(content);
 		}
-		
-		Uri contentProviderUri = null;
 		
 		updateWidgetRemoteViews("Parsing weather data...", false);
 		
@@ -1228,7 +1224,8 @@ public class AixUpdate {
 			contentValues.put(AixLocationsColumns.LAST_FORECAST_UPDATE, timeNow);
 			contentValues.put(AixLocationsColumns.FORECAST_VALID_TO, timeNow + 18 * DateUtils.HOUR_IN_MILLIS);
 			contentValues.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, timeNow + 2 * DateUtils.HOUR_IN_MILLIS);
-			mResolver.update(Uri.withAppendedPath(mViewUri, AixViews.TWIG_LOCATION), contentValues, null, null);
+			
+			mResolver.update(mLocationUri, contentValues, null, null);
 			
 			// Remove duplicates from weather data
 			Log.d(TAG, "Removed " + mResolver.update(AixPointDataForecasts.CONTENT_URI, null, null, null) + " redundant points from db.");
@@ -1236,7 +1233,6 @@ public class AixUpdate {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
 	}
 	
 	private HttpClient setupHttpClient() {

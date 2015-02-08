@@ -20,6 +20,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.util.Log;
 
 public class AixService extends IntentService {
@@ -158,6 +159,39 @@ public class AixService extends IntentService {
 				String[] s = files[i].split("_");
 				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
 					context.deleteFile(files[i]);
+				}
+			}
+		}
+	}
+	
+	public static void deleteTemporaryFiles(Context context, int appWidgetId, String portraitFileName, String landscapeFileName) {
+		String appWidgetIdString = Integer.toString(appWidgetId);
+		String[] files = context.fileList();
+		for (int i = 0; i < files.length; i++) {
+			if (files[i].startsWith("aix") && !files[i].equals(portraitFileName) && !files[i].equals(landscapeFileName)) {
+				String[] s = files[i].split("_");
+				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
+					context.deleteFile(files[i]);
+				}
+			}
+		}
+	}
+	
+	public static void deleteTemporaryFiles(Context context, String appWidgetId, long updateTime) {
+		String[] files = context.fileList();
+		for (int i = 0; i < files.length; i++) {
+			String fileName = files[i];
+			if (fileName != null && fileName.startsWith("aix")) {
+				String[] s = fileName.split("_");
+				if (s != null && s.length == 4) {
+					try {
+						long filetime = Long.parseLong(s[2]);
+						if (	(s[1].equals(appWidgetId) && filetime < updateTime) ||
+								(filetime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS))
+						{
+							context.deleteFile(fileName);
+						}
+					} catch (NumberFormatException e) { }
 				}
 			}
 		}

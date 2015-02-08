@@ -11,6 +11,60 @@ import java.util.Calendar;
 
 public class AixUtils {
 
+	public static final int[] WEATHER_ICONS_DAY = {
+		R.drawable.weather_icon_day_sun,
+		R.drawable.weather_icon_day_polar_lightcloud,
+		R.drawable.weather_icon_day_partlycloud,
+		R.drawable.weather_icon_cloud,
+		R.drawable.weather_icon_day_lightrainsun,
+		R.drawable.weather_icon_day_polar_lightrainthundersun,
+		R.drawable.weather_icon_day_polar_sleetsun,
+		R.drawable.weather_icon_day_snowsun,
+		R.drawable.weather_icon_lightrain,
+		R.drawable.weather_icon_rain,
+		R.drawable.weather_icon_rainthunder,
+		R.drawable.weather_icon_sleet,
+		R.drawable.weather_icon_snow,
+		R.drawable.weather_icon_snowthunder,
+		R.drawable.weather_icon_fog
+	};
+
+	public static final int[] WEATHER_ICONS_NIGHT = {
+		R.drawable.weather_icon_night_sun,
+		R.drawable.weather_icon_night_lightcloud,
+		R.drawable.weather_icon_night_partlycloud,
+		R.drawable.weather_icon_cloud,
+		R.drawable.weather_icon_night_lightrainsun,
+		R.drawable.weather_icon_night_lightrainthundersun,
+		R.drawable.weather_icon_night_sleetsun,
+		R.drawable.weather_icon_night_snowsun,
+		R.drawable.weather_icon_lightrain,
+		R.drawable.weather_icon_rain,
+		R.drawable.weather_icon_rainthunder,
+		R.drawable.weather_icon_sleet,
+		R.drawable.weather_icon_snow,
+		R.drawable.weather_icon_snowthunder,
+		R.drawable.weather_icon_fog
+	};
+
+	public static final int[] WEATHER_ICONS_POLAR = {
+		R.drawable.weather_icon_polar_sun,
+		R.drawable.weather_icon_day_polar_lightcloud,
+		R.drawable.weather_icon_polar_partlycloud,
+		R.drawable.weather_icon_cloud,
+		R.drawable.weather_icon_polar_lightrainsun,
+		R.drawable.weather_icon_day_polar_lightrainthundersun,
+		R.drawable.weather_icon_day_polar_sleetsun,
+		R.drawable.weather_icon_polar_snowsun,
+		R.drawable.weather_icon_lightrain,
+		R.drawable.weather_icon_rain,
+		R.drawable.weather_icon_rainthunder,
+		R.drawable.weather_icon_sleet,
+		R.drawable.weather_icon_snow,
+		R.drawable.weather_icon_snowthunder,
+		R.drawable.weather_icon_fog
+	};
+	
 	public static final int WEATHER_ICON_DAY_SUN = 1;
 	public static final int WEATHER_ICON_NIGHT_SUN = 1;
 	public static final int WEATHER_ICON_POLAR_SUN = 1;
@@ -38,6 +92,24 @@ public class AixUtils {
 	public static final int WEATHER_ICON_SNOWTHUNDER = 14;
 	public static final int WEATHER_ICON_FOG = 15;
 	
+	public static final int BORDER_COLOR = 0;
+	public static final int BACKGROUND_COLOR = 1;
+	public static final int TEXT_COLOR = 2;
+	public static final int PATTERN_COLOR = 3;
+	public static final int DAY_COLOR = 4;
+	public static final int NIGHT_COLOR = 5;
+	public static final int GRID_COLOR = 6;
+	public static final int GRID_OUTLINE_COLOR = 7;
+	public static final int MAX_RAIN_COLOR = 8;
+	public static final int MIN_RAIN_COLOR = 9;
+	public static final int ABOVE_FREEZING_COLOR = 10;
+	public static final int BELOW_FREEZING_COLOR = 11;
+	
+	public static final int TOP_TEXT_NEVER = 1;
+	public static final int TOP_TEXT_LANDSCAPE = 2;
+	public static final int TOP_TEXT_PORTRAIT = 3;
+	public static final int TOP_TEXT_ALWAYS = 4;
+	
 	private AixUtils() {
 		
 	}
@@ -52,6 +124,24 @@ public class AixUtils {
 
 	public final static int clamp(int value, int min, int max) {
 		int result = value;
+		if (min == max) {
+			if (value != min) {
+				result = min;
+			}
+		} else if (min < max) {
+			if (value < min) {
+				result = min;
+			} else if (value > max) {
+				result = max;
+			}
+		} else {
+			result = clamp(value, max, min);
+		}
+		return result;
+	}
+	
+	public final static long clamp(long value, long min, long max) {
+		long result = value;
 		if (min == max) {
 			if (value != min) {
 				result = min;

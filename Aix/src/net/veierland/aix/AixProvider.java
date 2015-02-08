@@ -1,5 +1,6 @@
 package net.veierland.aix;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -7,13 +8,16 @@ import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.BaseColumns;
+import android.sax.StartElementListener;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -33,11 +37,46 @@ public class AixProvider extends ContentProvider {
 		
 		/* A colon-separated array in string format of the view IDs linked to the widget */
 		public static final String VIEWS = "views";
+		
+		/* The temperature units the view will use; Celsius or Fahrenheit */
+		public static final String TEMPERATURE_UNITS = "temperatureUnits";
+		public static final int TEMPERATURE_UNITS_CELSIUS = 1;
+		public static final int TEMPERATURE_UNITS_FAHRENHEIT = 2;
+		
+		public static final String PRECIPITATION_UNITS = "precipitationUnits";
+		public static final int PRECIPITATION_UNITS_MM = 1;
+		public static final int PRECIPITATION_UNITS_INCHES = 2;
+		
+		public static final String PRECIPITATION_SCALE = "precipitationScale";
 
+		public static final String BACKGROUND_COLOR = "backgroundColor";
+		public static final String TEXT_COLOR = "textColor";
+		public static final String LOCATION_BACKGROUND_COLOR = "locationBackgroundColor";
+		public static final String LOCATION_TEXT_COLOR = "locationTextColor";
+		public static final String GRID_COLOR = "gridColor";
+		public static final String GRID_OUTLINE_COLOR = "gridOutlineColor";
+		public static final String MAX_RAIN_COLOR = "maxRainColor";
+		public static final String MIN_RAIN_COLOR = "minRainColor";
+		public static final String ABOVE_FREEZING_COLOR = "aboveFreezingColor";
+		public static final String BELOW_FREEZING_COLOR = "belowFreezingColor";
+		
 		public static final int APPWIDGET_ID_COLUMN = 0;
 		public static final int TITLE_COLUMN = 1;
 		public static final int SIZE_COLUMN = 2;
 		public static final int VIEWS_COLUMN = 3;
+		public static final int TEMPERATURE_UNITS_COLUMN = 4;
+		public static final int PRECIPITATION_UNITS_COLUMN = 5;
+		public static final int PRECIPITATION_SCALE_COLUMN = 6;
+		public static final int BACKGROUND_COLOR_COLUMN = 7;
+		public static final int TEXT_COLOR_COLUMN = 8;
+		public static final int LOCATION_BACKGROUND_COLOR_COLUMN = 9;
+		public static final int LOCATION_TEXT_COLOR_COLUMN = 10;
+		public static final int GRID_COLOR_COLUMN = 11;
+		public static final int GRID_OUTLINE_COLOR_COLUMN = 12;
+		public static final int MAX_RAIN_COLOR_COLUMN = 13;
+		public static final int MIN_RAIN_COLOR_COLUMN = 14;
+		public static final int ABOVE_FREEZING_COLOR_COLUMN = 15;
+		public static final int BELOW_FREEZING_COLOR_COLUMN = 16;
 	}
 	
 	public static class AixWidgets implements BaseColumns, AixWidgetsColumns {
@@ -56,23 +95,20 @@ public class AixProvider extends ContentProvider {
 		/* The ID of the location of the forecast the view is showing */
 		public static final String LOCATION = "location";
 		
-		/* The temperature units the view will use; Celsius or Fahrenheit */
-		public static final String UNITS = "units";
-		public static final int UNITS_CELSIUS = 1;
-		public static final int UNITS_FAHRENHEIT = 2;
-		
 		/* The period of the view; 24 hours / 48 hours / 96 hours */
 		public static final String PERIOD = "period";
 		public static final int PERIOD_24_HOURS = 1;
 		public static final int PERIOD_48_HOURS = 2;
 		public static final int PERIOD_96_HOURS = 3;
 		
+		public static final String VIEW_SETTINGS = "widgetSettings";
+		
 		public static final int VIEWS_ID_COLUMN = 0;
 		public static final int TITLE_COLUMN = 1;
 		public static final int TYPE_COLUMN = 2;
 		public static final int LOCATION_COLUMN = 3;
-		public static final int UNITS_COLUMN = 4;
-		public static final int PERIOD_COLUMN = 5;
+		public static final int PERIOD_COLUMN = 4;
+		public static final int VIEW_SETTINGS_COLUMN = 5;
 	}
 	
 	public static class AixViews implements BaseColumns, AixViewsColumns {
@@ -178,10 +214,13 @@ public class AixProvider extends ContentProvider {
 	private static class DatabaseHelper extends SQLiteOpenHelper {
 		private static final String DATABASE_NAME = "aix_database.db";
 		private static final int VERSION_INITIAL = 1;
-		private static final int DATABASE_VERSION = VERSION_INITIAL;
+		private static final int DATABASE_VERSION = 5;
+		
+		private Context mContext;
 		
 		public DatabaseHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
+			mContext = context;
 		}
 
 		@Override
@@ -190,15 +229,28 @@ public class AixProvider extends ContentProvider {
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY,"
 					+ AixWidgetsColumns.TITLE + " TEXT,"
 					+ AixWidgetsColumns.SIZE + " INTEGER,"
-					+ AixWidgetsColumns.VIEWS + " STRING);");
+					+ AixWidgetsColumns.VIEWS + " STRING,"
+					+ AixWidgetsColumns.TEMPERATURE_UNITS + " INTEGER,"
+					+ AixWidgetsColumns.PRECIPITATION_UNITS + " INTEGER,"
+					+ AixWidgetsColumns.PRECIPITATION_SCALE + " REAL,"
+					+ AixWidgetsColumns.BACKGROUND_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.TEXT_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.LOCATION_BACKGROUND_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.LOCATION_TEXT_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.GRID_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.GRID_OUTLINE_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.MAX_RAIN_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.MIN_RAIN_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.ABOVE_FREEZING_COLOR + " INTEGER,"
+					+ AixWidgetsColumns.BELOW_FREEZING_COLOR + " INTEGER);");
 			
 			db.execSQL("CREATE TABLE " + TABLE_AIXVIEWS + " ("
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY,"
 					+ AixViewsColumns.TITLE + " TEXT,"
 					+ AixViewsColumns.TYPE + " INTEGER,"
 					+ AixViewsColumns.LOCATION + " INTEGER,"
-					+ AixViewsColumns.UNITS + " INTEGER,"
-					+ AixViewsColumns.PERIOD + " INTEGER);");
+					+ AixViewsColumns.PERIOD + " INTEGER,"
+					+ AixViewsColumns.VIEW_SETTINGS + " STRING);");
 			
 			db.execSQL("CREATE TABLE " + TABLE_AIXLOCATIONS + " ("
 					+ BaseColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -229,11 +281,82 @@ public class AixProvider extends ContentProvider {
 
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+			ArrayList<ContentValues> widgets = new ArrayList<ContentValues>();
+			ArrayList<ContentValues> views = new ArrayList<ContentValues>();
+			ArrayList<ContentValues> locations = new ArrayList<ContentValues>();
+			
+			Cursor cursor = db.query(TABLE_AIXWIDGETS, null, null, null, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					do {
+						ContentValues widget = new ContentValues();
+						widget.put(BaseColumns._ID, cursor.getLong(0));
+						widget.put(AixWidgetsColumns.VIEWS, cursor.getLong(3));
+						widgets.add(widget);
+					} while (cursor.moveToNext());
+				}
+				cursor.close();
+			}
+			cursor = db.query(TABLE_AIXVIEWS, null, null, null, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					do {
+						ContentValues view = new ContentValues();
+						long viewId = cursor.getLong(0);
+						view.put(BaseColumns._ID, viewId);
+						view.put(AixViewsColumns.LOCATION, cursor.getLong(3));
+						
+						String unit = cursor.getString(4);
+						if (unit != null) {
+							for (ContentValues widget : widgets) {
+								if (widget.containsKey(AixWidgetsColumns.VIEWS)) {
+									if (widget.getAsLong(AixWidgetsColumns.VIEWS) == viewId) {
+										widget.put(AixWidgetsColumns.TEMPERATURE_UNITS, unit);
+									}
+								}
+							}
+						}
+						views.add(view);
+					} while (cursor.moveToNext());
+				}
+				cursor.close();
+			}
+			cursor = db.query(TABLE_AIXLOCATIONS, null, null, null, null, null, null);
+			if (cursor != null) {
+				if (cursor.moveToFirst()) {
+					do {
+						ContentValues location = new ContentValues();
+						location.put(BaseColumns._ID, cursor.getLong(0));
+						location.put(AixLocationsColumns.TITLE, cursor.getString(1));
+						location.put(AixLocationsColumns.TITLE_DETAILED, cursor.getString(2));
+						location.put(AixLocationsColumns.TIME_ZONE, cursor.getString(3));
+						location.put(AixLocationsColumns.LATITUDE, cursor.getString(6));
+						location.put(AixLocationsColumns.LONGITUDE, cursor.getString(7));
+						locations.add(location);
+					} while (cursor.moveToNext());
+				}
+				cursor.close();
+			}
+			
 			db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXWIDGETS);
 			db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXVIEWS);
 			db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXLOCATIONS);
 			db.execSQL("DROP TABLE IF EXISTS " + TABLE_AIXFORECASTS);
 			onCreate(db);
+			
+			for (ContentValues widget : widgets) {
+				db.insert(TABLE_AIXWIDGETS, null, widget);
+			}
+			for (ContentValues view : views) {
+				db.insert(TABLE_AIXVIEWS, null, view);
+			}
+			for (ContentValues location : locations) {
+				db.insert(TABLE_AIXLOCATIONS, null, location);
+			}
+
+//			Intent updateIntent = new Intent(AixService.ACTION_UPDATE_ALL);
+//			updateIntent.setClass(mContext, AixService.class);
+//			mContext.startService(updateIntent);
 		}
 		
 	}
@@ -594,7 +717,7 @@ public class AixProvider extends ContentProvider {
 //		}
 		}
 
-		return qb.query(db, projection, selection, selectionArgs, null, null, null);
+		return qb.query(db, projection, selection, selectionArgs, null, null, sortOrder);
 	}
 
 	@Override

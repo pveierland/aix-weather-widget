@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#f000</color>
+    
+	<color name="black">#f000</color>
     <color name="white">#ffff</color>
     <color name="semi_white">#f888</color>
     <color name="semi_black">#f666</color>
+    
+    <color name="background_default">#99404040</color>
+    <color name="text_default">#FFFFFFFF</color>
+    <color name="location_background_default">#CC808080</color>
+    <color name="location_text_default">#FFFFFFFF</color>
+    <color name="grid_default">#33FFFFFF</color>
+    <color name="grid_outline_default">#FFFFFFFF</color>
+	<color name="maximum_rain_default">#CC68CFE8</color>
+	<color name="minimum_rain_default">#CC68CFE8</color>
+	<color name="above_freezing_default">#FFF01C1C</color>
+	<color name="below_freezing_default">#FF0280D9</color>
+
 </resources>

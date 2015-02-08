@@ -1,15 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<!-- 
 	<string name="measurement_unit_celsius">Celsius</string>
 	<string name="measurement_unit_fahrenheit">Fahrenheit</string>
+ -->
 	
 	<string name="header_widget_settings">Widget Settings</string>
 	<string name="header_location_settings">Select location</string>
 	
 	<string name="title_measurement_unit">Measurement unit</string>
 	
+	<string name="preference_temperature_units">temperature_units</string>
+    <string name="preference_precipitation_units">precipitation_units</string>
+    <string name="preference_precipitation_title">Select the unit of measure to use for forecasted rain. For millimetres, each grid is 1 mm of rain. For inches, each grid represents 0.05 inches of rain.</string>
+	
+	<string name="preference_background_color">preference_background_color</string>
+	<string name="preference_text_color">preference_text_color</string>
+	<string name="preference_location_background_color">preference_location_background_color</string>
+	<string name="preference_location_text_color">preference_location_text_color</string>
+	<string name="preference_grid_color">preference_grid_color</string>
+	<string name="preference_grid_outline_color">preference_grid_outline_color</string>
+	<string name="preference_max_rain_color">preference_max_rain_color</string>
+	<string name="preference_min_rain_color">preference_min_rain_color</string>
+	<string name="preference_above_freezing_color">preference_above_freezing_color</string>
+	<string name="preference_below_freezing_color">preference_below_freezing_color</string>
+	
+	<string name="preference_background_color_title">Background color</string>
+	<string name="preference_text_color_title">Text color</string>
+	<string name="preference_text_color_summary">Used for time and temperature labels</string>
+	<string name="preference_location_background_color_title">Location background color</string>
+	<string name="preference_location_text_color_title">Location text color</string>
+	<string name="preference_grid_color_title">Grid color</string>
+	<string name="preference_grid_outline_color_title">Grid outline color</string>
+	<string name="preference_max_rain_color_title">Maximum rain bar color</string>
+	<string name="preference_min_rain_color_title">Minimum rain bar color</string>
+	<string name="preference_above_freezing_color_title">Above freezing color</string>
+	<string name="preference_below_freezing_color_title">Below freezing color</string>
+	
+	<string name="color_settings_category_main_title">Main colors</string>
+	<string name="color_settings_category_grid_title">Grid colors</string>
+	<string name="color_settings_category_indicator_title">Indicator colors</string>
+	
+	<string name="preference_awake_only">preference_awake_only</string>
+	<string name="preference_awake_only_title">Only when awake</string>
+	<string name="preference_awake_only_summary_on">The device will not be awoken to update weather data.</string>
+	<string name="preference_awake_only_summary_off">Weather data will be updated even when the device is sleeping.</string>
+	<string name="preference_wifi_only">preference_wifi_only</string>
+	<string name="preference_wifi_only_title">WiFi only</string>
+	<string name="preference_wifi_only_summary_on">Weather data will only be updated when a WiFi connection is active.</string>
+	<string name="preference_wifi_only_summary_off">Weather data will be updated using any connection type.</string>
+	<string name="preference_update_rate">preference_update_rate</string>
+	<string name="preference_update_rate_title">Update rate</string>
+	<string name="preference_update_rate_summary">Adjust how often weather data will be retrieved</string>
+	
 	<string name="add_location">Add location</string>
-	<string name="app_description">Weather widget showing detailed 24-hour forecasts in a 1x4 format.</string>	
+	<string name="app_description">Weather widget showing detailed 24-hour forecasts in a 4x1 format.</string>	
 	
 	<string name="button_add_widget_label">Add widget</string>	
 	<string name="button_add_location_label">Add location</string>
@@ -19,10 +64,23 @@
 	
 	<string name="dialog_search_location">Search for location</string>
 
+	<string name="dialog_color_title">Select color</string>
+	<string name="dialog_color_alpha">Alpha:</string>
+	<string name="dialog_color_code">HTML color code:</string>
+
 	<string name="select_location">Select location</string>
 
     <string name="title_configure">Aix Weather: Configure widget</string>
     <string name="title_select_location">Aix Weather: Select location</string>
+    <string name="title_unitsettings">Aix Weather: Unit Settings</string>
+    
+    <string name="unit_settings_category">Unit settings</string>
+	<string name="unit_settings_precipitation_summary">Each grid in the Y axis represents 1 mm or 0.05 inches of precipitation for the given hour.</string>
+
+	<string name="system_settings_category">System Settings</string>
+
+    <string name="dialog_temperature_units_title">Temperature Unit</string>
+    <string name="dialog_precipitation_units_title">Precipitation Unit</string>
     
     <string name="app_name">Aix Weather Widget</string>
     <string name="widget_name">Aix Weather</string>

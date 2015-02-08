@@ -10,10 +10,17 @@ import java.io.Writer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.TimeZone;
+
+import net.veierland.aix.AixProvider.AixForecasts;
+import net.veierland.aix.AixProvider.AixForecastsColumns;
+import net.veierland.aix.AixProvider.AixLocations;
+import net.veierland.aix.AixProvider.AixLocationsColumns;
+import net.veierland.aix.AixProvider.AixViews;
+import net.veierland.aix.AixProvider.AixWidgets;
+import net.veierland.aix.AixProvider.AixWidgetsColumns;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -24,30 +31,25 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import net.veierland.aix.AixProvider.AixForecasts;
-import net.veierland.aix.AixProvider.AixForecastsColumns;
-import net.veierland.aix.AixProvider.AixLocations;
-import net.veierland.aix.AixProvider.AixLocationsColumns;
-import net.veierland.aix.AixProvider.AixViews;
-import net.veierland.aix.AixProvider.AixViewsColumns;
-import net.veierland.aix.AixProvider.AixWidgets;
-import net.veierland.aix.AixProvider.AixWidgetsColumns;
-
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
@@ -55,7 +57,6 @@ import android.util.Log;
 import android.util.Xml;
 import android.view.View;
 import android.widget.RemoteViews;
-import android.widget.Toast;
 
 public class AixService extends Service implements Runnable {
 	private static final String TAG = "AixService";
@@ -133,6 +134,16 @@ public class AixService extends Service implements Runnable {
 		long utcTime = Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTimeInMillis();
 		long updateTime = Long.MAX_VALUE;
 		
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
+		
+		int updateHours = 0;
+		String updateRateString = settings.getString(getString(R.string.preference_update_rate), "0");
+		try {
+			updateHours = Integer.parseInt(updateRateString);
+		} catch (NumberFormatException e) { }
+		
+		boolean wifiOnly = settings.getBoolean(getString(R.string.preference_wifi_only), false);
+		
 		while (hasMoreUpdates()) {
 			// Get widget data
 			int appWidgetId = getNextUpdate();
@@ -183,19 +194,46 @@ public class AixService extends Service implements Runnable {
 					}
 
 					if (locationFound) {
-						if (utcTime > lastForecastUpdate + 6 * DateUtils.HOUR_IN_MILLIS && 
-								(utcTime >= nextForecastUpdate || forecastValidTo < utcTime)) {
-							shouldUpdate = true;
+						if (updateHours == 0) {
+							if (utcTime >= lastForecastUpdate + DateUtils.HOUR_IN_MILLIS &&
+									(utcTime >= nextForecastUpdate || forecastValidTo < utcTime))
+							{
+								shouldUpdate = true;
+							}
+						} else {
+							if (utcTime >= lastForecastUpdate + updateHours * DateUtils.HOUR_IN_MILLIS) {
+								shouldUpdate = true;
+							}
 						}
 						
 						if (shouldUpdate) {
-							try {
-								updateWeather(resolver, viewUri);
-								weatherUpdated = true;
-								Log.d(TAG, "updateWeather() successful!");
-							} catch (Exception e) {
-								Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
-								updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+							if (wifiOnly) {
+								ConnectivityManager connManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+								NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+								if (mWifi.isConnected()) {
+									try {
+										updateWeather(resolver, viewUri);
+										weatherUpdated = true;
+										Log.d(TAG, "updateWeather() successful!");
+									} catch (Exception e) {
+										Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
+										updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+									}
+								} else {
+									Editor editor = settings.edit();
+									editor.putBoolean("needwifi", true);
+									editor.commit();
+									Log.d(TAG, "WiFi needed, but not connected!");
+								}
+							} else {
+								try {
+									updateWeather(resolver, viewUri);
+									weatherUpdated = true;
+									Log.d(TAG, "updateWeather() successful!");
+								} catch (Exception e) {
+									Log.d(TAG, "updateWeather() failed! Scheduling update in 5 minutes");
+									updateTime = calcUpdateTime(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+								}
 							}
 						}
 					}
@@ -227,6 +265,11 @@ public class AixService extends Service implements Runnable {
 				}
 			}
 			
+			Intent intent = new Intent(Intent.ACTION_EDIT, appWidgetUri, AixService.this, AixConfigure.class);
+			intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+			updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
+
 			appWidgetManager.updateAppWidget(appWidgetId, updateView);
 		}
 		
@@ -238,15 +281,16 @@ public class AixService extends Service implements Runnable {
 		
 		updateTime = calcUpdateTime(updateTime, calendar.getTimeInMillis());
 		
-		Log.d(TAG, "Scheduling next update for: " + (new SimpleDateFormat().format(updateTime)));
-		
 		Intent updateIntent = new Intent(ACTION_UPDATE_ALL);
 		updateIntent.setClass(this, AixService.class);
 		
 		PendingIntent pendingIntent = PendingIntent.getService(this, 0, updateIntent, 0);
 		
+		boolean awakeOnly = settings.getBoolean(getString(R.string.preference_awake_only), false);
+		
 		AlarmManager alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-		alarmManager.set(AlarmManager.RTC_WAKEUP, updateTime, pendingIntent);
+		alarmManager.set(awakeOnly ? AlarmManager.RTC : AlarmManager.RTC_WAKEUP, updateTime, pendingIntent);
+		Log.d(TAG, "Scheduling next update for: " + (new SimpleDateFormat().format(updateTime)) + " AwakeOnly=" + awakeOnly);
 		
 		stopSelf();
 	}

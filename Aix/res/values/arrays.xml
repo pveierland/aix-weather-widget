@@ -1,14 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-	<string-array name="measurement_unit_types_readable">
+	<string-array name="temperature_units_readable">
 		<item>Celsius</item>
 		<item>Fahrenheit</item>
 	</string-array>
 	
-	<string-array name="measurement_unit_types_values">
+	<string-array name="temperature_units_code">
 		<item>1</item>
 		<item>2</item>
+	</string-array>
+	
+	<string-array name="precipitation_units_readable">
+		<item>Millimeters</item>
+		<item>Inches</item>
+	</string-array>
+	
+	<string-array name="precipitation_units_code">
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+
+	<string-array name="preference_update_rates_readable">
+		<item>Auto</item>
+		<item>3 hours</item>
+		<item>6 hours</item>
+		<item>12 hours</item>
+	</string-array>
+	
+	<string-array name="preference_update_rates_code">
+		<item>0</item>
+		<item>3</item>
+		<item>6</item>
+		<item>12</item>
 	</string-array>
 
 </resources>

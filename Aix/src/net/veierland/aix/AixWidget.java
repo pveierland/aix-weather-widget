@@ -12,6 +12,7 @@ import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgets;
+import net.veierland.aix.AixProvider.AixWidgetsColumns;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
@@ -19,12 +20,13 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Paint.Cap;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.Rect;
@@ -32,12 +34,23 @@ import android.graphics.RectF;
 import android.graphics.Region.Op;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
-import android.provider.Settings;
+import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.util.Log;
 
 public class AixWidget extends AppWidgetProvider {
 	private static final String TAG = "AixWidget";
+	
+	private static final int BACKGROUND_COLOR = 0;
+	private static final int TEXT_COLOR = 1;
+	private static final int LOCATION_BACKGROUND_COLOR = 2;
+	private static final int LOCATION_TEXT_COLOR = 3;
+	private static final int GRID_COLOR = 4;
+	private static final int GRID_OUTLINE_COLOR = 5;
+	private static final int MAX_RAIN_COLOR = 6;
+	private static final int MIN_RAIN_COLOR = 7;
+	private static final int ABOVE_FREEZING_COLOR = 8;
+	private static final int BELOW_FREEZING_COLOR = 9;
 	
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager,
@@ -73,7 +86,7 @@ public class AixWidget extends AppWidgetProvider {
 		//Log.d(TAG, "Called onDeleted. appWidgetIds=" + Arrays.toString(appWidgetIds));
 	}
 	
-	private static Bitmap drawWidget(Context context, int widgetWidth, int widgetHeight, final float dp, Uri viewUri, String locationName, String timeZone, long timeFrom, long timeTo, int sampleResolutionHrs, ArrayList<Temperature> temperatureValues, ArrayList<Rain> rainValues, float[] rainDataValues, float[] rainDataMinValues, float[] rainDataMaxValues) {
+	private static Bitmap drawWidget(Context context, int widgetWidth, int widgetHeight, final float dp, Uri viewUri, String locationName, String timeZone, long timeFrom, long timeTo, int sampleResolutionHrs, ArrayList<Temperature> temperatureValues, ArrayList<Rain> rainValues, float[] rainDataValues, float[] rainDataMinValues, float[] rainDataMaxValues, final int[] colors, boolean fahrenheit) {
 		if (temperatureValues == null || temperatureValues.size() == 0 || rainValues == null || rainValues.size() == 0) {
 			return null;
 		}
@@ -121,13 +134,11 @@ public class AixWidget extends AppWidgetProvider {
 
 		final float labelTextSize = 9.0f * dp;
 		Paint temperatureLabels = new Paint() {{
-			setColor(Color.WHITE);
+			setColor(colors[TEXT_COLOR]);
 			setTextAlign(Paint.Align.RIGHT);
 			setAntiAlias(true);
 			setTextSize(labelTextSize);
 		}};
-
-		int zeroPos = -1;
 		
 		while (true) {
 			float dPc = degreesPerCellOptions[dPcIndex];
@@ -183,13 +194,9 @@ public class AixWidget extends AppWidgetProvider {
 			tempLabels = new String[numVerticalCells + 1];
 
 			float newTextLabelWidth = 0.0f;
-			zeroPos = tempRangeMin < 0.0f ? -1 : 0;
 			
 			for (int i = 0; i <= numVerticalCells; i++) {
 				float num = tempRangeMin + dPc * i;
-				if (num == 0.0f) {
-					zeroPos = i;
-				}
 				String formatting = Math.round(dPc) != dPc ? "%.1f\u00B0" : "%.0f\u00B0";
 				tempLabels[i] = String.format(formatting, num);
 				float tempLabelWidth = temperatureLabels
@@ -269,9 +276,8 @@ public class AixWidget extends AppWidgetProvider {
 		}
 		
 		Paint rectPaint = new Paint() {{
-			setColor(Color.rgb(64, 64, 64));
+			setColor(colors[BACKGROUND_COLOR]);
 			setStyle(Paint.Style.FILL);
-			setAlpha(60 * 255 / 100);
 			setAntiAlias(true);
 		}};
 
@@ -279,13 +285,11 @@ public class AixWidget extends AppWidgetProvider {
 
 		// Draw grid
 		Paint gridPaint = new Paint() {{
-			//setColor(Color.rgb(208, 208, 208));
-			setColor(Color.WHITE);
+			setColor(colors[GRID_COLOR]);
 			setAntiAlias(false);
 			setStyle(Paint.Style.STROKE);
 			setStrokeWidth(1.0f);
 			setStrokeCap(Cap.SQUARE);
-			setAlpha(20 * 255 / 100);
 		}};
 
 		// Set local time zone for drawing labels
@@ -312,22 +316,20 @@ public class AixWidget extends AppWidgetProvider {
 
 		// Draw rain bars
 		Paint rainBarPaint = new Paint() {{
-			setColor(Color.rgb(104, 207, 232));
+			setColor(colors[MIN_RAIN_COLOR]);
 			setStyle(Paint.Style.FILL);
 			setAntiAlias(false);
-			setAlpha(80 * 255 / 100);
 		}};
 		
 		canvas.drawPath(rainBarPath, rainBarPaint);
 		
 		// Draw light rain bars
 		Paint lightRainPaint = new Paint() {{
-			setColor(Color.rgb(104, 207, 232));
+			setColor(colors[MAX_RAIN_COLOR]);
 			setStyle(Paint.Style.STROKE);
 			setAntiAlias(true);
 			setStrokeWidth(1.30f);
 			setStrokeCap(Cap.SQUARE);
-			setAlpha(80 * 255 / 100);
 		}};
 		
 		canvas.save();
@@ -359,29 +361,33 @@ public class AixWidget extends AppWidgetProvider {
 		
 		// Draw temperature graph
 		Paint pLine = new Paint() {{
+			setColor(colors[ABOVE_FREEZING_COLOR]);
 			setStyle(Paint.Style.STROKE);
 			setStrokeCap(Cap.SQUARE);
 			setAntiAlias(true);
 			setStrokeWidth(2.0f * dp);
-			setColor(Color.rgb(240, 28, 28));
 		}};
 		
 		if (path != null) {
 			canvas.save();
-			if (zeroPos == 0) {
+			
+			float freezingTemperature = fahrenheit ? 32.0f : 0.0f;
+			
+			if (tempRangeMin >= freezingTemperature) {
 				// All positive
 				canvas.clipRect(graphRect.left, graphRect.top, graphRect.right, graphRect.bottom);
 				canvas.drawPath(path, pLine);
-			} else if (zeroPos == -1) {
+			} else if (tempRangeMax <= freezingTemperature) {
 				// All negative
 				canvas.clipRect(graphRect.left, graphRect.top, graphRect.right, graphRect.bottom);
-				pLine.setColor(Color.rgb(2, 128, 217));
+				pLine.setColor(colors[BELOW_FREEZING_COLOR]);
 				canvas.drawPath(path, pLine);
 			} else {
-				canvas.clipRect(graphRect.left, graphRect.top, graphRect.right, graphRect.bottom - zeroPos * cellSizeY);
+				float q = (float)Math.floor((graphRect.bottom - graphRect.top) * (freezingTemperature - tempRangeMin) / (tempRangeMax - tempRangeMin));
+				canvas.clipRect(graphRect.left, graphRect.top, graphRect.right, graphRect.bottom - q);
 				canvas.drawPath(path, pLine);
-				canvas.clipRect(graphRect.left, graphRect.bottom - zeroPos * cellSizeY, graphRect.right, graphRect.bottom, Op.REPLACE);
-				pLine.setColor(Color.rgb(2, 128, 217));
+				canvas.clipRect(graphRect.left, graphRect.bottom - q, graphRect.right, graphRect.bottom, Op.REPLACE);
+				pLine.setColor(colors[BELOW_FREEZING_COLOR]);
 				canvas.drawPath(path, pLine);
 			}
 			canvas.restore();
@@ -389,7 +395,7 @@ public class AixWidget extends AppWidgetProvider {
 		
 		// Draw graph border lines
 		Paint graphLinesPaint = new Paint() {{
-			setColor(Color.WHITE);
+			setColor(colors[GRID_OUTLINE_COLOR]);
 			setStyle(Paint.Style.STROKE);
 			setAntiAlias(false);
 			setStrokeWidth(1.0f);
@@ -466,31 +472,10 @@ public class AixWidget extends AppWidgetProvider {
 				R.drawable.weather_icon_night_fog
 		};
 		
-		
-		
-//		Log.d(TAG, "timezone=" + timeZone);
-//		TimeZone utc = TimeZone.getTimeZone("UTC");
-//		TimeZone target = TimeZone.getTimeZone(timeZone);
-//		Calendar cFrom = Calendar.getInstance(utc);
-//		Calendar cTo = Calendar.getInstance(utc);
-//		cFrom.setTimeInMillis(timeFrom);
-//		cTo.setTimeInMillis(timeTo);
-//		cFrom.setTimeZone(target);
-//		cTo.setTimeZone(target);
-//		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//		sdf.setTimeZone(target);
-//		Log.d(TAG, "From= " + sdf.format(cFrom.getTime()) + " to=" + sdf.format(cTo.getTime()));
-		
 		sampleResolutionHrs = Math.max(sampleResolutionHrs, 2);
 		
 		// Find weather icon resolution (cells / icon)
 		long rtp = timeFrom + sampleResolutionHrs * DateUtils.HOUR_IN_MILLIS / 2;
-		
-		//SimpleDateFormat sdf = new SimpleDateFormat();
-		//sdf.setTimeZone(TimeZone.getTimeZone(timeZone));
-		
-		//SimpleDateFormat utcSdf = new SimpleDateFormat();
-		//utcSdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 		
 		ArrayList<Rain> sunValues = new ArrayList<Rain>();
 		Cursor sunCursor = context.getContentResolver().query(
@@ -541,15 +526,6 @@ public class AixWidget extends AppWidgetProvider {
 							
 							for (Rain sun : sunValues) {
 								if (iconTimePos > sun.timeFrom && iconTimePos < sun.timeTo) {
-//									Calendar ca = Calendar.getInstance(utc);
-//									Calendar cb = Calendar.getInstance(utc);
-//									Calendar cc = Calendar.getInstance(utc);
-//									
-//									ca.setTimeInMillis(iconTimePos);
-//									cb.setTimeInMillis(sun.timeFrom);
-//									cc.setTimeInMillis(sun.timeTo);
-//									
-//									Log.d(TAG, timeZone + " " + sdf.format(ca.getTime()) + " is in daytime: " + sdf.format(cb.getTime()) + " and " + sdf.format(cc.getTime()));
 									isDay = true;
 									break;
 								}
@@ -578,7 +554,7 @@ public class AixWidget extends AppWidgetProvider {
 		
 		temperatureLabels.setTextAlign(Paint.Align.CENTER);
 		
-		boolean use24hours = "24".equals(Settings.System.getString(context.getContentResolver(), Settings.System.TIME_12_24));
+		boolean use24hours = DateFormat.is24HourFormat(context);
 		
 		for (int i = sampleResolutionHrs; i < 24; i+= sampleResolutionHrs) {
 			float notchX = graphRect.left + Math.round(i * cellSizeX);
@@ -595,21 +571,19 @@ public class AixWidget extends AppWidgetProvider {
 				} else {
 					hourLabel = String.format("%2d %s", hour, am ? "am" : "pm" );
 				}
-				
 			}
 			canvas.drawText(hourLabel, notchX, graphRect.bottom + labelTextSize + labelTextPaddingY, temperatureLabels);
 		}
 		
 		if (locationName != null) {
 			Paint locationRectPaint = new Paint() {{
-				setColor(Color.rgb(128, 128, 128));
+				setColor(colors[LOCATION_BACKGROUND_COLOR]);
 				setStyle(Paint.Style.FILL);
-				setAlpha(80 * 255 / 100);
 				setAntiAlias(true);
 			}};
 			final float locationLabelTextSize = 10.0f * dp;
 			Paint locationLabelPaint = new Paint() {{
-				setColor(Color.WHITE);
+				setColor(colors[LOCATION_TEXT_COLOR]);
 				setAntiAlias(true);
 				setTextSize(locationLabelTextSize);
 			}};
@@ -644,23 +618,54 @@ public class AixWidget extends AppWidgetProvider {
 		return bitmap;
 	}
 	
+	private static void getColorFromCursor(Cursor widgetCursor, Resources resources, int[] colors, int colorColumnId, int colorId, int defaultColor) {
+		int color = widgetCursor.getInt(colorColumnId);
+		if (color == 0) {
+			color = resources.getColor(defaultColor);
+		}
+		colors[colorId] = color;
+	}
+	
 	public static Bitmap buildView(Context context, Uri viewUri, boolean landscape) {
 		Log.d(TAG, "Building Aix Widget view");
 		
 		ContentResolver resolver = context.getContentResolver();
 
-		int measurementUnit = -1;
+		boolean fahrenheit = false;
+		boolean isInches = false;
 		
-		Cursor viewCursor = resolver.query(viewUri, null, null, null, null);
-		if (viewCursor != null) {
-			if (viewCursor.moveToFirst()) {
-				measurementUnit = viewCursor.getInt(AixViews.UNITS_COLUMN);
+		Uri widgetUri = null;
+		
+		int[] colors = new int[10];
+		
+		Cursor widgetCursor = resolver.query(
+				AixWidgets.CONTENT_URI,
+				null,
+				AixWidgetsColumns.VIEWS + "=" + viewUri.getLastPathSegment(),
+				null,
+				null);
+		if (widgetCursor != null) {
+			if (widgetCursor.moveToFirst()) {
+				if (widgetCursor.getInt(AixWidgetsColumns.TEMPERATURE_UNITS_COLUMN) == AixWidgets.TEMPERATURE_UNITS_FAHRENHEIT) {
+					fahrenheit = true;
+				}
+				if (widgetCursor.getInt(AixWidgetsColumns.PRECIPITATION_UNITS_COLUMN) == AixWidgets.PRECIPITATION_UNITS_INCHES) {
+					isInches = true;
+				}
+				
+				Resources resources = context.getResources();
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.BACKGROUND_COLOR_COLUMN, BACKGROUND_COLOR, R.color.background_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.TEXT_COLOR_COLUMN, TEXT_COLOR, R.color.text_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.LOCATION_BACKGROUND_COLOR_COLUMN, LOCATION_BACKGROUND_COLOR, R.color.location_background_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.LOCATION_TEXT_COLOR_COLUMN, LOCATION_TEXT_COLOR, R.color.location_text_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.GRID_COLOR_COLUMN, GRID_COLOR, R.color.grid_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.GRID_OUTLINE_COLOR_COLUMN, GRID_OUTLINE_COLOR, R.color.grid_outline_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.MAX_RAIN_COLOR_COLUMN, MAX_RAIN_COLOR, R.color.maximum_rain_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.MIN_RAIN_COLOR_COLUMN, MIN_RAIN_COLOR, R.color.minimum_rain_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.ABOVE_FREEZING_COLOR_COLUMN, ABOVE_FREEZING_COLOR, R.color.above_freezing_default);
+				getColorFromCursor(widgetCursor, resources, colors, AixWidgetsColumns.BELOW_FREEZING_COLOR_COLUMN, BELOW_FREEZING_COLOR, R.color.below_freezing_default);
 			}
-			viewCursor.close();
-		}
-		
-		if (measurementUnit == -1) {
-			return null;
+			widgetCursor.close();
 		}
 		
 		// Get location name for view
@@ -711,7 +716,7 @@ public class AixWidget extends AppWidgetProvider {
 				do {
 					long temperatureTime = cursor.getLong(AixForecastsColumns.TIME_FROM_COLUMN);
 					float temperature = cursor.getFloat(AixForecastsColumns.TEMPERATURE_COLUMN);
-					if (measurementUnit == AixViews.UNITS_FAHRENHEIT) {
+					if (fahrenheit) {
 						temperature = temperature * 9.0f / 5.0f + 32.0f;
 					}
 					temperatureValues.add(new Temperature(temperatureTime, temperature));
@@ -776,6 +781,7 @@ public class AixWidget extends AppWidgetProvider {
 								cursor.getString(AixForecastsColumns.RAIN_VALUE_COLUMN),
 								cursor.getString(AixForecastsColumns.RAIN_LOWVAL_COLUMN),
 								cursor.getString(AixForecastsColumns.RAIN_HIGHVAL_COLUMN),
+								isInches, isInches ? 0.05f : 1.0f,
 								cursor.getString(AixForecastsColumns.WEATHER_ICON_COLUMN));
 						rainValues.add(rain);
 					} catch (Exception e) {
@@ -814,7 +820,7 @@ public class AixWidget extends AppWidgetProvider {
 		float widgetHeight = landscape ? 74.0f * dp : 100.0f * dp;
 
 		return drawWidget(context, (int)widgetWidth, (int)widgetHeight, dp, viewUri, locationName, timeZone, timeFrom, timeTo, sampleResolutionHrs, temperatureValues, rainValues,
-				rainDataValues, rainDataMinValues, rainDataMaxValues);
+				rainDataValues, rainDataMinValues, rainDataMaxValues, colors, fahrenheit);
 	}
 	
 	
@@ -847,19 +853,18 @@ public class AixWidget extends AppWidgetProvider {
 						  (float)(points[i + 1].y - derivative.y / 3.0f));
 	}
 	
-	private static Path buildPath(ArrayList<Temperature> temperatureVales, float tempRangeMax,
+	private static Path buildPath(ArrayList<Temperature> temperatureValues, float tempRangeMax,
 			float tempRangeMin, long startTime, long endTime) {
-		if (temperatureVales.size() <= 0) return null;
+		if (temperatureValues.size() <= 0) return null;
 		Path path = new Path();
 		float tempRange = tempRangeMax - tempRangeMin;
 		long timeRange = endTime - startTime;
-		PointF[] points = new PointF[temperatureVales.size()];
+		PointF[] points = new PointF[temperatureValues.size()];
 		
-		for (int i = 0; i < temperatureVales.size(); i++) {
-			Temperature t = temperatureVales.get(i);
+		for (int i = 0; i < temperatureValues.size(); i++) {
+			Temperature t = temperatureValues.get(i);
 			points[i] = new PointF((float)(t.time - startTime) / (float)timeRange,
 					(float)(1.0f - (t.value - tempRangeMin) / tempRange));
-			//path.addCircle(points[i].x, points[i].y, 0.01f, Direction.CW);
 		}
 		
 		path.moveTo(points[0].x, points[0].y);

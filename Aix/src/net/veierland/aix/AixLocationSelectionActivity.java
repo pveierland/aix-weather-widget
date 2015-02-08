@@ -1,10 +1,31 @@
 package net.veierland.aix;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.zip.GZIPInputStream;
 
 import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
+
+import org.apache.http.Header;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.HttpHostConnectException;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -17,8 +38,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
-import android.location.Address;
-import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.BaseColumns;
@@ -187,20 +206,22 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		}
 	}
 	
-	private String[] mAddressList = null;
-	private String[] mAddressListDetailed = null;
-	
 	private class LocationSearchTask extends AsyncTask<String, Integer, Integer> implements DialogInterface.OnCancelListener {
 		
-		private final static int MAX_RESULTS = 5;
+		private final static int MAX_RESULTS = 7;
 		
 		private final static int INVALID_INPUT = 0;
-		private final static int SEARCH_CANCELLED = 1;
-		private final static int NO_RESULTS = 2;
-		private final static int SEARCH_SUCCESS = 3;
+		private final static int NO_CONNECTION = 1;
+		private final static int SEARCH_CANCELLED = 2;
+		private final static int SEARCH_ERROR = 3;
+		private final static int SEARCH_SUCCESS = 4;
+		private final static int NO_RESULTS = 5;
+		private final static int OVER_QUERY_LIMIT = 6;
+		private final static int REQUEST_DENIED = 7;
+		private final static int INVALID_REQUEST = 8;
 
 		private int mAttempts = 0;
-		private List<Address> mAddresses;
+		private List<AixAddress> mAddresses;
 		
 		@Override
 		protected void onPreExecute() {
@@ -225,37 +246,42 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 						getString(R.string.invalid_search_input_toast),
 						Toast.LENGTH_SHORT).show();
 				break;
+			case NO_CONNECTION:
+				Toast.makeText(
+						mContext,
+						getString(R.string.location_search_no_connection_toast),
+						Toast.LENGTH_SHORT).show();
+				break;
 			case SEARCH_CANCELLED:
 				Log.d(TAG, "Search was cancelled!");
 				break;
-			case NO_RESULTS:
+			case SEARCH_ERROR:
 				Toast.makeText(
-						getApplicationContext(),
-						getString(R.string.location_search_no_results),
+						mContext,
+						getString(R.string.location_search_error_toast),
 						Toast.LENGTH_SHORT).show();
-				break;
+				break;			
 			case SEARCH_SUCCESS:
 				mResetSearch = true;
-				mAddressList = new String[mAddresses.size()];
-				mAddressListDetailed = new String[mAddresses.size()];
+				
+				String[] listItems = new String[mAddresses.size()];
 				for (int i = 0; i < mAddresses.size(); i++) {
-					Address address = mAddresses.get(i);
-					mAddressList[i] = buildLocationTitle(address);
-					mAddressListDetailed[i] = buildDetailedLocationTitle(address);
+					listItems[i] = mAddresses.get(i).title_detailed;
 				}
+				
 				AlertDialog alertDialog = new AlertDialog.Builder(mContext)
 						.setTitle(R.string.location_search_results_select_dialog_title)
-						.setItems(mAddressListDetailed, new DialogInterface.OnClickListener() {
+						.setItems(listItems, new DialogInterface.OnClickListener() {
 							@Override
 							public void onClick(DialogInterface dialog, int which) {
 								// Add selected location to provider
-								Address a = mAddresses.get(which);
+								AixAddress a = mAddresses.get(which);
 								ContentResolver resolver = mContext.getContentResolver();
 								ContentValues values = new ContentValues();
-								values.put(AixLocationsColumns.LATITUDE, a.getLatitude());
-								values.put(AixLocationsColumns.LONGITUDE, a.getLongitude());
-								values.put(AixLocationsColumns.TITLE, mAddressList[which]);
-								values.put(AixLocationsColumns.TITLE_DETAILED, mAddressListDetailed[which]);
+								values.put(AixLocationsColumns.LATITUDE, a.latitude);
+								values.put(AixLocationsColumns.LONGITUDE, a.longitude);
+								values.put(AixLocationsColumns.TITLE, a.title);
+								values.put(AixLocationsColumns.TITLE_DETAILED, a.title_detailed);
 								resolver.insert(AixLocations.CONTENT_URI, values);
 
 								mCursor.requery();
@@ -264,6 +290,30 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 						})
 						.create();
 				alertDialog.show();
+				break;
+			case NO_RESULTS:
+				Toast.makeText(
+						getApplicationContext(),
+						getString(R.string.location_search_no_results),
+						Toast.LENGTH_SHORT).show();
+				break;
+			case OVER_QUERY_LIMIT:
+				Toast.makeText(
+						getApplicationContext(),
+						getString(R.string.location_search_over_query_limit_toast),
+						Toast.LENGTH_SHORT).show();
+				break;
+			case REQUEST_DENIED:
+				Toast.makeText(
+						getApplicationContext(),
+						getString(R.string.location_search_request_denied_toast),
+						Toast.LENGTH_SHORT).show();
+				break;
+			case INVALID_REQUEST:
+				Toast.makeText(
+						getApplicationContext(),
+						getString(R.string.location_search_invalid_request_toast),
+						Toast.LENGTH_SHORT).show();
 				break;
 			}
 		}
@@ -284,31 +334,114 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		
 		@Override
 		protected Integer doInBackground(String... params) {
-			Log.d(TAG, "Hard at work!");
-
 			if (params.length != 1 || TextUtils.isEmpty(params[0])) {
 				return INVALID_INPUT;
 			}
+			
+			Log.d(TAG, "Starting search for " + params[0]);
 			
 			while (!isCancelled()) {
 				mAttempts++;
 				
 				try {
-					Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+					/*Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
 					mAddresses = geocoder.getFromLocationName(params[0].trim(), MAX_RESULTS);
+					*/
+					
+					URI uri = new URI("http", "maps.googleapis.com", "/maps/api/geocode/json",
+							"address=" + params[0].trim() +
+							"&language=" + Locale.getDefault().getLanguage() +
+							"&sensor=false", null);
+					
+					HttpGet httpGet = new HttpGet(uri);
+					httpGet.addHeader("Accept-Encoding", "gzip");
+					
+					HttpClient httpclient = new DefaultHttpClient();
+					HttpResponse response = httpclient.execute(httpGet);
+					InputStream content = response.getEntity().getContent();
+					
+					Header contentEncoding = response.getFirstHeader("Content-Encoding");
+					if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
+						content = new GZIPInputStream(content);
+					}
+
+					JSONObject jObject = new JSONObject(convertStreamToString(content));
+
+					String status = jObject.getString("status");
+					
+					if (status.equals("ZERO_RESULTS")) {
+						return NO_RESULTS;
+					} else if (status.equals("OVER_QUERY_LIMIT")) {
+						return OVER_QUERY_LIMIT;
+					} else if (status.equals("REQUEST_DENIED")) {
+						return REQUEST_DENIED;
+					} else if (status.equals("INVALID_REQUEST")) {
+						return INVALID_REQUEST;
+					} else if (!status.equals("OK")) {
+						return SEARCH_ERROR;
+					}
+
+					mAddresses = new ArrayList<AixAddress>();
+					JSONArray results = jObject.getJSONArray("results");
+					
+					int numResults = Math.min(results.length(), MAX_RESULTS);
+					for (int i = 0; i < numResults; i++) {
+						try {
+							JSONObject result = results.getJSONObject(i);
+	
+							JSONArray addressComponents = result.getJSONArray("address_components"); 
+							JSONObject location = result.getJSONObject("geometry").getJSONObject("location");
+							
+							AixAddress address = new AixAddress();
+							address.title = addressComponents.getJSONObject(0).getString("long_name");
+							address.title_detailed = result.getString("formatted_address");
+							address.latitude = location.getString("lat");
+							address.longitude = location.getString("lng");
+							mAddresses.add(address);
+						} catch (Exception e) { }
+					}
+					
 					if (mAddresses != null && mAddresses.size() > 0) {
 						return SEARCH_SUCCESS;
 					} else {
 						return NO_RESULTS;
 					}
+				} catch (HttpHostConnectException e) {
+					return NO_CONNECTION;
+				} catch (UnknownHostException e) {
+					return NO_CONNECTION;
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 				
 				publishProgress(mAttempts);
+				
+				try {
+					Thread.sleep(555);
+				} catch (InterruptedException e) { }
 			}
 
 			return SEARCH_CANCELLED;
+		}
+		
+		public String convertStreamToString(InputStream is) throws IOException {
+			if (is != null) {
+				Writer writer = new StringWriter();
+				char[] buffer = new char[1024];
+				try {
+					Reader reader = new BufferedReader(
+							new InputStreamReader(is, "UTF-8"));
+					int n;
+					while ((n = reader.read(buffer)) != -1) {
+						writer.write(buffer, 0, n);
+					}
+				} finally {
+					is.close();
+				}
+				return writer.toString();
+			} else {
+				return "";
+			}
 		}
 
 		@Override
@@ -318,33 +451,17 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		
 	}
 	
-	private String buildLocationTitle(Address address) {
-		if (!TextUtils.isEmpty(address.getLocality())) {
-			return address.getLocality();
-		} else if (!TextUtils.isEmpty(address.getAddressLine(0))) {
-			return address.getAddressLine(0);
-		} else {
-			return address.toString();
-		}
-	}
-	
-	private String buildDetailedLocationTitle(Address address) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < 5; i++) {
-			String addressLine = address.getAddressLine(i);
-			if (addressLine != null) {
-				if (sb.length() > 0) sb.append(", ");
-				sb.append(addressLine);
-			}
-		}
-		return sb.toString();
-	}
-	
 	@Override
 	public void onClick(View v) {
 		if (v == mAddLocationButton) {
 			showDialog(DIALOG_ADD);
 		}
+	}
+	
+	private static class AixAddress {
+		
+		public String title, title_detailed, latitude, longitude;
+		
 	}
 	
 }

@@ -201,6 +201,8 @@ public class AixDetailedWidget {
 		int widgetHeight = (int)Math.round(((isLandscape
 				? (74.0f * mWidgetRows) : (100.0f * mWidgetRows)) - 2.0f) * dp);
 
+		//Log.d(TAG, "widgetWidth=" + widgetWidth + " widgetHeight=" + widgetHeight);
+		
 		boolean isWidgetWidthOdd = widgetWidth % 2 == 1;
 		boolean isWidgetHeightOdd = widgetHeight % 2 == 1;
 		

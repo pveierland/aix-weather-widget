@@ -49,10 +49,11 @@
  	<string name="location_empty_search_string_toast">Error: Empty search string.</string>
  	<string name="location_search_progress_dialog_title">Please wait...</string>
  	<string name="location_search_progress_dialog_message">Searching...</string>
-	
-	
-	
-	
+ 	<string name="location_search_no_connection_toast">Error: No internet connection</string>
+	<string name="location_search_error_toast">An error occurred during search.</string>
+	<string name="location_search_over_query_limit_toast">Error: Over query limit</string>
+	<string name="location_search_request_denied_toast">Error: Search request denied</string>
+	<string name="location_search_invalid_request_toast">Error: Invalid search request</string>
 	
 	
  	<string name="widget_load_error_please_recreate">Error: Please recreate widget</string>

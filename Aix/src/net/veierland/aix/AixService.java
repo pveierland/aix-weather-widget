@@ -203,7 +203,7 @@ public class AixService extends IntentService {
 				}
 				locationCursor.close();
 			}
-
+			
 			if (locationFound) {
 				if (updateHours == 0) {
 					if (utcTime >= lastForecastUpdate + DateUtils.HOUR_IN_MILLIS &&
@@ -691,7 +691,7 @@ public class AixService extends IntentService {
 		HttpClient httpclient = new DefaultHttpClient();
 		HttpResponse response = httpclient.execute(httpGet);
 		InputStream content = response.getEntity().getContent();
-
+		
 		Header contentEncoding = response.getFirstHeader("Content-Encoding");
 		if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
 			content = new GZIPInputStream(content);

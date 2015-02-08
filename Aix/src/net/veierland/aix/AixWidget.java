@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 public class AixWidget extends AppWidgetProvider {
 	
@@ -24,6 +25,7 @@ public class AixWidget extends AppWidgetProvider {
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager,
 			int[] appWidgetIds) {
+		Log.d("AixWidget", "onUpdate!");
 		if (appWidgetIds == null) {
 			appWidgetIds = appWidgetManager.getAppWidgetIds(
 					new ComponentName(context, AixWidget.class));

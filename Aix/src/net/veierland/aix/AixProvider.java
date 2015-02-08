@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -726,6 +728,10 @@ public class AixProvider extends ContentProvider {
 					}
 				}
 			}
+			
+			AppWidgetManager manager = AppWidgetManager.getInstance(getContext());
+			AppWidgetProviderInfo info = manager.getAppWidgetInfo(Integer.parseInt(widgetId));
+			Log.d(TAG, "Delivering render minWidth=" + info.minWidth + " minHeight=" + info.minHeight);
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append("aix_");

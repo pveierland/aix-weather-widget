@@ -90,7 +90,15 @@ public class AixUtils {
 		R.drawable.weather_icon_sleet,
 		R.drawable.weather_icon_snow,
 		R.drawable.weather_icon_snowthunder,
-		R.drawable.weather_icon_fog
+		R.drawable.weather_icon_fog,
+		R.drawable.weather_icon_day_sun, // invalid for day
+		R.drawable.weather_icon_day_polar_lightcloud, // invalid for day
+		R.drawable.weather_icon_day_lightrainsun, // invalid for day
+		R.drawable.weather_icon_day_snowsun, // invalid for day
+		R.drawable.weather_icon_day_sleetsunthunder,
+		R.drawable.weather_icon_day_snowsunthunder,
+		R.drawable.weather_icon_lightrainthunder,
+		R.drawable.weather_icon_sleetthunder
 	};
 
 	public static final int[] WEATHER_ICONS_NIGHT = {
@@ -108,7 +116,15 @@ public class AixUtils {
 		R.drawable.weather_icon_sleet,
 		R.drawable.weather_icon_snow,
 		R.drawable.weather_icon_snowthunder,
-		R.drawable.weather_icon_fog
+		R.drawable.weather_icon_fog,
+		R.drawable.weather_icon_night_sun, // invalid for night
+		R.drawable.weather_icon_night_lightcloud, // invalid for night
+		R.drawable.weather_icon_night_lightrainsun, // invalid for night
+		R.drawable.weather_icon_night_snowsun, // invalid for night
+		R.drawable.weather_icon_night_sleetsunthunder,
+		R.drawable.weather_icon_night_snowsunthunder,
+		R.drawable.weather_icon_lightrainthunder,
+		R.drawable.weather_icon_sleetthunder
 	};
 
 	public static final int[] WEATHER_ICONS_POLAR = {
@@ -126,7 +142,15 @@ public class AixUtils {
 		R.drawable.weather_icon_sleet,
 		R.drawable.weather_icon_snow,
 		R.drawable.weather_icon_snowthunder,
-		R.drawable.weather_icon_fog
+		R.drawable.weather_icon_fog,
+		R.drawable.weather_icon_polar_sun,
+		R.drawable.weather_icon_day_polar_lightcloud,
+		R.drawable.weather_icon_polar_lightrainsun,
+		R.drawable.weather_icon_polar_snowsun,
+		R.drawable.weather_icon_polar_sleetsunthunder,
+		R.drawable.weather_icon_polar_snowsunthunder,
+		R.drawable.weather_icon_lightrainthunder,
+		R.drawable.weather_icon_sleetthunder
 	};
 	
 	public static final int WEATHER_ICON_DAY_SUN = 1;

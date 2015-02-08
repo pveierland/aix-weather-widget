@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		package="net.veierland.aix"
-		android:versionCode="9"
-		android:versionName="0.1.7">
+		android:versionCode="10"
+		android:versionName="0.1.8">
 	
 	<application
 			android:icon="@drawable/app_icon"
 			android:label="@string/widget_name"
 			android:description="@string/app_description"
-			android:debuggable="false">
+			android:debuggable="false"
+			android:theme="@style/AixTheme">
     	
     	<activity android:name=".AixConfigure"
-    			android:launchMode="singleTop"
-    			android:label="@string/title_configure"
-    			android:windowSoftInputMode="stateHidden|adjustPan">
+    	    	android:label="@string/title_configure"
+    			android:windowSoftInputMode="stateHidden|adjustPan"
+    			android:excludeFromRecents="true">
 
             <intent-filter>
             	<action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -32,6 +33,17 @@
         <provider android:name=".AixProvider" android:authorities="net.veierland.aix" />
         
         <service android:name=".AixService" />
+        
+        <activity android:name=".AixIntro"
+        		android:label="Aix Intro"
+        		android:theme="@android:style/Theme.Dialog">
+		
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.INFO" />
+			</intent-filter>
+		
+		</activity>
     	
     	<receiver android:name=".AixWidget" android:label="@string/widget_name">
 			<intent-filter>
@@ -55,9 +67,5 @@
     <uses-sdk android:minSdkVersion="4" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    
-    <!-- 
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-     -->
+
 </manifest> 

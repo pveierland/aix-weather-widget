@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<style name="ColorView">
+		<item name="borderColor">#fff</item>
+		<item name="borderWidth">1px</item>
+		<item name="markerSize">3dip</item>
+		<item name="markerRounding">2dp</item>
+		<item name="markerThickness">0px</item>
+		<item name="markerWidth">7dip</item>
+		<item name="markerContourThickness">1.1dip</item>
+		<item name="markerContourColor">#000</item>
+	</style>
+	
+	<style name="ColorPreference" parent="@android:style/Preference">
+		<item name="android:widgetLayout">@layout/preference_widget_color</item>
+    </style>
+	
+</resources>

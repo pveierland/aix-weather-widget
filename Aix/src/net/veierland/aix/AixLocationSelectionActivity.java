@@ -64,8 +64,10 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	private static final String TAG = "AixLocationSelectionActivity";
 	
 	private static final int DIALOG_ADD = 0;
+	private static final int DIALOG_EDIT = 1;
 	
-	private static final int CONTEXT_MENU_DELETE = Menu.FIRST;
+	private static final int CONTEXT_MENU_EDIT = Menu.FIRST;
+	private static final int CONTEXT_MENU_DELETE = Menu.FIRST + 1;
 	
 	private Button mAddLocationButton = null;
 	private Context mContext = null;
@@ -93,11 +95,13 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
         		mCursor,
         		new String[] {
         				AixLocationsColumns.TITLE_DETAILED,
+        				AixLocationsColumns.TITLE,
         				AixLocationsColumns.LATITUDE,
         				AixLocationsColumns.LONGITUDE
         		},
         		new int[] {
         				R.id.location_selection_row_title,
+        				R.id.location_selection_row_display_title,
         				R.id.location_selection_row_latitude,
         				R.id.location_selection_row_longitude
         		}));
@@ -122,9 +126,13 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		mCursor.moveToPosition(adapterMenuInfo.position);
 		if (mCursor.isAfterLast()) return;
 		menu.setHeaderTitle(String.format(getString(R.string.location_list_context_title), mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocationsColumns.TITLE))));
+		menu.add(0, CONTEXT_MENU_EDIT, 0, "Edit display title");
 		menu.add(0, CONTEXT_MENU_DELETE, 0, getString(R.string.location_list_context_delete));
 	}
 
+	private String mLocationName;
+	private long mLocationId;
+	
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
 		AdapterContextMenuInfo adapterMenuInfo = (AdapterContextMenuInfo) (item.getMenuInfo());
@@ -134,6 +142,13 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 			if (mCursor.isAfterLast()) return false;
 			getContentResolver().delete(ContentUris.withAppendedId(AixLocations.CONTENT_URI, mCursor.getLong(mCursor.getColumnIndexOrThrow(BaseColumns._ID))), null, null);
 			mCursor.requery();
+			return true;
+		case CONTEXT_MENU_EDIT:
+			mCursor.moveToPosition(adapterMenuInfo.position);
+			if (mCursor.isAfterLast()) return false;
+			mLocationId = mCursor.getLong(mCursor.getColumnIndexOrThrow(BaseColumns._ID));
+			mLocationName = mCursor.getString(mCursor.getColumnIndexOrThrow(AixLocations.TITLE));
+			showDialog(DIALOG_EDIT);
 			return true;
 		}
 		return false;
@@ -154,12 +169,13 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	@Override
 	protected Dialog onCreateDialog(int id) {
 		Dialog dialog = null;
+		
+		View content = getLayoutInflater().inflate(R.layout.dialog_edittext, null);
+		mEditText = (EditText) content.findViewById(R.id.edittext);
+		mEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE);
+		
 		switch (id) {
 		case DIALOG_ADD:
-			View content = getLayoutInflater().inflate(R.layout.dialog_edittext, null);
-			mEditText = (EditText) content.findViewById(R.id.edittext);
-			mEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE);
-			
 			dialog = new AlertDialog.Builder(this)
 					.setTitle(R.string.dialog_search_location)
 	                .setView(content)
@@ -187,22 +203,65 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 			dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN |
 					WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
 	        break;
+		case DIALOG_EDIT:
+			dialog = new AlertDialog.Builder(this)
+					.setTitle("Display title:")
+					.setView(content)
+					.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+						
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+	                		imm.hideSoftInputFromWindow(mEditText.getWindowToken(), 0);
+	                		String displayTitle = mEditText.getText().toString();
+							
+	                		if (TextUtils.isEmpty(displayTitle)) {
+	                			Toast.makeText(getApplicationContext(), "Invalid display title", Toast.LENGTH_SHORT).show();
+	                		} else {
+								setLocationDisplayTitle(displayTitle);
+	                		}
+						}
+					})
+					.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+						
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+	                		imm.hideSoftInputFromWindow(mEditText.getWindowToken(), 0);
+	                    	dialog.cancel();
+						}
+					}).create();
+			break;
 		}
 
         return dialog;
 	}
 	
+	private void setLocationDisplayTitle(String displayTitle) {
+		ContentValues cv = new ContentValues();
+		cv.put(AixLocations.TITLE, displayTitle);
+		getContentResolver().update(AixLocations.CONTENT_URI, cv, BaseColumns._ID + "=" + mLocationId, null);
+		mCursor.requery();
+	}
+	
 	@Override
 	protected void onPrepareDialog(int id, Dialog dialog) {
+		final EditText editText = (EditText) dialog.findViewById(R.id.edittext);
+		
 		switch (id) {
 		case DIALOG_ADD:
 			if (mResetSearch) {
-				final EditText editText = (EditText) dialog.findViewById(R.id.edittext);
 				editText.setText("");
+			} else {
+				editText.setSelection(editText.length());
 			}
 			break;
-			default:
-				super.onPrepareDialog(id, dialog);
+		case DIALOG_EDIT:
+			editText.setText(mLocationName);
+			editText.setSelection(mEditText.getText().length());
+			break;
+		default:
+			super.onPrepareDialog(id, dialog);
 		}
 	}
 	

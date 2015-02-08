@@ -1,12 +1,10 @@
 package net.veierland.aix.widget;
 
-import static net.veierland.aix.AixUtils.hcap;
-import static net.veierland.aix.AixUtils.isPrime;
-import static net.veierland.aix.AixUtils.lcap;
-import static net.veierland.aix.AixUtils.truncateDay;
-import static net.veierland.aix.AixUtils.truncateHour;
+import static net.veierland.aix.AixUtils.*;
 
+import java.util.Date;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -36,7 +34,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
@@ -185,10 +182,13 @@ public class AixDetailedWidget {
 		setupLocation();
 		loadConfiguration();
 		setupTimesAndPointData();
+		setupIntervalData();
+		setupEpochAndTimes();
+		setupSampleTimes();
 		validatePointData();
 		setupSunMoonData();
-		setupIntervalData();
 		setupPaints();
+
 		return this;
 	}
 	
@@ -299,7 +299,7 @@ public class AixDetailedWidget {
 			
 			// Center range as far as possible (need to fix proper centering)
 			int startCell = numVerticalCells - numCellsReq;
-			while ((startCell > 0) && (iconHeight + iconSpacingY > cellSizeY
+			while ((startCell > 0) && (iconHeight > cellSizeY// + iconSpacingY > cellSizeY
 					* (numVerticalCells - numCellsReq - startCell + (Math
 					.ceil(mMaxTemperature / degreesPerCell) - mMaxTemperature / degreesPerCell))))
 			{
@@ -398,6 +398,7 @@ public class AixDetailedWidget {
 		
 		for (int i = 0; i < mIntervalData.size(); i++) {
 			IntervalData d = mIntervalData.get(i);
+			if (d.timeFrom == d.timeTo) continue;
 			
 			int startCell = (int)Math.floor((float)numHorizontalCells *
 					(float)(d.timeFrom - mTimeFrom) / (float)(mTimeTo - mTimeFrom));
@@ -993,7 +994,7 @@ public class AixDetailedWidget {
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		
 		for (IntervalData dataPoint : mIntervalData) {
-			if (dataPoint.lengthInHours() == hoursPerIcon && dataPoint.weatherIcon >= 1 && dataPoint.weatherIcon <= 15) {
+			if ((dataPoint.lengthInHours() == hoursPerIcon || dataPoint.lengthInHours() == 0) && dataPoint.weatherIcon >= 1 && dataPoint.weatherIcon <= 15) {
 				long iconTimePos = (dataPoint.timeFrom + dataPoint.timeTo) / 2;
 				if (iconTimePos < loMarker || iconTimePos > hiMarker) continue;
 				
@@ -1054,7 +1055,7 @@ public class AixDetailedWidget {
 		
 		for (int i = 0; i < mPointData.size(); i++) {
 			PointData p = mPointData.get(i);
-			if (	(p.mTime < time && p.mTime >= mTimeFrom) &&
+			if (	(p.mTime < time) && // && p.mTime >= mTimeFrom) &&
 					(before == null || p.mTime > before.mTime))
 			{
 				before = p;
@@ -1064,7 +1065,7 @@ public class AixDetailedWidget {
 				at = p;
 				atIndex = i;
 			}
-			if (	(p.mTime > time && p.mTime <= mTimeTo) &&
+			if (	(p.mTime > time) && // && p.mTime <= mTimeTo) &&
 					(after == null || p.mTime < after.mTime))
 			{
 				after = p;
@@ -1214,17 +1215,18 @@ public class AixDetailedWidget {
 		// Set up default colors
 		final Resources resources = context.getResources();
 		mColors = new int[12];
-		mColors[BACKGROUND_COLOR] = resources.getColor(R.color.background_default);
-		mColors[TEXT_COLOR] = resources.getColor(R.color.text_default);
-		mColors[PATTERN_COLOR] = resources.getColor(R.color.pattern_default);
-		mColors[DAY_COLOR] = resources.getColor(R.color.day_default);
-		mColors[NIGHT_COLOR] = resources.getColor(R.color.night_default);
-		mColors[GRID_COLOR] = resources.getColor(R.color.grid_default);
-		mColors[GRID_OUTLINE_COLOR] = resources.getColor(R.color.grid_outline_default);
-		mColors[MAX_RAIN_COLOR] = resources.getColor(R.color.maximum_rain_default);
-		mColors[MIN_RAIN_COLOR] = resources.getColor(R.color.minimum_rain_default);
-		mColors[ABOVE_FREEZING_COLOR] = resources.getColor(R.color.above_freezing_default);
-		mColors[BELOW_FREEZING_COLOR] = resources.getColor(R.color.below_freezing_default);
+		mColors[BORDER_COLOR] = resources.getColor(R.color.border);
+		mColors[BACKGROUND_COLOR] = resources.getColor(R.color.background);
+		mColors[TEXT_COLOR] = resources.getColor(R.color.text);
+		mColors[PATTERN_COLOR] = resources.getColor(R.color.pattern);
+		mColors[DAY_COLOR] = resources.getColor(R.color.day);
+		mColors[NIGHT_COLOR] = resources.getColor(R.color.night);
+		mColors[GRID_COLOR] = resources.getColor(R.color.grid);
+		mColors[GRID_OUTLINE_COLOR] = resources.getColor(R.color.grid_outline);
+		mColors[MAX_RAIN_COLOR] = resources.getColor(R.color.maximum_rain);
+		mColors[MIN_RAIN_COLOR] = resources.getColor(R.color.minimum_rain);
+		mColors[ABOVE_FREEZING_COLOR] = resources.getColor(R.color.above_freezing);
+		mColors[BELOW_FREEZING_COLOR] = resources.getColor(R.color.below_freezing);
 		
 		// Get widget settings
 		Cursor widgetSettingsCursor = mContext.getContentResolver().query(
@@ -1324,7 +1326,7 @@ public class AixDetailedWidget {
 		Uri.Builder builder = mViewUri.buildUpon();
 		builder.appendPath(AixViews.TWIG_INTERVALDATAFORECASTS);
 		builder.appendQueryParameter("pu", mUseInches ? "i" : "m");
-		
+
 		Cursor cursor = mContext.getContentResolver().query(
 				builder.build(), null,
 				AixIntervalDataForecastColumns.TIME_TO + ">? AND " +
@@ -1337,8 +1339,9 @@ public class AixDetailedWidget {
 			if (cursor.moveToFirst()) {
 				do {
 					try {
-						intervalData.add(IntervalData.buildFromCursor(cursor));
-					} catch (Exception e) { /* TODO Should add log message */ }
+						IntervalData d = IntervalData.buildFromCursor(cursor);
+						intervalData.add(d);
+					} catch (Exception e) { Log.d(TAG, "setupIntervalData(): Adding IntervalData from cursor failed: " + e.getMessage()); }
 				} while (cursor.moveToNext());
 			}
 			cursor.close();
@@ -1411,31 +1414,25 @@ public class AixDetailedWidget {
 		}};
 		
 		mGridPaint = new Paint() {{
-			setAntiAlias(false);
 			setColor(mColors[GRID_COLOR]);
-			//setStrokeCap(Paint.Cap.SQUARE);
-			setStrokeWidth(1.0f);
 			setStyle(Paint.Style.STROKE);
 		}};
 		mGridOutlinePaint = new Paint() {{
-			setAntiAlias(false);
 			setColor(mColors[GRID_OUTLINE_COLOR]);
-			//setStrokeCap(Paint.Cap.SQUARE);
-			setStrokeWidth(1.0f);
 			setStyle(Paint.Style.STROKE);
 		}};
 		
 		mAboveFreezingTemperaturePaint = new Paint() {{
 			setAntiAlias(true);
 			setColor(mColors[ABOVE_FREEZING_COLOR]);
-			setStyle(Paint.Style.STROKE);
 			setStrokeCap(Paint.Cap.ROUND);
+			setStyle(Paint.Style.STROKE);
 		}};
 		mBelowFreezingTemperaturePaint = new Paint() {{
 			setAntiAlias(true);
 			setColor(mColors[BELOW_FREEZING_COLOR]);
-			setStyle(Paint.Style.STROKE);
 			setStrokeCap(Paint.Cap.ROUND);
+			setStyle(Paint.Style.STROKE);
 		}};
 		
 		mMinRainPaint = new Paint() {{
@@ -1444,10 +1441,10 @@ public class AixDetailedWidget {
 			setStyle(Paint.Style.FILL);
 		}};
 		mMaxRainPaint = new Paint() {{
-			setColor(mColors[MAX_RAIN_COLOR]);
-			setStyle(Paint.Style.STROKE);
 			setAntiAlias(true);
+			setColor(mColors[MAX_RAIN_COLOR]);
 			setStrokeCap(Paint.Cap.SQUARE);
+			setStyle(Paint.Style.STROKE);
 		}};
 	}
 	
@@ -1490,11 +1487,10 @@ public class AixDetailedWidget {
 		mTimeNow = calendar.getTimeInMillis();
 		truncateHour(calendar);
 		calendar.add(Calendar.HOUR_OF_DAY, 1);
-		long timeTemp = calendar.getTimeInMillis();
 		calendar.add(Calendar.HOUR_OF_DAY, -mNumWeatherDataBufferHours);
-		final long weatherDataFrom = calendar.getTimeInMillis();
+		mTimeFrom = calendar.getTimeInMillis();
 		calendar.add(Calendar.HOUR_OF_DAY, mNumWeatherDataBufferHours * 2 + mNumHours);
-		final long weatherDataTo = calendar.getTimeInMillis();
+		mTimeTo = calendar.getTimeInMillis();
 		
 		// Get temperature values
 		ArrayList<PointData> pointData = new ArrayList<PointData>();
@@ -1508,55 +1504,112 @@ public class AixDetailedWidget {
 				null,
 				AixPointDataForecastColumns.TIME + ">=? AND " +
 				AixPointDataForecastColumns.TIME + "<=?",
-				new String[] { Long.toString(weatherDataFrom), Long.toString(weatherDataTo) },
+				new String[] { Long.toString(mTimeFrom), Long.toString(mTimeTo) },
 				AixPointDataForecastColumns.TIME + " ASC");
-		
-		int sampleResolutionHrs = Integer.MAX_VALUE;
-		long epoch = 0;
-		long lastVal = 0;
 		
 		if (cursor != null) {
 			if (cursor.moveToFirst()) {
 				do {
 					PointData p = PointData.buildFromCursor(cursor);
 					pointData.add(p);
-					
-					// Find resolution
-					long diff = p.mTime - lastVal;
-					if (diff > 0) {
-						int diffInHours = (int)(diff / DateUtils.HOUR_IN_MILLIS);
-						if (diffInHours < sampleResolutionHrs) {
-							sampleResolutionHrs = diffInHours;
-						}
-					}
-					
-					// Set epoch
-					if (epoch == 0 && p.mTime > timeTemp) {
-						epoch = p.mTime;
-						if (lastVal != 0) {
-							epoch -= sampleResolutionHrs * DateUtils.HOUR_IN_MILLIS;
-						}
-					}
-					
-					lastVal = p.mTime;
 				} while (cursor.moveToNext());
 			}
 			cursor.close();
 		}
 
+		mPointData = pointData;
+	}
+	
+	private void setupEpochAndTimes() {
+		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
+		truncateHour(calendar);
+		calendar.add(Calendar.HOUR_OF_DAY, 1);
+		
+		long iconEpoch = 0;
+		long compare = Long.MAX_VALUE;
+		
+		for (IntervalData inter : mIntervalData) {
+			if (inter.weatherIcon != 0) {
+				if ((inter.timeTo != inter.timeFrom && inter.timeTo > calendar.getTimeInMillis()) ||
+						(inter.timeFrom == inter.timeTo && inter.timeTo >= calendar.getTimeInMillis())) {
+					long diff = inter.timeFrom - calendar.getTimeInMillis();//Math.abs(
+					if (diff < compare) {
+						compare = diff;
+						iconEpoch = inter.timeFrom;
+					}
+				}
+			}
+		}
+		
+		long pointEpoch = 0;
+		compare = Long.MAX_VALUE;
+		
+		if (pointEpoch == 0) {
+			for (PointData p : mPointData) {
+				if (p.mTime >= calendar.getTimeInMillis()) {
+					long diff = p.mTime - calendar.getTimeInMillis();
+					if (diff < compare) {
+						compare = diff;
+						pointEpoch = p.mTime;
+					}
+				}
+			}
+		}
+		
+		long epoch = Math.max(iconEpoch, pointEpoch);
+		
+		if (epoch == 0) {
+			epoch = calendar.getTimeInMillis();
+		}
+		
+		// Update timeFrom and timeTo to correct values given the epoch
+		calendar.setTimeInMillis(epoch);
+		//calendar.setTimeInMillis(timeTemp);
+		mTimeFrom = calendar.getTimeInMillis();
+		calendar.add(Calendar.HOUR_OF_DAY, mNumHours);
+		mTimeTo = calendar.getTimeInMillis();
+	}
+	
+	private void setupSampleTimes() throws AixWidgetDrawException {
+		long lastPointPos = -1;
+		long lastIntervalPos = -1;
+		
+		long sampleResolutionHrs = Long.MAX_VALUE;
+		
+		for (IntervalData inter : mIntervalData) {
+			if (inter.weatherIcon != 0) {
+				if (inter.timeFrom == inter.timeTo) {
+					if (lastPointPos != -1) {
+						sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(inter.timeFrom - lastPointPos));
+					}
+					lastPointPos = inter.timeFrom;
+				} else {
+					long intervalPos = (inter.timeFrom + inter.timeTo) / 2;
+					if (lastIntervalPos != -1) {
+						sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.abs(intervalPos - lastIntervalPos));
+					}
+					lastIntervalPos = intervalPos;
+				}
+			}
+		}
+		
+		sampleResolutionHrs = Math.round(sampleResolutionHrs / DateUtils.HOUR_IN_MILLIS);
+		
+		if (sampleResolutionHrs > 6) {
+			lastPointPos = -1;
+			for (PointData p : mPointData) {
+				if (lastPointPos != -1) {
+					sampleResolutionHrs = Math.min(sampleResolutionHrs, Math.round((p.mTime - lastPointPos) / DateUtils.HOUR_IN_MILLIS));
+				}
+				lastPointPos = p.mTime;
+			}
+		}
+		
 		if ((sampleResolutionHrs < 1) || (sampleResolutionHrs > mNumHours / 2)) {
 			throw AixWidgetDrawException.buildMissingWeatherDataException();
 		}
 		
-		mNumHoursBetweenSamples = sampleResolutionHrs;
-		
-		// Update timeFrom and timeTo to correct values given the epoch
-		calendar.setTimeInMillis(epoch);
-		mTimeFrom = calendar.getTimeInMillis();
-		calendar.add(Calendar.HOUR_OF_DAY, mNumHours);
-		mTimeTo = calendar.getTimeInMillis();
-		
-		mPointData = pointData;
+		mNumHoursBetweenSamples = (int)sampleResolutionHrs;
 	}
 	
 	private void setupWidgetSize() throws AixWidgetDrawException {

@@ -6,17 +6,17 @@
     <color name="semi_white">#f888</color>
     <color name="semi_black">#f666</color>
     
-    <color name="border_default">#3A000000</color>
-    <color name="background_default">#C8222222</color>
-    <color name="text_default">#FFFFFFFF</color>
-    <color name="pattern_default">#7FFFFFFF</color>
-    <color name="day_default">#40DDDDDD</color>
-	<color name="night_default">#40202020</color>
-    <color name="grid_default">#33FFFFFF</color>
-    <color name="grid_outline_default">#FFFFFFFF</color>
-	<color name="maximum_rain_default">#CC68CFE8</color>
-	<color name="minimum_rain_default">#CC68CFE8</color>
-	<color name="above_freezing_default">#FFF01C1C</color>
-	<color name="below_freezing_default">#FF0280D9</color>
+    <color name="border">#3A000000</color>
+    <color name="background">#C8222222</color>
+    <color name="text">#FFFFFFFF</color>
+    <color name="pattern">#7FFFFFFF</color>
+    <color name="day">#40DDDDDD</color>
+	<color name="night">#40202020</color>
+    <color name="grid">#33FFFFFF</color>
+    <color name="grid_outline">#FFFFFFFF</color>
+	<color name="maximum_rain">#CC68CFE8</color>
+	<color name="minimum_rain">#CC68CFE8</color>
+	<color name="above_freezing">#FFF01C1C</color>
+	<color name="below_freezing">#FF0280D9</color>
 
 </resources>

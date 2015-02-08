@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen
-		xmlns:android="http://schemas.android.com/apk/res/android">
+		xmlns:android="http://schemas.android.com/apk/res/android"
+		xmlns:aix="http://schemas.android.com/apk/res/net.veierland.aix">
 	
 	<PreferenceCategory
 			android:title="@string/header_widget_settings">
-
+		
 		<PreferenceScreen
 				android:key="unit_settings"
 				android:title="Measurement Units"
@@ -38,7 +39,7 @@
 			</PreferenceCategory>
 		
 		</PreferenceScreen>
-	
+
 		<PreferenceScreen
 				android:key="color_settings"
 				android:title="UI settings"
@@ -47,19 +48,22 @@
 			<PreferenceCategory
 					android:title="@string/ui_settings_category_widget">
 					
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/background_color_int"
 						android:title="@string/background_color_title"
+						android:defaultValue="@color/background"
 						android:persistent="true" />
 	
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/pattern_color_int"
 						android:title="@string/pattern_color_title"
+						android:defaultValue="@color/pattern"
 						android:persistent="true" />
 						
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/text_color_int"
 						android:title="@string/text_color_title"
+						android:defaultValue="@color/text"
 						android:persistent="true" />
 				
 				<ListPreference
@@ -83,10 +87,11 @@
 						android:summaryOn="@string/border_enabled_summary_on"
 						android:summaryOff="@string/border_enabled_summary_off" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/border_color_int"
 						android:title="@string/border_color_title"
 						android:dependency="@string/border_enabled_bool"
+						android:defaultValue="@color/border"
 						android:persistent="true" />
 				
 				<EditTextPreference
@@ -116,15 +121,17 @@
 						android:summaryOn="@string/day_effect_summary_on"
 						android:summaryOff="@string/day_effect_summary_off" />
 			
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/day_color_int"
 						android:title="@string/day_color_title"
+						android:defaultValue="@color/day"
 						android:persistent="true"
 						android:dependency="@string/day_effect_bool" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/night_color_int"
 						android:title="@string/night_color_title"
+						android:defaultValue="@color/night"
 						android:persistent="true"
 						android:dependency="@string/day_effect_bool" />
 			
@@ -133,14 +140,16 @@
 			<PreferenceCategory
 					android:title="@string/ui_settings_category_grid">
 			
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/grid_color_int"
 						android:title="@string/grid_color_title"
+						android:defaultValue="@color/grid"
 						android:persistent="true" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/grid_outline_color_int"
 						android:title="@string/grid_outline_color_title"
+						android:defaultValue="@color/grid_outline"
 						android:persistent="true" />
 			
 			</PreferenceCategory>
@@ -148,24 +157,28 @@
 			<PreferenceCategory
 					android:title="@string/ui_settings_category_indicator">
 			
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/max_rain_color_int"
 						android:title="@string/max_rain_color_title"
+						android:defaultValue="@color/maximum_rain"
 						android:persistent="true" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/min_rain_color_int"
 						android:title="@string/min_rain_color_title"
+						android:defaultValue="@color/minimum_rain"
 						android:persistent="true" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/above_freezing_color_int"
 						android:title="@string/above_freezing_color_title"
+						android:defaultValue="@color/above_freezing"
 						android:persistent="true" />
 				
-				<Preference
+				<net.veierland.aix.ColorPreference
 						android:key="@string/below_freezing_color_int"
 						android:title="@string/below_freezing_color_title"
+						android:defaultValue="@color/below_freezing"
 						android:persistent="true" />
 			
 			</PreferenceCategory>
@@ -184,6 +197,14 @@
 			
 			<PreferenceCategory
 					android:title="@string/system_settings_category">
+			
+				<ListPreference
+						android:key="@string/provider_string"
+						android:title="@string/provider_title"
+						android:persistent="true"
+						android:entries="@array/provider_readable"
+						android:entryValues="@array/provider_code"
+						android:defaultValue="1" />
 			
 				<CheckBoxPreference
 						android:key="@string/awake_only_bool"

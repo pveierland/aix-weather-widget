@@ -1,12 +1,9 @@
 package net.veierland.aix;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
-import android.appwidget.AppWidgetManager;
-import android.appwidget.AppWidgetProviderInfo;
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -17,10 +14,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import android.text.format.DateUtils;
 import android.util.Log;
 
 public class AixProvider extends ContentProvider {
@@ -705,54 +700,6 @@ public class AixProvider extends ContentProvider {
 	}
 	
 	@Override
-	public ParcelFileDescriptor openFile(Uri uri, String mode)
-			throws FileNotFoundException
-	{
-		if (sUriMatcher.match(uri) == AIXRENDER) {
-			String widgetId = uri.getPathSegments().get(1);
-			String updateId = uri.getPathSegments().get(2);
-			long updateTime = Long.parseLong(updateId);
-			
-			File dir = getContext().getCacheDir();
-			File[] files = dir.listFiles();
-				
-			for (int i = 0; i < files.length; i++) {
-				File f = files[i];
-				String[] s = f.getName().split("_");
-				if (s != null && s.length == 4) {
-					long filetime = Long.parseLong(s[2]);
-					if (	(s[1].equals(widgetId) && filetime < updateTime) ||
-							(filetime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS))
-					{
-						f.delete();
-					}
-				}
-			}
-			
-			AppWidgetManager manager = AppWidgetManager.getInstance(getContext());
-			AppWidgetProviderInfo info = manager.getAppWidgetInfo(Integer.parseInt(widgetId));
-			Log.d(TAG, "Delivering render minWidth=" + info.minWidth + " minHeight=" + info.minHeight);
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append("aix_");
-			sb.append(widgetId);
-			sb.append('_');
-			sb.append(updateId);
-			
-			String orientation = uri.getPathSegments().get(3);
-			if (orientation != null && orientation.equals("landscape")) {
-				sb.append("_landscape.png");
-			} else {
-				sb.append("_portrait.png");
-			}
-			
-			File file = new File(getContext().getCacheDir(), sb.toString());
-			return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-		}
-		return null;
-	}
-	
-	@Override
 	public Uri insert(Uri uri, ContentValues values) {
 		if (LOGD) Log.d(TAG, "insert() with uri=" + uri);
 		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
@@ -828,7 +775,7 @@ public class AixProvider extends ContentProvider {
 		}
 		case AIXPOINTDATAFORECASTS: {
 			long rowId = -1;
-			
+			/*
 			Cursor cursor = db.query(
 					TABLE_AIXPOINTDATAFORECASTS,
 					null,
@@ -848,8 +795,9 @@ public class AixProvider extends ContentProvider {
 			if (rowId != -1) {
 				db.update(TABLE_AIXPOINTDATAFORECASTS, values, BaseColumns._ID + '=' + rowId, null);
 			} else {
+			*/
 				rowId = db.insert(TABLE_AIXPOINTDATAFORECASTS, null, values);
-			}
+			//}
 			
 			if (rowId != -1) {
 				resultUri = ContentUris.withAppendedId(AixPointDataForecasts.CONTENT_URI, rowId);
@@ -858,7 +806,7 @@ public class AixProvider extends ContentProvider {
 		}
 		case AIXINTERVALDATAFORECASTS: {
 			long rowId = -1;
-			
+			/*
 			Cursor cursor = db.query(
 					TABLE_AIXINTERVALDATAFORECASTS,
 					null,
@@ -880,8 +828,9 @@ public class AixProvider extends ContentProvider {
 			if (rowId != -1) {
 				db.update(TABLE_AIXINTERVALDATAFORECASTS, values, BaseColumns._ID + '=' + rowId, null);
 			} else {
+			*/
 				rowId = db.insert(TABLE_AIXINTERVALDATAFORECASTS, null, values);
-			}
+			//}
 			
 			if (rowId != -1) {
 				resultUri = ContentUris.withAppendedId(AixIntervalDataForecasts.CONTENT_URI, rowId);
@@ -940,8 +889,7 @@ public class AixProvider extends ContentProvider {
 	{
 		if (LOGD) Log.d(TAG, "query() with uri=" + uri);
 		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-		
-		int uriMatch = sUriMatcher.match(uri);
+
 		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
 		switch (sUriMatcher.match(uri)) {
@@ -1114,11 +1062,30 @@ public class AixProvider extends ContentProvider {
 		case AIXVIEWSETTINGS_ID: {
 			return db.update(TABLE_AIXVIEWSETTINGS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 		}
+		case AIXLOCATIONS: {
+			return db.update(TABLE_AIXLOCATIONS, values, selection, null);
+		}
 		case AIXLOCATIONS_ID: {
 			return db.update(TABLE_AIXLOCATIONS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
 		}
+		case AIXPOINTDATAFORECASTS: {
+			return db.delete(TABLE_AIXPOINTDATAFORECASTS, "exists " +
+					"(select 1 from aixpointdataforecasts x where " +
+					"aixpointdataforecasts.location=x.location and " +
+					"aixpointdataforecasts.time=x.time and " +
+					"aixpointdataforecasts.timeAdded < x.timeAdded)",
+					null);
+		}
 		case AIXPOINTDATAFORECASTS_ID: {
 			return db.update(TABLE_AIXPOINTDATAFORECASTS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
+		}
+		case AIXINTERVALDATAFORECASTS: {
+			return db.delete(TABLE_AIXINTERVALDATAFORECASTS, "exists " +
+					"(select 1 from aixintervaldataforecasts x where " +
+					"aixintervaldataforecasts.location=x.location and " +
+					"aixintervaldataforecasts.timeFrom=x.timeFrom and " +
+					"aixintervaldataforecasts.timeTo=x.timeTo and " +
+					"aixintervaldataforecasts.timeAdded < x.timeAdded);", null);
 		}
 		case AIXINTERVALDATAFORECASTS_ID: {
 			return db.update(TABLE_AIXINTERVALDATAFORECASTS, values, buildSelectionStringFromIdUri(uri, selection), selectionArgs);
@@ -1164,8 +1131,6 @@ public class AixProvider extends ContentProvider {
 	private static final int AIXSUNMOONDATA = 801;
 	private static final int AIXSUNMOONDATA_ID = 802;
 	
-	private static final int AIXRENDER = 999;
-	
 	static {
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets", AIXWIDGETS);
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets/#", AIXWIDGETS_ID);
@@ -1196,74 +1161,7 @@ public class AixProvider extends ContentProvider {
 		
 		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata", AIXSUNMOONDATA);
 		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata/#", AIXSUNMOONDATA_ID);
-		
-		sUriMatcher.addURI(AUTHORITY, "aixrender/#/#/*", AIXRENDER);
 	}
-	
-//	public Uri addForecast(SQLiteDatabase db, ContentValues values) {
-//		Uri resultUri = null;
-//		long rowId = -1;
-//		
-//		if (	values.containsKey(AixForecastsColumns.SUN_RISE) ||
-//				values.containsKey(AixForecastsColumns.SUN_SET))
-//		{
-//			// Sun stuff
-//			Cursor cursor = db.query(
-//					TABLE_AIXFORECASTS,
-//					null,
-//					AixForecastsColumns.LOCATION + "=?" + " AND " +
-//					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
-//					AixForecastsColumns.TIME_TO + "=?" + " AND " +
-//					AixForecastsColumns.SUN_RISE + " IS NOT NULL AND " +
-//					AixForecastsColumns.SUN_SET + " IS NOT NULL",
-//					new String[] {
-//							values.getAsString(AixForecastsColumns.LOCATION),
-//							values.getAsString(AixForecastsColumns.TIME_FROM),
-//							values.getAsString(AixForecastsColumns.TIME_TO)
-//					}, null, null, null);
-//			if (cursor != null) {
-//				if (cursor.moveToFirst()) {
-//					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
-//				}
-//				cursor.close();
-//			}
-//		} else {
-//			Cursor cursor = db.query(
-//					TABLE_AIXFORECASTS,
-//					null,
-//					AixForecastsColumns.LOCATION + "=?" + " AND " +
-//					AixForecastsColumns.TIME_FROM + "=?" + " AND " +
-//					AixForecastsColumns.TIME_TO + "=?" + " AND " +
-//					AixForecastsColumns.SUN_RISE + " IS NULL AND " +
-//					AixForecastsColumns.SUN_SET + " IS NULL",
-//					new String[] {
-//							values.getAsString(AixForecastsColumns.LOCATION),
-//							values.getAsString(AixForecastsColumns.TIME_FROM),
-//							values.getAsString(AixForecastsColumns.TIME_TO)
-//					}, null, null, null);
-//			if (cursor != null) {
-//				if (cursor.moveToFirst()) {
-//					rowId = cursor.getLong(AixForecastsColumns.FORECAST_ID_COLUMN);
-//				}
-//				cursor.close();
-//			}
-//		}
-//		
-//		if (rowId != -1) {
-//			// A record already exists for this time and location. Update its values:
-//			values.put(BaseColumns._ID, Long.toString(rowId));
-//			db.replace(TABLE_AIXFORECASTS, null, values);
-//		} else {
-//			// No record exists for this time. Insert new row:
-//			rowId = db.insert(TABLE_AIXFORECASTS, AixForecastsColumns.LOCATION, values);
-//		}
-//		
-//		if (rowId != -1) {
-//			resultUri = ContentUris.withAppendedId(AixForecasts.CONTENT_URI, rowId);
-//		}
-//		
-//		return resultUri;
-//	}
 	
 	private long addSetting(SQLiteDatabase db, String table, String id, Entry<String, Object> entry) {
 		long rowId = -1;

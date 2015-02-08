@@ -6,10 +6,13 @@ import android.text.format.DateUtils;
 
 public class IntervalData {
 	
-	public final long timeAdded, timeFrom, timeTo;
-	public final int weatherIcon;
-	public final float rainValue, rainMinValue, rainMaxValue;
+	public long timeAdded, timeFrom, timeTo;
+	public int weatherIcon;
+	public float rainValue, rainMinValue, rainMaxValue;
 	
+	public IntervalData() {
+		
+	}
 	
 	public IntervalData(long timeAdded, long timeFrom, long timeTo, int weatherIcon,
 			float rainValue, float rainMinValue, float rainMaxValue)
@@ -35,8 +38,9 @@ public class IntervalData {
 		String rainValueString = c.getString(AixIntervalDataForecastColumns.RAIN_VALUE_COLUMN);
 		try {
 			rainValue = Float.parseFloat(rainValueString);
-		} catch (NumberFormatException e) {
-			throw new Exception("Rain() constructor: Invalid rain value (" + rainValueString + ")");
+		} catch (Exception e) {
+			//throw new Exception("Rain() constructor: Invalid rain value (" + rainValueString + ")");
+			rainValue = Float.NaN;
 		}
 		
 		try {

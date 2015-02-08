@@ -55,5 +55,17 @@
 		<item>6</item>
 		<item>12</item>
 	</string-array>
+	
+	<string-array name="provider_readable">
+		<item>Auto</item>
+		<item>Norwegian Meteorological Institute</item>
+		<item>NOAA NWS (US)</item>
+	</string-array>
+	
+	<string-array name="provider_code">
+		<item>1</item>
+		<item>2</item>
+		<item>3</item>
+	</string-array>
 
 </resources>

@@ -16,9 +16,23 @@ public class PointData {
 		PointData p = new PointData();
 		p.mTimeAdded = c.getLong(AixPointDataForecastColumns.TIME_ADDED_COLUMN);
 		p.mTime = c.getLong(AixPointDataForecastColumns.TIME_COLUMN);
-		p.mTemperature = c.getFloat(AixPointDataForecastColumns.TEMPERATURE_COLUMN);
-		p.mHumidity = c.getFloat(AixPointDataForecastColumns.HUMIDITY_COLUMN);
-		p.mPressure = c.getFloat(AixPointDataForecastColumns.PRESSURE_COLUMN);
+		
+		try {
+			p.mTemperature = Float.parseFloat(c.getString(AixPointDataForecastColumns.TEMPERATURE_COLUMN));
+		} catch (Exception e) {
+			p.mTemperature = Float.NaN;
+		}
+		try {
+			p.mHumidity = Float.parseFloat(c.getString(AixPointDataForecastColumns.HUMIDITY_COLUMN));
+		} catch (Exception e) {
+			p.mHumidity = Float.NaN;
+		}
+		try {
+			p.mPressure = Float.parseFloat(c.getString(AixPointDataForecastColumns.PRESSURE_COLUMN));
+		} catch (Exception e) {
+			p.mPressure = Float.NaN;
+		}
+
 		return p;
 	}
 	

@@ -28,6 +28,8 @@
 	
 	
 	
+	<string name="help">Help</string>
+	<string name="donate">Donate</string>
 	
 	<string name="select_location">Select location</string>
 	
@@ -112,7 +114,7 @@
 	<string name="ui_settings_category_widget">Widget settings</string>
 	
 	<string name="background_color_title">Background color</string>
-	<string name="pattern_color_title">Background pattern color</string>
+	<string name="pattern_color_title">Pattern color</string>
 	<string name="text_color_title">Text color</string>
 	<string name="top_text_visibility_title">Top text visibility</string>
 	
@@ -133,22 +135,24 @@
 	<string name="day_effect_title">Day/night effect</string>
 	<string name="day_effect_summary_on">Background effect enabled.</string>
 	<string name="day_effect_summary_off">Background effect disabled.</string>
-	<string name="day_color_title">Day background color</string>
-	<string name="night_color_title">Night background color</string>
+	<string name="day_color_title">Day background</string>
+	<string name="night_color_title">Night background</string>
 	
 	<string name="ui_settings_category_grid">Grid colors</string>
 	<string name="grid_color_title">Grid color</string>
 	<string name="grid_outline_color_title">Grid outline color</string>
 	
 	<string name="ui_settings_category_indicator">Indicator colors</string>
-	<string name="max_rain_color_title">Maximum rain bar color</string>
-	<string name="min_rain_color_title">Minimum rain bar color</string>
-	<string name="above_freezing_color_title">Above freezing color</string>
-	<string name="below_freezing_color_title">Below freezing color</string>
+	<string name="max_rain_color_title">Maximum rain</string>
+	<string name="min_rain_color_title">Minimum rain</string>
+	<string name="above_freezing_color_title">Above freezing</string>
+	<string name="below_freezing_color_title">Below freezing</string>
 	<!-- END USER INTERFACE SETTINGS -->
 
 	<!-- BEGIN SYSTEM SETTINGS -->
 	<string name="system_settings_category">System Settings</string>
+	
+	<string name="provider_title">Data source</string>
 	
 	<string name="awake_only_title">Only when awake</string>
 	<string name="awake_only_summary_on">The device will not be awoken to update weather data.</string>
@@ -187,9 +191,12 @@
 	<string name="above_freezing_color_int">above_freezing_color_int</string>
 	<string name="below_freezing_color_int">below_freezing_color_int</string>
 	
+	<string name="provider_string">global_provider</string>
 	<string name="awake_only_bool">global_awake_only</string>
 	<string name="wifi_only_bool">global_wifi_only</string>
 	<string name="update_rate_string">global_update_rate</string>
+	
+	<string name="calibration_mode_bool">global_calibration_mode</string>
 	<!-- END PREFERENCE STRINGS, DO NOT EDIT -->
 	
 </resources>

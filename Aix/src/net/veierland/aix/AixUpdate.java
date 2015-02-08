@@ -21,6 +21,7 @@ import static net.veierland.aix.AixUtils.WEATHER_ICON_RAINTHUNDER;
 import static net.veierland.aix.AixUtils.WEATHER_ICON_SLEET;
 import static net.veierland.aix.AixUtils.WEATHER_ICON_SNOW;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -129,6 +130,9 @@ public class AixUpdate {
 	
 	private long mLocationId = -1;
 	
+	private String mPortraitFileName;
+	private String mLandscapeFileName;
+	
 	public AixUpdate(Context context, Uri widgetUri) {
 		mContext = context;
 		mWidgetUri = widgetUri;
@@ -208,16 +212,12 @@ public class AixUpdate {
 		
 		updateWidgetRemoteViews("Drawing widget...", false);
 		
-		AixService.deleteCacheFiles(mContext, mAppWidgetId);
-		AixService.deleteTemporaryFiles(mContext, mAppWidgetId);
-		
 		try {
 			renderWidget();
 			updateWidgetRemoteViews();
 		} catch (AixWidgetDrawException e) {
 			Log.d(TAG, e.toString());
 			e.printStackTrace();
-			
 			clearUpdateTimestamps();
 			updateTime = Math.min(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
 			
@@ -234,6 +234,24 @@ public class AixUpdate {
 			}
 		} catch (Exception e) {
 			updateWidgetRemoteViews(mContext.getString(R.string.widget_failed_to_draw), true);
+			e.printStackTrace();
+		}
+		
+		/*
+		try {
+			AixService.deleteCacheFiles(mContext, mAppWidgetId);
+		} catch (Exception e) {
+			Toast.makeText(mContext, "SOMETHING BAD HAPPENED (3)", Toast.LENGTH_SHORT).show();
+			Log.d(TAG, "Error occured when clearing cache files. " + e.getMessage());
+			e.printStackTrace();
+		}
+
+		*/
+		
+		try {
+			AixService.deleteTemporaryFiles(mContext, mAppWidgetId);
+		} catch (Exception e) {
+			Log.d(TAG, "Error occured when clearing temporary files. " + e.getMessage());
 			e.printStackTrace();
 		}
 		
@@ -362,13 +380,37 @@ public class AixUpdate {
 	}
 	
 	private void renderWidget() throws AixWidgetDrawException, IOException {
-		String portraitFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_portrait.png";
-		String landscapeFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_landscape.png";
+		/*
+		mPortraitFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_portrait.png";
+		mLandscapeFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_landscape.png";
 		
 		AixDetailedWidget widget = AixDetailedWidget.build(mContext.getApplicationContext(), mWidgetUri, mViewUri);
 		
-		mPortraitUri = renderWidget(widget, portraitFileName, false);
-		mLandscapeUri = renderWidget(widget, landscapeFileName, true);
+		mPortraitUri = renderWidget(widget, mPortraitFileName, false);
+		mLandscapeUri = renderWidget(widget, mLandscapeFileName, true);
+		*/
+		mPortraitFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_portrait.png";
+		
+		AixDetailedWidget widget = AixDetailedWidget.build(mContext.getApplicationContext(), mWidgetUri, mViewUri);
+		
+		Bitmap bitmap = widget.render(false);
+		File file = new File(mContext.getCacheDir(), mPortraitFileName);
+		FileOutputStream out = new FileOutputStream(file);
+		bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+		out.flush();
+		out.close();
+		
+		mLandscapeFileName = "aix_" + mAppWidgetId + "_" + mCurrentLocalTime + "_landscape.png";
+		bitmap = widget.render(true);
+		file = new File(mContext.getCacheDir(), mLandscapeFileName);
+		out = new FileOutputStream(file);
+		bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+		out.flush();
+		out.close();
+		
+		String uriString = "content://net.veierland.aix/aixrender/" + mAppWidgetId + '/' + mCurrentLocalTime;
+		mPortraitUri = Uri.parse(uriString + "/portrait");
+		mLandscapeUri = Uri.parse(uriString + "/landscape");
 	}
 	
 	private Uri renderWidget(AixDetailedWidget widget, String fileName, boolean isLandscape) throws AixWidgetDrawException, IOException {

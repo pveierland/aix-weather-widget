@@ -1,9 +1,13 @@
 package net.veierland.aix;
 
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -14,8 +18,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.util.Log;
 
 public class AixProvider extends ContentProvider {
@@ -884,6 +890,50 @@ public class AixProvider extends ContentProvider {
 	}
 
 	@Override
+	public ParcelFileDescriptor openFile(Uri uri, String mode)
+			throws FileNotFoundException
+	{
+		if (sUriMatcher.match(uri) == AIXRENDER) {
+			String widgetId = uri.getPathSegments().get(1);
+			String updateId = uri.getPathSegments().get(2);
+			long updateTime = Long.parseLong(updateId);
+			
+			File dir = getContext().getCacheDir();
+			File[] files = dir.listFiles();
+				
+			for (int i = 0; i < files.length; i++) {
+				File f = files[i];
+				String[] s = f.getName().split("_");
+				if (s != null && s.length == 4) {
+					long filetime = Long.parseLong(s[2]);
+					if (	(s[1].equals(widgetId) && filetime < updateTime) ||
+							(filetime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS))
+					{
+						f.delete();
+					}
+				}
+			}
+			
+			StringBuilder sb = new StringBuilder();
+			sb.append("aix_");
+			sb.append(widgetId);
+			sb.append('_');
+			sb.append(updateId);
+			
+			String orientation = uri.getPathSegments().get(3);
+			if (orientation != null && orientation.equals("landscape")) {
+				sb.append("_landscape.png");
+			} else {
+				sb.append("_portrait.png");
+			}
+			
+			File file = new File(getContext().getCacheDir(), sb.toString());
+			return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+		}
+		return null;
+	}
+	
+	@Override
 	public Cursor query(Uri uri, String[] projection, String selection,
 			String[] selectionArgs, String sortOrder)
 	{
@@ -1131,6 +1181,8 @@ public class AixProvider extends ContentProvider {
 	private static final int AIXSUNMOONDATA = 801;
 	private static final int AIXSUNMOONDATA_ID = 802;
 	
+	private static final int AIXRENDER = 999;
+	
 	static {
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets", AIXWIDGETS);
 		sUriMatcher.addURI(AUTHORITY, "aixwidgets/#", AIXWIDGETS_ID);
@@ -1161,6 +1213,8 @@ public class AixProvider extends ContentProvider {
 		
 		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata", AIXSUNMOONDATA);
 		sUriMatcher.addURI(AUTHORITY, "aixsunmoondata/#", AIXSUNMOONDATA_ID);
+		
+		sUriMatcher.addURI(AUTHORITY, "aixrender/#/#/*", AIXRENDER);
 	}
 	
 	private long addSetting(SQLiteDatabase db, String table, String id, Entry<String, Object> entry) {

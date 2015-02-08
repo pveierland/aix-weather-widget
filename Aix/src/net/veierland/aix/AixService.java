@@ -19,6 +19,7 @@ import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.net.Uri;
 import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 public class AixService extends IntentService {
@@ -56,7 +57,6 @@ public class AixService extends IntentService {
 			}
 		} else {
 			Uri widgetUri = intent.getData();
-			
 			if (widgetUri == null) {
 				Log.d(TAG, "onHandleIntent() failed: widgetUri is null");
 				return;
@@ -125,6 +125,22 @@ public class AixService extends IntentService {
 			File f = files[i];
 			String filename = f.getName();
 			if (filename.startsWith("aix")) {
+				String[] s = f.getName().split("_");
+				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
+					f.delete();
+				}
+			}
+		}
+	}
+	
+	public static void deleteCacheFiles(Context context, int appWidgetId, String portraitFileName, String landscapeFileName) {
+		File dir = context.getCacheDir();
+		File[] files = dir.listFiles();
+		String appWidgetIdString = Integer.toString(appWidgetId);
+		for (int i = 0; i < files.length; i++) {
+			File f = files[i];
+			String filename = f.getName();
+			if (filename.startsWith("aix") && !filename.equals(portraitFileName) && !filename.equals(landscapeFileName)) {
 				String[] s = f.getName().split("_");
 				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
 					f.delete();

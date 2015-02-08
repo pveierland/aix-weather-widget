@@ -32,7 +32,6 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -71,6 +70,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 	private final static int SELECT_LOCATION = 3;
 	
 	private boolean mProviderChanged;
+	private boolean mLocationChanged;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -343,6 +343,7 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 					if (cursor.moveToFirst()) {
 						mLocationId = cursor.getLong(AixLocationsColumns.LOCATION_ID_COLUMN);
 						mLocationName = cursor.getString(AixLocationsColumns.TITLE_COLUMN);
+						mLocationChanged = true;
 					}
 					cursor.close();
 				}
@@ -389,6 +390,10 @@ public class AixConfigure extends PreferenceActivity implements View.OnClickList
 				clearWidgetStates(settings);
 				updateIntent = new Intent(AixService.ACTION_UPDATE_ALL, null, getApplicationContext(), AixService.class);
 			} else {
+				if (mLocationChanged) {
+					int appWidgetId = (int)ContentUris.parseId(mWidgetUri);
+					if (appWidgetId != 0) clearWidgetDrawState(settings, appWidgetId);
+				}
 				updateIntent = new Intent(AixService.ACTION_UPDATE_WIDGET, mWidgetUri, getApplicationContext(), AixService.class);
 			}
 			

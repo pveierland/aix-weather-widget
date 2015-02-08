@@ -93,6 +93,7 @@ public class AixService extends IntentService {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		Editor editor = settings.edit();
 		editor.remove("global_widget_" + appWidgetId);
+		editor.remove("global_country_" + appWidgetId);
 		editor.commit();
 		
 		if (widgetCursor != null) {

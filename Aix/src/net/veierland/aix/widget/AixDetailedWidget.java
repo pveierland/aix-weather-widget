@@ -1,10 +1,12 @@
 package net.veierland.aix.widget;
 
-import static net.veierland.aix.AixUtils.*;
+import static net.veierland.aix.AixUtils.hcap;
+import static net.veierland.aix.AixUtils.isPrime;
+import static net.veierland.aix.AixUtils.lcap;
+import static net.veierland.aix.AixUtils.truncateDay;
+import static net.veierland.aix.AixUtils.truncateHour;
 
-import java.util.Date;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -1524,42 +1526,45 @@ public class AixDetailedWidget {
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		truncateHour(calendar);
 		calendar.add(Calendar.HOUR_OF_DAY, 1);
+		long nextHour = calendar.getTimeInMillis();
 		
 		long iconEpoch = 0;
-		long compare = Long.MAX_VALUE;
+		long compare = Long.MIN_VALUE;
+		long intervalSize = Long.MAX_VALUE;
 		
 		for (IntervalData inter : mIntervalData) {
-			if (inter.weatherIcon != 0) {
-				if ((inter.timeTo != inter.timeFrom && inter.timeTo > calendar.getTimeInMillis()) ||
-						(inter.timeFrom == inter.timeTo && inter.timeTo >= calendar.getTimeInMillis())) {
-					long diff = inter.timeFrom - calendar.getTimeInMillis();//Math.abs(
-					if (diff < compare) {
-						compare = diff;
-						iconEpoch = inter.timeFrom;
-					}
-				}
+			if (inter.weatherIcon == 0) continue;
+			long diff = nextHour - inter.timeFrom;
+			long interval = inter.timeTo - inter.timeFrom;
+			
+			if (interval < intervalSize) {
+				iconEpoch = 0;
+				intervalSize = interval;
+			}
+			
+			if ((interval == intervalSize) && ((diff >= 0 && (compare < 0 || diff < compare)) || (diff < 0 && diff > compare))) {
+				intervalSize = interval;
+				compare = diff;
+				iconEpoch = inter.timeFrom;
 			}
 		}
 		
 		long pointEpoch = 0;
-		compare = Long.MAX_VALUE;
-		
-		if (pointEpoch == 0) {
-			for (PointData p : mPointData) {
-				if (p.mTime >= calendar.getTimeInMillis()) {
-					long diff = p.mTime - calendar.getTimeInMillis();
-					if (diff < compare) {
-						compare = diff;
-						pointEpoch = p.mTime;
-					}
-				}
+		compare = Long.MIN_VALUE;
+
+		for (PointData p : mPointData) {
+			long diff = calendar.getTimeInMillis() - p.mTime;
+			if ((diff >= 0 && (compare < 0 || diff < compare)) || (diff < 0 && diff > compare)) {
+				compare = diff;
+				pointEpoch = p.mTime;
 			}
 		}
 		
 		long epoch = Math.max(iconEpoch, pointEpoch);
 		
 		if (epoch == 0) {
-			epoch = calendar.getTimeInMillis();
+			// TODO Should probably throw an error here
+			epoch = nextHour;
 		}
 		
 		// Update timeFrom and timeTo to correct values given the epoch

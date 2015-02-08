@@ -133,6 +133,9 @@ public class AixUpdate {
 	private String mPortraitFileName;
 	private String mLandscapeFileName;
 	
+	private TimeZone mLocationTimeZone;
+	private TimeZone mUtcTimeZone = TimeZone.getTimeZone("UTC");
+	
 	public AixUpdate(Context context, Uri widgetUri) {
 		mContext = context;
 		mWidgetUri = widgetUri;
@@ -145,7 +148,7 @@ public class AixUpdate {
 	public void process() throws Exception {
 		Log.d(TAG, "process() started!");
 		mCurrentLocalTime = System.currentTimeMillis();
-		mCurrentUtcTime = Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTimeInMillis();
+		mCurrentUtcTime = Calendar.getInstance(mUtcTimeZone).getTimeInMillis();
 		
 		mResolver = mContext.getContentResolver();
 		
@@ -174,11 +177,7 @@ public class AixUpdate {
 				NetworkInfo wifiInfo = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 				if (wifiInfo.isConnected()) {
 					try {
-						if ((mProvider == PROVIDER_AUTO && isLocationInUS()) || mProvider == PROVIDER_NWS) {
-							updateNOAA();
-						} else {
-							updateWeather();
-						}
+						updateData();
 						weatherUpdated = true;
 						Log.d(TAG, "updateWeather() successful!");
 					} catch (Exception e) {
@@ -195,11 +194,7 @@ public class AixUpdate {
 				}
 			} else {
 				try {
-					if ((mProvider == PROVIDER_AUTO && isLocationInUS()) || mProvider == PROVIDER_NWS) {
-						updateNOAA();
-					} else {
-						updateWeather();
-					}
+					updateData();
 					weatherUpdated = true;
 					Log.d(TAG, "updateWeather() successful!");
 				} catch (Exception e) {
@@ -261,7 +256,12 @@ public class AixUpdate {
 	}
 
 	private boolean isLocationInUS() {
-		return mLatitude >= 18.75f && mLatitude <= 71.55f && (mLongitude <= -66.85 || mLongitude >= 170.55f);
+		String widgetCountryCode = "global_country_" + mAppWidgetId;
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(mContext);
+		boolean isUS = settings.getString(widgetCountryCode, "").toLowerCase().equals("us");
+		return isUS;
+
+		//return mLatitude >= 18.75f && mLatitude <= 71.55f && (mLongitude <= -66.85 || mLongitude >= 170.55f);
 		
 		/*
         "bounds" : {
@@ -534,6 +534,16 @@ public class AixUpdate {
 				
 				JSONObject jObject = new JSONObject(input);
 				timezoneId = jObject.getString("timezoneId");
+				
+				String countryCode = jObject.getString("countryCode");
+				Log.d(TAG, "countryCode=" + countryCode);
+				if (!TextUtils.isEmpty(countryCode)) {
+					String widgetCountryCode = "global_country_" + mAppWidgetId;
+					SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(mContext);
+					Editor editor = settings.edit();
+					editor.putString(widgetCountryCode, countryCode);
+					editor.commit();
+				}
 			} catch (Exception e) {
 				Log.d(TAG, "Failed to retrieve timezone data. " + e.getMessage());
 				e.printStackTrace();
@@ -544,10 +554,10 @@ public class AixUpdate {
 		return timezoneId;
 	}
 	
-	private void getSunTimes(ContentResolver resolver, TimeZone utc, long locationId,
+	private void getSunTimes(ContentResolver resolver, long locationId,
 			String latitude, String longitude) throws IOException, Exception
 	{
-		Calendar calendar = Calendar.getInstance(utc);
+		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		long timeNow = calendar.getTimeInMillis();
 
 		calendar.set(Calendar.HOUR_OF_DAY, 0);
@@ -590,8 +600,8 @@ public class AixUpdate {
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 		SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 		
-		dateFormat.setTimeZone(utc);
-		timeFormat.setTimeZone(utc);
+		dateFormat.setTimeZone(mUtcTimeZone);
+		timeFormat.setTimeZone(mUtcTimeZone);
 
 		String dateFromString = dateFormat.format(dateFrom);
 		String dateToString = dateFormat.format(dateTo);
@@ -707,11 +717,10 @@ public class AixUpdate {
 		}
 	}
 	
-	private void updateWeather() throws BadDataException, IOException, Exception {
-		Log.d(TAG, "updateWeather started uri=" + mViewUri);
-
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-		Calendar calendar = Calendar.getInstance(utc);
+	private void updateData() throws BadDataException, IOException, Exception {
+		Log.d(TAG, "updateData() started uri=" + mViewUri);
+		
+		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		long timeNow = calendar.getTimeInMillis();
 		AixUtils.truncateHour(calendar);
 		
@@ -738,14 +747,24 @@ public class AixUpdate {
 		updateWidgetRemoteViews("Getting sun time data...", false);
 		
 		try {
-			getSunTimes(mResolver, utc, mLocationId, mLatitudeString, mLongitudeString);
+			getSunTimes(mResolver, mLocationId, mLatitudeString, mLongitudeString);
 		} catch (Exception e) {
 			e.printStackTrace();
 			Log.d(TAG, e.getMessage());
 		}
 		
+		if ((mProvider == PROVIDER_AUTO && isLocationInUS()) || mProvider == PROVIDER_NWS) {
+			updateWeatherDataNOAA(timeNow, timeZoneId);
+		} else {
+			updateWeatherDataMET(timeNow, timeZoneId);
+		}
+	}
+	
+	private void updateWeatherDataMET(long timeNow, String timeZoneId) throws BadDataException, IOException, Exception {
+		Log.d(TAG, "updateWeatherDataMET(" + timeNow + "," + timeZoneId + "): started uri=" + mViewUri);
+		
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-		dateFormat.setTimeZone(utc);
+		dateFormat.setTimeZone(mUtcTimeZone);
 		
 		updateWidgetRemoteViews("Downloading weather data...", false);
 		
@@ -971,42 +990,8 @@ public class AixUpdate {
 	private static final int PARSE_WEATHER_ICONS_MASK = 0x00;
 	private static final int PARSE_WEATHER_ICONS_LINK_MASK = PARSE_WEATHER_ICONS_FLAG;
 	
-	private void updateNOAA() throws BadDataException, IOException, Exception {
-		Log.d(TAG, "updateNOAA() started uri=" + mViewUri);
-		
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-		Calendar calendar = Calendar.getInstance(utc);
-		long timeNow = calendar.getTimeInMillis();
-		AixUtils.truncateHour(calendar);
-		
-		calendar.add(Calendar.HOUR_OF_DAY, -12);
-		mResolver.delete(
-				AixPointDataForecasts.CONTENT_URI,
-				AixPointDataForecastColumns.TIME + "<=" + calendar.getTimeInMillis(),
-				null);
-		mResolver.delete(
-				AixIntervalDataForecasts.CONTENT_URI,
-				AixIntervalDataForecastColumns.TIME_TO + "<=" + calendar.getTimeInMillis(),
-				null);
-		calendar.add(Calendar.HOUR_OF_DAY, -36);
-		mResolver.delete(
-				AixSunMoonData.CONTENT_URI,
-				AixSunMoonDataColumns.DATE + "<=" + calendar.getTimeInMillis(),
-				null);
-		String timeZoneId = null;
-		
-		updateWidgetRemoteViews("Getting timezone data...", false);
-		
-		timeZoneId = getTimezone();
-		
-		updateWidgetRemoteViews("Getting sun time data...", false);
-		
-		try {
-			getSunTimes(mResolver, utc, mLocationId, mLatitudeString, mLongitudeString);
-		} catch (Exception e) {
-			e.printStackTrace();
-			Log.d(TAG, e.getMessage());
-		}
+	private void updateWeatherDataNOAA(long timeNow, String timeZoneId) throws BadDataException, IOException, Exception {
+		Log.d(TAG, "updateWeatherDataNOAA(" + timeNow + "," + timeZoneId + "): started uri=" + mViewUri);
 		
 		// Retrieve weather data
 		HttpGet httpGet = new HttpGet("http://www.weather.gov/forecasts/xml/sample_products/browser_interface/ndfdXMLclient.php?lat="
@@ -1029,7 +1014,7 @@ public class AixUpdate {
 		boolean isInches = false;
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-		dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+		dateFormat.setTimeZone(mUtcTimeZone);
 		
 		Map<String, ArrayList<Long>> startTimeMap = new HashMap<String, ArrayList<Long>>();
 		Map<String, ArrayList<Long>> endTimeMap = new HashMap<String, ArrayList<Long>>();

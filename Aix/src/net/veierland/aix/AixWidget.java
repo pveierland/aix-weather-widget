@@ -9,7 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 
 public class AixWidget extends AppWidgetProvider {
-	
+
 	@Override
 	public void onDeleted(Context context, int[] appWidgetIds) {
 		for (int appWidgetId : appWidgetIds) {
@@ -23,7 +23,8 @@ public class AixWidget extends AppWidgetProvider {
 	
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager,
-			int[] appWidgetIds) {
+			int[] appWidgetIds)
+	{
 		if (appWidgetIds == null) {
 			appWidgetIds = appWidgetManager.getAppWidgetIds(
 					new ComponentName(context, AixWidget.class));

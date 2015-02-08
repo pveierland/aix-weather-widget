@@ -12,8 +12,33 @@
 		<item name="markerContourColor">#000</item>
 	</style>
 	
-	<style name="ColorPreference" parent="@android:style/Preference">
-		<item name="android:widgetLayout">@layout/preference_widget_color</item>
-    </style>
+	<style name="ColorPreference">
+	    <item name="android:widgetLayout">@layout/preference_widget_color</item>
+	</style>
 	
+	<style name="CalibrateButton" parent="@android:style/Widget.Button">
+	    <item name="android:background">#0000</item>
+		<item name="android:gravity">center</item>
+		<item name="android:includeFontPadding">false</item>
+		<item name="android:layout_width">fill_parent</item>
+		<item name="android:layout_height">fill_parent</item>
+		<item name="android:layout_weight">1</item>
+		<item name="android:padding">0dip</item>
+		<item name="android:shadowColor">@color/black</item>
+    	<item name="android:shadowRadius">3</item>
+    	<item name="android:textColor">@color/white</item>
+    	<item name="android:textSize">75dip</item>
+	</style>
+	
+	<style name="CalibrateText">
+	    <item name="android:gravity">center_horizontal|center_vertical</item>
+	    <item name="android:includeFontPadding">false</item>
+	    <item name="android:layout_width">wrap_content</item> 
+	    <item name="android:layout_height">wrap_content</item>
+	    <item name="android:shadowColor">@color/black</item>
+	    <item name="android:shadowRadius">3</item>
+	    <item name="android:textColor">@color/white</item>
+	    <item name="android:textSize">15sp</item>
+	</style>
+
 </resources>

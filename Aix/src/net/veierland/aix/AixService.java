@@ -1,27 +1,36 @@
 package net.veierland.aix;
 
-import java.io.File;
+import static net.veierland.aix.AixSettings.CALIBRATION_STATE_FINISHED;
+import static net.veierland.aix.AixSettings.CALIBRATION_STATE_VERTICAL;
+import static net.veierland.aix.AixSettings.LANDSCAPE_HEIGHT;
+import static net.veierland.aix.AixSettings.LANDSCAPE_WIDTH;
+import static net.veierland.aix.AixSettings.PORTRAIT_HEIGHT;
+import static net.veierland.aix.AixSettings.PORTRAIT_WIDTH;
 
-import net.veierland.aix.AixProvider.AixSettingsColumns;
-import net.veierland.aix.AixProvider.AixViews;
-import net.veierland.aix.AixProvider.AixWidgetSettings;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
 import net.veierland.aix.AixProvider.AixWidgets;
-import net.veierland.aix.AixProvider.AixWidgetsColumns;
+import net.veierland.aix.util.AixWidgetInfo;
+import net.veierland.aix.util.Pair;
 import android.app.IntentService;
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.ContentUris;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Point;
 import android.net.Uri;
 import android.preference.PreferenceManager;
-import android.text.TextUtils;
-import android.text.format.DateUtils;
 import android.util.Log;
+import android.widget.RemoteViews;
 
 public class AixService extends IntentService {
 	
@@ -31,7 +40,44 @@ public class AixService extends IntentService {
 	
 	public final static String ACTION_DELETE_WIDGET = "aix.intent.action.DELETE_WIDGET";
 	public final static String ACTION_UPDATE_ALL = "aix.intent.action.UPDATE_ALL";
+	public final static String ACTION_UPDATE_ALL_MINIMAL_DIMENSIONS = "aix.intent.action.UPDATE_WIDGET_MINIMAL_DIMENSIONS";
+	public final static String ACTION_UPDATE_ALL_PROVIDER_AUTO = "aix.intent.action.UPDATE_WIDGET_PROVIDER_AUTO";
+	public final static String ACTION_UPDATE_ALL_PROVIDER_CHANGE = "aix.intent.action.UPDATE_WIDGET_PROVIDER_CHANGE";
 	public final static String ACTION_UPDATE_WIDGET = "aix.intent.action.UPDATE_WIDGET";
+	
+	public final static String ACTION_DECREASE_LANDSCAPE_HEIGHT = "aix.intent.action.DECREASE_LANDSCAPE_HEIGHT";
+	public final static String ACTION_DECREASE_LANDSCAPE_WIDTH = "aix.intent.action.DECREASE_LANDSCAPE_WIDTH";
+	public final static String ACTION_DECREASE_PORTRAIT_HEIGHT = "aix.intent.action.DECREASE_PORTRAIT_HEIGHT";
+	public final static String ACTION_DECREASE_PORTRAIT_WIDTH = "aix.intent.action.DECREASE_PORTRAIT_WIDTH";
+	public final static String ACTION_INCREASE_LANDSCAPE_HEIGHT = "aix.intent.action.INCREASE_LANDSCAPE_HEIGHT";
+	public final static String ACTION_INCREASE_LANDSCAPE_WIDTH = "aix.intent.action.INCREASE_LANDSCAPE_WIDTH";
+	public final static String ACTION_INCREASE_PORTRAIT_HEIGHT = "aix.intent.action.INCREASE_PORTRAIT_HEIGHT";
+	public final static String ACTION_INCREASE_PORTRAIT_WIDTH = "aix.intent.action.INCREASE_PORTRAIT_WIDTH";
+	
+	public final static String ACTION_ACCEPT_PORTRAIT_HORIZONTAL_CALIBRATION = "aix.intent.action.ACCEPT_PORTRAIT_HORIZONTAL_CALIBRATION";
+	public final static String ACTION_ACCEPT_PORTRAIT_VERTICAL_CALIBRATION = "aix.intent.action.ACCEPT_PORTRAIT_VERTICAL_CALIBRATION";
+	public final static String ACTION_ACCEPT_LANDSCAPE_HORIZONTAL_CALIBRATION = "aix.intent.action.ACCEPT_LANDSCAPE_HORIZONTAL_CALIBRATION";
+	public final static String ACTION_ACCEPT_LANDSCAPE_VERTICAL_CALIBRATION = "aix.intent.action.ACCEPT_LANDSCAPE_VERTICAL_CALIBRATION";
+	
+	@SuppressWarnings("serial")
+	Map<String, Pair<String, Integer>> mCalibrationAdjustmentsMap = new HashMap<String, Pair<String, Integer>>() {{
+		put(ACTION_DECREASE_LANDSCAPE_HEIGHT, new Pair<String, Integer>(LANDSCAPE_HEIGHT, -1));
+		put(ACTION_INCREASE_LANDSCAPE_HEIGHT, new Pair<String, Integer>(LANDSCAPE_HEIGHT, +1));
+		put(ACTION_DECREASE_LANDSCAPE_WIDTH,  new Pair<String, Integer>(LANDSCAPE_WIDTH,  -1));
+		put(ACTION_INCREASE_LANDSCAPE_WIDTH,  new Pair<String, Integer>(LANDSCAPE_WIDTH,  +1));
+		put(ACTION_DECREASE_PORTRAIT_HEIGHT,  new Pair<String, Integer>(PORTRAIT_HEIGHT,  -1));
+		put(ACTION_INCREASE_PORTRAIT_HEIGHT,  new Pair<String, Integer>(PORTRAIT_HEIGHT,  +1));
+		put(ACTION_DECREASE_PORTRAIT_WIDTH,   new Pair<String, Integer>(PORTRAIT_WIDTH,   -1));
+		put(ACTION_INCREASE_PORTRAIT_WIDTH,   new Pair<String, Integer>(PORTRAIT_WIDTH,   +1));
+	}};
+	
+	@SuppressWarnings("serial")
+	Map<String, String> mCalibrationAcceptActionsMap = new HashMap<String, String>() {{
+		put(ACTION_ACCEPT_PORTRAIT_HORIZONTAL_CALIBRATION, PORTRAIT_WIDTH);
+		put(ACTION_ACCEPT_PORTRAIT_VERTICAL_CALIBRATION, PORTRAIT_HEIGHT);
+		put(ACTION_ACCEPT_LANDSCAPE_HORIZONTAL_CALIBRATION, LANDSCAPE_WIDTH);
+		put(ACTION_ACCEPT_LANDSCAPE_VERTICAL_CALIBRATION, LANDSCAPE_HEIGHT);
+	}};
 	
 	public AixService() {
 		super("net.veierland.aix.AixService");
@@ -42,159 +88,215 @@ public class AixService extends IntentService {
 		Log.d(TAG, "onHandleIntent() " + intent.getAction() + " " + intent.getData());
 		
 		String action = intent.getAction();
+		Uri widgetUri = intent.getData();
 		
-		if (action.equals(ACTION_UPDATE_ALL)) {
-			AppWidgetManager manager = AppWidgetManager.getInstance(this);
-			int[] appWidgetIds = manager.getAppWidgetIds(new ComponentName(this, AixWidget.class));
-			for (int appWidgetId : appWidgetIds) {
-				Uri widgetUri = ContentUris.withAppendedId(AixWidgets.CONTENT_URI, appWidgetId);
-				try {
-					AixUpdate aixUpdate = new AixUpdate(this, widgetUri);
-					aixUpdate.process();
-				} catch (Exception e) {
-					Log.d(TAG, "AixUpdate of " + widgetUri + " failed! (" + e.getMessage() + ")");
-					e.printStackTrace();
-				}
+		if (	action.equals(ACTION_UPDATE_WIDGET) ||
+				mCalibrationAdjustmentsMap.containsKey(action) ||
+				mCalibrationAcceptActionsMap.containsKey(action))
+		{
+			updateWidget(action, widgetUri);
+		}
+		else if (action.equals(ACTION_UPDATE_ALL)) {
+			updateAllWidgets(widgetUri);
+		}
+		else if (action.equals(ACTION_UPDATE_ALL_PROVIDER_CHANGE))
+		{
+			AixUtils.clearProviderData(getContentResolver());
+			updateAllWidgets(widgetUri);
+		}
+		else if (action.equals(ACTION_UPDATE_ALL_PROVIDER_AUTO))
+		{
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+			Editor editor = sharedPreferences.edit();
+			editor.putInt(getString(R.string.provider_string), AixUtils.PROVIDER_AUTO);
+			editor.commit();
+			
+			AixUtils.clearProviderData(getContentResolver());
+			
+			updateAllWidgets(widgetUri);
+		}
+		else if (action.equals(ACTION_UPDATE_ALL_MINIMAL_DIMENSIONS))
+		{
+			SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+			Editor editor = sharedPreferences.edit();
+			editor.putBoolean(getString(R.string.useDeviceSpecificDimensions_bool), false);
+			editor.commit();
+			action = ACTION_UPDATE_WIDGET;
+			
+			updateAllWidgets(widgetUri);
+		}
+		else if (action.equals(ACTION_DELETE_WIDGET))
+		{
+			int appWidgetId = (int)ContentUris.parseId(widgetUri);
+			AixUtils.deleteWidget(this, appWidgetId);
+		}
+		else {
+			Log.d(TAG, "onHandleIntent() called with unhandled action (" + action + ")");
+		}
+	}
+	
+	private void updateWidget(String action, Uri widgetUri)
+	{
+		AixWidgetInfo widgetInfo = null;
+		try {
+			widgetInfo = AixWidgetInfo.build(this, widgetUri);
+			widgetInfo.loadSettings();
+		} catch (Exception e) {
+			Log.d(TAG, "onHandleIntent() failed: Could not retrieve widget information (" + e.getMessage() + ")");
+			return;
+		}
+		
+		AixSettings aixSettings = AixSettings.build(this, widgetInfo);
+		aixSettings.loadSettings();
+		
+		int calibrationTarget = aixSettings.getCalibrationTarget();
+		
+		if (calibrationTarget == widgetInfo.getAppWidgetId()) {
+			calibrationMethod(widgetInfo, aixSettings, action);
+		} else {
+			try {
+				AixUpdate aixUpdate = AixUpdate.build(this, widgetInfo, aixSettings);
+				aixUpdate.process();
+			} catch (Exception e) {
+				Log.d(TAG, "AixUpdate of " + widgetUri + " failed! (" + e.getMessage() + ")");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void updateAllWidgets(Uri widgetUri)
+	{
+		AixSettings.clearAllWidgetStates(PreferenceManager.getDefaultSharedPreferences(this));
+		
+		// Update all widgets except widgetUri
+		int widgetIdExclude = AppWidgetManager.INVALID_APPWIDGET_ID;
+		if (widgetUri != null)
+		{
+			widgetIdExclude = (int)ContentUris.parseId(widgetUri);
+			
+			
+			updateWidget(ACTION_UPDATE_WIDGET, widgetUri);
+		}
+		
+		AppWidgetManager manager = AppWidgetManager.getInstance(this);
+		int[] appWidgetIds = manager.getAppWidgetIds(new ComponentName(this, AixWidget.class));
+		for (int appWidgetId : appWidgetIds) {
+			if (appWidgetId != widgetIdExclude)
+			{
+				Intent updateIntent = new Intent(
+						ACTION_UPDATE_WIDGET,
+						ContentUris.withAppendedId(AixWidgets.CONTENT_URI, appWidgetId),
+						this, AixService.class);
+				startService(updateIntent);
+			}
+		}
+	}
+	
+	private void calibrationMethod(AixWidgetInfo widgetInfo, AixSettings aixSettings, String action) {
+		Log.d(TAG, "calibrationMethod() " + action);
+		
+		if (mCalibrationAcceptActionsMap.containsKey(action)) {
+			String property = mCalibrationAcceptActionsMap.get(action);
+			
+			aixSettings.saveCalibratedDimension(property);
+			
+			if (	action.equals(ACTION_ACCEPT_PORTRAIT_HORIZONTAL_CALIBRATION) ||
+					action.equals(ACTION_ACCEPT_LANDSCAPE_HORIZONTAL_CALIBRATION))
+			{
+				aixSettings.setCalibrationState(CALIBRATION_STATE_VERTICAL);
+				
+				// Update relevant widget only, still calibrating
+				Intent updateIntent = new Intent(ACTION_UPDATE_WIDGET, widgetInfo.getWidgetUri(), this, AixService.class);
+				startService(updateIntent);
+			} else {
+				aixSettings.setCalibrationState(CALIBRATION_STATE_FINISHED);
+				aixSettings.exitCalibrationMode();
+				
+				PendingIntent pendingIntent = AixUtils.buildConfigurationIntent(this, widgetInfo.getWidgetUri());
+				AixUtils.updateWidgetRemoteViews(aixSettings, widgetInfo.getAppWidgetId(), getString(R.string.widget_loading), true, pendingIntent);
+				
+				// Update all widgets after ended calibration
+				Intent updateIntent = new Intent(ACTION_UPDATE_ALL, widgetInfo.getWidgetUri(), this, AixService.class);
+				startService(updateIntent);
 			}
 		} else {
-			Uri widgetUri = intent.getData();
-			if (widgetUri == null) {
-				Log.d(TAG, "onHandleIntent() failed: widgetUri is null");
-				return;
-			}
-			int appWidgetId = (int)ContentUris.parseId(widgetUri);
-			if (appWidgetId <= 0) {
-				Log.d(TAG, "onHandleIntent() (action=" + action + " ) failed: invalid appWidgetId (" + appWidgetId + ")");
-				return;
-			}
+			Pair<String, Integer> adjustParams = mCalibrationAdjustmentsMap.get(action);
 			
-			if (action.equals(ACTION_UPDATE_WIDGET)) {
-				try {
-					AixUpdate aixUpdate = new AixUpdate(this, widgetUri);
-					aixUpdate.process();
-				} catch (Exception e) {
-					Log.d(TAG, "AixUpdate of " + widgetUri + " failed! (" + e.getMessage() + ")");
-					e.printStackTrace();
-				}
-			} else if (action.equals(ACTION_DELETE_WIDGET)) {
-				deleteWidget(widgetUri);
-			} else {
-				Log.d(TAG, "onHandleIntent() called with unhandled action (" + action + ")");
+			if (adjustParams != null) {
+				aixSettings.adjustCalibrationDimension(adjustParams.first, adjustParams.second);
+			}
+
+			try {
+				setupCalibrationWidget(widgetInfo, aixSettings);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 	}
 	
-	private void deleteWidget(Uri widgetUri) {
-		int appWidgetId = (int)ContentUris.parseId(widgetUri);
-		// Delete widget and view entries + setting entries from content provider
-		ContentResolver resolver = getApplicationContext().getContentResolver();
-		Cursor widgetCursor = resolver.query(widgetUri, null, null, null, null);
+	private Bitmap renderCalibrationBitmap(int width, int height, boolean vertical) {
+		Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+		Canvas canvas = new Canvas(bitmap);
+		canvas.drawColor(Color.WHITE);
 		
-		// Clear draw state
-		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-		Editor editor = settings.edit();
-		editor.remove("global_widget_" + appWidgetId);
-		editor.remove("global_country_" + appWidgetId);
-		editor.commit();
+		Paint p = new Paint() {{
+			setColor(Color.BLACK);
+			setStrokeWidth(0);
+		}};
 		
-		if (widgetCursor != null) {
-			Uri viewUri = null;
-			if (widgetCursor.moveToFirst()) {
-				long viewRowId = widgetCursor.getLong(AixWidgetsColumns.VIEWS_COLUMN);
-				if (viewRowId != -1) {
-					viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, viewRowId);
-				}
+		if (vertical) {
+			for (int y = 0; y < height; y += 2) {
+				canvas.drawLine(0.0f, (float)y, (float)width, (float)y, p);
 			}
-			widgetCursor.close();
-			if (viewUri != null) {
-				resolver.delete(viewUri, null, null);
+		} else {
+			for (int x = 0; x < width; x += 2) {
+				canvas.drawLine((float)x, 0.0f, (float)x, (float)height, p);
 			}
-			resolver.delete(widgetUri, null, null);
 		}
 		
-		resolver.delete(AixWidgetSettings.CONTENT_URI, AixSettingsColumns.ROW_ID + '=' + appWidgetId, null);
+		return bitmap;
+	}
+	
+	private void setupCalibrationWidget(AixWidgetInfo aixWidgetInfo, AixSettings aixSettings) throws IOException {
+		int calibrationState = aixSettings.getCalibrationState();
+		boolean vertical = (calibrationState == AixSettings.CALIBRATION_STATE_VERTICAL);
 		
-		// Delete all temporary files made for widget
-		deleteCacheFiles(getApplicationContext(), appWidgetId);
-		deleteTemporaryFiles(getApplicationContext(), appWidgetId);
+		int appWidgetId = aixWidgetInfo.getAppWidgetId();
+		Uri widgetUri = aixWidgetInfo.getWidgetUri();
+		
+		Point portraitDimensions = aixSettings.getCalibrationPixelDimensionsOrStandard(false);
+		Point landscapeDimensions = aixSettings.getCalibrationPixelDimensionsOrStandard(true);
+		
+		Bitmap portraitBitmap = renderCalibrationBitmap(portraitDimensions.x, portraitDimensions.y, vertical);
+		Bitmap landscapeBitmap = renderCalibrationBitmap(landscapeDimensions.x, landscapeDimensions.y, vertical);
+		
+		long now = System.currentTimeMillis();
+		
+		Uri portraitUri = AixUtils.storeBitmap(this, portraitBitmap, appWidgetId, now, false);
+		Uri landscapeUri = AixUtils.storeBitmap(this, landscapeBitmap, appWidgetId, now, true);
+		
+		RemoteViews updateView = new RemoteViews(getPackageName(), R.layout.aix_calibrate);
+		
+		setupPendingIntent(updateView, widgetUri, R.id.landscape_decrease, vertical ? ACTION_DECREASE_LANDSCAPE_HEIGHT : ACTION_DECREASE_LANDSCAPE_WIDTH);
+		setupPendingIntent(updateView, widgetUri, R.id.landscape_increase, vertical ? ACTION_INCREASE_LANDSCAPE_HEIGHT : ACTION_INCREASE_LANDSCAPE_WIDTH);
+		setupPendingIntent(updateView, widgetUri, R.id.portrait_decrease,  vertical ? ACTION_DECREASE_PORTRAIT_HEIGHT  : ACTION_DECREASE_PORTRAIT_WIDTH);
+		setupPendingIntent(updateView, widgetUri, R.id.portrait_increase,  vertical ? ACTION_INCREASE_PORTRAIT_HEIGHT  : ACTION_INCREASE_PORTRAIT_WIDTH);
+		
+		setupPendingIntent(updateView, widgetUri, R.id.landscape_accept,   vertical ? ACTION_ACCEPT_LANDSCAPE_VERTICAL_CALIBRATION : ACTION_ACCEPT_LANDSCAPE_HORIZONTAL_CALIBRATION);
+		setupPendingIntent(updateView, widgetUri, R.id.portrait_accept,    vertical ? ACTION_ACCEPT_PORTRAIT_VERTICAL_CALIBRATION  : ACTION_ACCEPT_PORTRAIT_HORIZONTAL_CALIBRATION);
+		
+		updateView.setTextViewText(R.id.portraitText, "Portrait/" + (vertical ? "Vertical" : "Horizontal") + "\n" + portraitDimensions.x + "x" + portraitDimensions.y);
+		updateView.setTextViewText(R.id.landscapeText, "Landscape/" + (vertical ? "Vertical" : "Horizontal") + "\n" + landscapeDimensions.x + "x" + landscapeDimensions.y);
+		
+		updateView.setImageViewUri(R.id.landscapeCalibrationImage, landscapeUri);
+		updateView.setImageViewUri(R.id.portraitCalibrationImage, portraitUri);
+		
+		AppWidgetManager.getInstance(this).updateAppWidget(appWidgetId, updateView);
 	}
 	
-	public static void deleteCacheFiles(Context context, int appWidgetId) {
-		File dir = context.getCacheDir();
-		File[] files = dir.listFiles();
-		String appWidgetIdString = Integer.toString(appWidgetId);
-		for (int i = 0; i < files.length; i++) {
-			File f = files[i];
-			String filename = f.getName();
-			if (filename.startsWith("aix")) {
-				String[] s = f.getName().split("_");
-				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
-					f.delete();
-				}
-			}
-		}
-	}
-	
-	public static void deleteCacheFiles(Context context, int appWidgetId, String portraitFileName, String landscapeFileName) {
-		File dir = context.getCacheDir();
-		File[] files = dir.listFiles();
-		String appWidgetIdString = Integer.toString(appWidgetId);
-		for (int i = 0; i < files.length; i++) {
-			File f = files[i];
-			String filename = f.getName();
-			if (filename.startsWith("aix") && !filename.equals(portraitFileName) && !filename.equals(landscapeFileName)) {
-				String[] s = f.getName().split("_");
-				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
-					f.delete();
-				}
-			}
-		}
-	}
-	
-	public static void deleteTemporaryFiles(Context context, int appWidgetId) {
-		String appWidgetIdString = Integer.toString(appWidgetId);
-		String[] files = context.fileList();
-		for (int i = 0; i < files.length; i++) {
-			if (files[i].startsWith("aix")) {
-				String[] s = files[i].split("_");
-				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
-					context.deleteFile(files[i]);
-				}
-			}
-		}
-	}
-	
-	public static void deleteTemporaryFiles(Context context, int appWidgetId, String portraitFileName, String landscapeFileName) {
-		String appWidgetIdString = Integer.toString(appWidgetId);
-		String[] files = context.fileList();
-		for (int i = 0; i < files.length; i++) {
-			if (files[i].startsWith("aix") && !files[i].equals(portraitFileName) && !files[i].equals(landscapeFileName)) {
-				String[] s = files[i].split("_");
-				if (s.length > 1 && s[1].equals(appWidgetIdString)) {
-					context.deleteFile(files[i]);
-				}
-			}
-		}
-	}
-	
-	public static void deleteTemporaryFiles(Context context, String appWidgetId, long updateTime) {
-		String[] files = context.fileList();
-		for (int i = 0; i < files.length; i++) {
-			String fileName = files[i];
-			if (fileName != null && fileName.startsWith("aix")) {
-				String[] s = fileName.split("_");
-				if (s != null && s.length == 4) {
-					try {
-						long filetime = Long.parseLong(s[2]);
-						if (	(s[1].equals(appWidgetId) && filetime < updateTime) ||
-								(filetime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS))
-						{
-							context.deleteFile(fileName);
-						}
-					} catch (NumberFormatException e) { }
-				}
-			}
-		}
+	private void setupPendingIntent(RemoteViews remoteViews, Uri widgetUri, int resource, String action) {
+		Intent intent = new Intent(action, widgetUri, this, AixService.class);
+		remoteViews.setOnClickPendingIntent(resource, PendingIntent.getService(this, 0, intent, 0));
 	}
 
 }

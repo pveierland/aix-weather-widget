@@ -2,38 +2,48 @@ package net.veierland.aix;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 
-public class AixIntro extends Activity implements OnClickListener {
-
-	private Button mOkButton;
+public class AixIntro extends Activity {
+	
+	public final static String ACTION_SHOW_HELP = "aix.intent.action.SHOW_HELP";
+	public final static String ACTION_SHOW_INTRODUCTION = "aix.intent.action.SHOW_INTRODUCTION";
+	public final static String ACTION_SHOW_DEVICE_PROFILE_GUIDE = "aix.intent.action.SHOW_DEVICE_PROFILE_GUIDE";
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		
-		setContentView(R.layout.aix_intro);
-		mOkButton = (Button)findViewById(R.id.ok);
-		mOkButton.setOnClickListener(this);
+		setContentView(R.layout.intro);
+		
+		Uri uri = getIntent().getData();
+		String loadingMessage = null, url = null;
+		
+		if (uri != null && uri.equals(ACTION_SHOW_HELP))
+		{
+			url = "http://www.veierland.net/aix/help/";
+			loadingMessage = "Loading Aix help..";
+		}
+		else if (uri != null && uri.equals(ACTION_SHOW_DEVICE_PROFILE_GUIDE))
+		{
+			url = "http://www.veierland.net/aix/device_profiles/";
+			loadingMessage = "Loading Device Profile guide..";
+		}
+		else
+		{
+			// Show intro as default
+			url = "http://www.veierland.net/aix/introduction/";
+			loadingMessage = "Loading Aix introduction..";
+		}
 		
 		WebView web = (WebView) findViewById(R.id.webview);
 		
-		/*
-		web.clearCache(true);
-		WebSettings webSettings = web.getSettings();
-	    webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-	    */
-		
-	    final ProgressDialog progressBar = ProgressDialog.show(this, "Aix Help", "Loading...");
+	    final ProgressDialog progressBar = ProgressDialog.show(this, "Aix Weather Widget", loadingMessage);
         
         web.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
@@ -42,26 +52,13 @@ public class AixIntro extends Activity implements OnClickListener {
                 }
             }
             
-			public boolean shouldOverrideUrlLoading(WebView view, String url) {
-				if (url != null && url.startsWith("http://")) {
-					view.getContext().startActivity(
-							new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-					return true;
-				} else {
-					return false;
-				}
-			}
+            public boolean shouldOverrideUrlLoading(WebView view, String url){
+            	view.loadUrl(url);
+            	return false;
+            }
         });
         
-        web.loadUrl("http://www.veierland.net/aix/intro.html");
-	}
-
-	@Override
-	public void onClick(View v) {
-		if (v == mOkButton) {
-			setResult(RESULT_OK);
-			finish();
-		}
+        web.loadUrl(url);
 	}
 	
 }

@@ -1,18 +1,25 @@
 package net.veierland.aix;
 
 import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
+import net.veierland.aix.AixProvider.AixIntervalDataForecasts;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.text.format.DateUtils;
 
 public class IntervalData {
 	
-	public long timeAdded, timeFrom, timeTo;
-	public int weatherIcon;
-	public float rainValue, rainMinValue, rainMaxValue;
+	public Long timeAdded = null;
+	public Long timeFrom = null;
+	public Long timeTo = null;
 	
-	public IntervalData() {
-		
-	}
+	public Float rainValue = null;
+	public Float rainMinValue = null;
+	public Float rainMaxValue = null;
+	
+	public Integer weatherIcon = null;
+	
+	public IntervalData() { }
+	
 	
 	public IntervalData(long timeAdded, long timeFrom, long timeTo, int weatherIcon,
 			float rainValue, float rainMinValue, float rainMaxValue)
@@ -26,42 +33,51 @@ public class IntervalData {
 		this.rainMaxValue = rainMaxValue;
 	}
 	
-	public static IntervalData buildFromCursor(Cursor c) throws Exception {
-		long timeAdded = c.getLong(AixIntervalDataForecastColumns.TIME_ADDED_COLUMN);
-		long timeFrom = c.getLong(AixIntervalDataForecastColumns.TIME_FROM_COLUMN);
-		long timeTo = c.getLong(AixIntervalDataForecastColumns.TIME_TO_COLUMN);
+	public ContentValues buildContentValues(long locationId)
+	{
+		ContentValues contentValues = new ContentValues();
 		
-		int weatherIcon = c.getInt(AixIntervalDataForecastColumns.WEATHER_ICON_COLUMN);
+		contentValues.put(AixIntervalDataForecasts.LOCATION, locationId);
 		
-		float rainValue, rainMinValue, rainMaxValue;
+		if (timeAdded != null) contentValues.put(AixIntervalDataForecastColumns.TIME_ADDED, timeAdded);
+		if (timeFrom != null) contentValues.put(AixIntervalDataForecastColumns.TIME_FROM, timeFrom);
+		if (timeTo != null) contentValues.put(AixIntervalDataForecastColumns.TIME_TO, timeTo);
+		if (rainValue != null) contentValues.put(AixIntervalDataForecastColumns.RAIN_VALUE, rainValue);
+		if (rainMinValue != null) contentValues.put(AixIntervalDataForecastColumns.RAIN_MINVAL, rainMinValue);
+		if (rainMaxValue != null) contentValues.put(AixIntervalDataForecastColumns.RAIN_MAXVAL, rainMaxValue);
+		if (weatherIcon != null) contentValues.put(AixIntervalDataForecastColumns.WEATHER_ICON, weatherIcon);
 		
-		String rainValueString = c.getString(AixIntervalDataForecastColumns.RAIN_VALUE_COLUMN);
-		try {
-			rainValue = Float.parseFloat(rainValueString);
-		} catch (Exception e) {
-			//throw new Exception("Rain() constructor: Invalid rain value (" + rainValueString + ")");
-			rainValue = Float.NaN;
-		}
-		
-		try {
-			rainMinValue = Float.parseFloat(
-					c.getString(AixIntervalDataForecastColumns.RAIN_MINVAL_COLUMN));
-		} catch (Exception e) {
-			rainMinValue = Float.NaN;
-		}
-		
-		try {
-			rainMaxValue = Float.parseFloat(
-					c.getString(AixIntervalDataForecastColumns.RAIN_MAXVAL_COLUMN));
-		} catch (Exception e) {
-			rainMaxValue = Float.NaN;
-		}
-		
-		return new IntervalData(
-				timeAdded, timeFrom, timeTo, weatherIcon, rainValue, rainMinValue, rainMaxValue);
+		return contentValues;
 	}
 	
-	public int lengthInHours() {
+	public static IntervalData buildFromCursor(Cursor c) {
+		IntervalData intervalData = new IntervalData();
+		
+		int columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.TIME_ADDED);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.timeAdded = c.getLong(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.TIME_FROM);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.timeFrom = c.getLong(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.TIME_TO);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.timeTo = c.getLong(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.WEATHER_ICON);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.weatherIcon = c.getInt(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.RAIN_VALUE);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.rainValue = c.getFloat(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.RAIN_MINVAL);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.rainMinValue = c.getFloat(columIndex);
+		
+		columIndex = c.getColumnIndex(AixIntervalDataForecastColumns.RAIN_MAXVAL);
+		if (columIndex != -1 && !c.isNull(columIndex)) intervalData.rainMaxValue = c.getFloat(columIndex);
+		
+		return intervalData;
+	}
+	
+	public int getLengthInHours() {
 		return (int)((timeTo - timeFrom) / DateUtils.HOUR_IN_MILLIS);
 	}
 

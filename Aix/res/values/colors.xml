@@ -19,4 +19,9 @@
 	<color name="above_freezing">#FFF01C1C</color>
 	<color name="below_freezing">#FF0280D9</color>
 
+	<color name="light_red">#FFce2029</color>
+	
+	<color name="valid_dimension_color">#FF72FE95</color>
+	<color name="invalid_dimension_color">#FFCE2029</color>
+	
 </resources>

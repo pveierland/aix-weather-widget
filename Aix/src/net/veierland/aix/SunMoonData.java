@@ -5,11 +5,11 @@ import android.database.Cursor;
 
 public class SunMoonData {
 	
-	public long mTimeAdded;
-	public long mDate;
-	public long mSunRise, mSunSet;
-	public long mMoonRise, mMoonSet;
-	public int mMoonPhase;
+	public long timeAdded;
+	public long date;
+	public long sunRise, sunSet;
+	public long moonRise, moonSet;
+	public int moonPhase;
 	
 	public SunMoonData() {
 		
@@ -17,13 +17,13 @@ public class SunMoonData {
 	
 	public static SunMoonData buildFromCursor(Cursor c) {
 		SunMoonData smd = new SunMoonData();
-		smd.mTimeAdded = c.getLong(AixSunMoonDataColumns.TIME_ADDED_COLUMN);
-		smd.mDate = c.getLong(AixSunMoonDataColumns.DATE_COLUMN);
-		smd.mSunRise = c.getLong(AixSunMoonDataColumns.SUN_RISE_COLUMN);
-		smd.mSunSet = c.getLong(AixSunMoonDataColumns.SUN_SET_COLUMN);
-		smd.mMoonRise = c.getLong(AixSunMoonDataColumns.MOON_RISE_COLUMN);
-		smd.mMoonSet = c.getLong(AixSunMoonDataColumns.MOON_SET_COLUMN);
-		smd.mMoonPhase = c.getInt(AixSunMoonDataColumns.MOON_PHASE_COLUMN);
+		smd.timeAdded = c.getLong(AixSunMoonDataColumns.TIME_ADDED_COLUMN);
+		smd.date = c.getLong(AixSunMoonDataColumns.DATE_COLUMN);
+		smd.sunRise = c.getLong(AixSunMoonDataColumns.SUN_RISE_COLUMN);
+		smd.sunSet = c.getLong(AixSunMoonDataColumns.SUN_SET_COLUMN);
+		smd.moonRise = c.getLong(AixSunMoonDataColumns.MOON_RISE_COLUMN);
+		smd.moonSet = c.getLong(AixSunMoonDataColumns.MOON_SET_COLUMN);
+		smd.moonPhase = c.getInt(AixSunMoonDataColumns.MOON_PHASE_COLUMN);
 		return smd;
 	}
 	

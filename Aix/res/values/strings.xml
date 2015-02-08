@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="TypographyEllipsis">
 
     <string name="app_name">Aix Weather Widget</string>
     <string name="app_description">Weather widget showing detailed 24-hour forecasts in a 4x1 format.</string>
+    
+    <string name="help">Help</string>
+	<string name="donate">Donate</string>
     
     <string name="widget_name">Aix Weather</string>
     <string name="widget_loading">Loading Aix...</string>
@@ -12,6 +15,8 @@
     <string name="widget_name_large_tiny">Aix Weather (4x1)</string>
     <string name="widget_name_large_small">Aix Weather (4x2)</string>
 
+    <string name="device_profile_guide_link">&lt;a href=\"http://www.veierland.net/aix/device_profiles/\"&gt;Device Profile Guide&lt;/a&gt;</string>
+    
 	<!-- InfoText -->
 	<string name="pressure_top">MSLP: %1$.0f hPa</string>
 	<string name="pressure_top_short">%1$.0f hPa</string>
@@ -26,17 +31,12 @@
 	<string name="temperature_unit_celsius">\u00B0C</string>
 	<string name="temperature_top">(%1$s%2$s)</string>
 	
-	
-	
-	<string name="help">Help</string>
-	<string name="donate">Donate</string>
-	
-	<string name="select_location">Select location</string>
-	
-	
+	<string name="location_settings">Select location</string>
 	
 	<!-- Location selector -->
-	<string name="title_select_location">Aix Weather: Select location</string>
+	<string name="location_settings_title">Select Location</string>
+	<string name="location_settings_key">select_location</string>
+	
 	<string name="button_add_location">Add location</string>
 	
 	<string name="location_list_row_latitude">Latitude:</string>
@@ -53,7 +53,7 @@
  	<string name="location_search_progress_dialog_message">Searching...</string>
  	<string name="location_search_no_connection_toast">Error: No internet connection</string>
 	<string name="location_search_error_toast">An error occurred during search.</string>
-	<string name="location_search_over_query_limit_toast">Error: Over query limit</string>
+	<string name="location_search_over_query_limit_toast">Daily search quota filled for your IP address. Try changing to WiFi.</string>
 	<string name="location_search_request_denied_toast">Error: Search request denied</string>
 	<string name="location_search_invalid_request_toast">Error: Invalid search request</string>
 	
@@ -71,10 +71,7 @@
 	
 	
 	<string name="header_widget_settings">Widget Settings</string>
-	
-	
-	
-	
+	<string name="header_system_settings">System Settings</string>
 	<string name="header_location_settings">Select location</string>
 	
 	
@@ -90,9 +87,12 @@
 	<string name="dialog_color_alpha">Alpha:</string>
 	<string name="dialog_color_code">HTML color code:</string>
 
+
+
 	<!-- BEGIN UNIT SETTINGS -->
-	<string name="title_unitsettings">Aix Weather: Unit Settings</string>
-	<string name="title_measurement_unit">Measurement unit</string>
+	<string name="unit_settings_title">Measurement Units</string>
+	<string name="unit_settings_summary">Set measurement units and rain scaling</string>
+	
 	<string name="unit_settings_category">Unit settings</string>
 	
 	<string name="temperature_units_title">Temperature Unit</string>
@@ -109,10 +109,12 @@
 	<string name="precipitation_scaling_title_mm">Millimeters per cell</string>
 	<string name="precipitation_scaling_title_inches">Inches per cell</string>
     <!-- END UNIT SETTINGS -->
-	
+
 	<!-- BEGIN USER INTERFACE SETTINGS -->
-	<string name="ui_settings_category_widget">Widget settings</string>
+	<string name="ui_settings_title">UI Settings</string>
+	<string name="ui_settings_summary">Modify widget appearance</string>
 	
+	<string name="ui_settings_category_widget">Widget settings</string>
 	<string name="background_color_title">Background color</string>
 	<string name="pattern_color_title">Pattern color</string>
 	<string name="text_color_title">Text color</string>
@@ -120,8 +122,8 @@
 	
 	<string name="ui_settings_category_border">Border settings</string>
 	<string name="border_enabled_title">Widget border</string>
-	<string name="border_enabled_summary_on">Border enabled.</string>
-	<string name="border_enabled_summary_off">Border disabled.</string>
+	<string name="border_enabled_summary_on">Border enabled</string>
+	<string name="border_enabled_summary_off">Border disabled</string>
 	<string name="border_color_title">Border color</string>
 	<string name="border_thickness_title">Border thickness</string>
 	<string name="border_thickness_invalid_number_toast">Border thickness must be a number.</string>
@@ -129,12 +131,12 @@
 	<string name="border_rounding_title">Widget edge rounding</string>
 	<string name="border_rounding_invalid_number_toast">Widget edge rounding must be a number.</string>
 	<string name="border_rounding_invalid_range_toast">Widget edge rounding must be zero or greater, and less than 20.</string>
-	<string name="border_rounding_summary">Adjust the rounding radius of the widget border.</string>
+	<string name="border_rounding_summary">Adjust the rounding radius of the widget border</string>
 	
 	<string name="ui_settings_category_day_effect">Daylight effect</string>
 	<string name="day_effect_title">Day/night effect</string>
-	<string name="day_effect_summary_on">Background effect enabled.</string>
-	<string name="day_effect_summary_off">Background effect disabled.</string>
+	<string name="day_effect_summary_on">Background effect enabled</string>
+	<string name="day_effect_summary_off">Background effect disabled</string>
 	<string name="day_color_title">Day background</string>
 	<string name="night_color_title">Night background</string>
 	
@@ -150,6 +152,9 @@
 	<!-- END USER INTERFACE SETTINGS -->
 
 	<!-- BEGIN SYSTEM SETTINGS -->
+	<string name="system_settings_title">Update Settings</string>
+	<string name="system_settings_summary">These settings are applied to all widgets</string>
+	
 	<string name="system_settings_category">System Settings</string>
 	
 	<string name="provider_title">Data source</string>
@@ -165,6 +170,14 @@
 	<string name="update_rate_title">Update rate</string>
 	<string name="update_rate_summary">Adjust how often weather data will be retrieved</string>
 	<!-- END SYSTEM SETTINGS -->
+	
+	
+	<!-- BEGIN DEVICE PROFILES -->
+	<string name="device_profiles_title">Device Profiles</string>
+	<string name="device_profiles_summary">Set device specific widget dimensions</string>
+	<string name="device_profiles_key">device_profiles</string>
+	
+	<!-- END DEVICE PROFILES -->
 	
 	<!-- BEGIN PREFERENCE STRINGS, DO NOT EDIT -->
 	<string name="temperature_units_string">temperature_units_string</string>
@@ -191,12 +204,65 @@
 	<string name="above_freezing_color_int">above_freezing_color_int</string>
 	<string name="below_freezing_color_int">below_freezing_color_int</string>
 	
-	<string name="provider_string">global_provider</string>
-	<string name="awake_only_bool">global_awake_only</string>
-	<string name="wifi_only_bool">global_wifi_only</string>
-	<string name="update_rate_string">global_update_rate</string>
+	<string name="provider_string">global_provider_string</string>
+	<string name="awake_only_bool">global_awake_only_bool</string>
+	<string name="wifi_only_bool">global_wifi_only_bool</string>
+	<string name="update_rate_string">global_update_rate_string</string>
+	
+	<string name="preference_provider_string">global_temp_provider_string</string>
+	<string name="preference_awake_only_bool">global_temp_awake_only_bool</string>
+	<string name="preference_wifi_only_bool">global_temp_wifi_only_bool</string>
+	<string name="preference_update_rate_string">global_temp_update_rate_string</string>
 	
 	<string name="calibration_mode_bool">global_calibration_mode</string>
 	<!-- END PREFERENCE STRINGS, DO NOT EDIT -->
+	
+	<string name="useDeviceSpecificDimensions_bool">global_dp_useDeviceSpecificDimensions_bool</string>
+	<string name="preference_useDeviceSpecificDimensions_bool">global_temp_dp_useDeviceSpecificDimensions_bool</string>
+	
+	<string name="orientationMode_int">global_dp_orientationMode_int</string>
+	<string name="preference_orientationMode_int">global_temp_dp_orientationMode_int</string>
+	
+	<string name="lastProfileSync_long">global_dp_lastProfileSync_long</string>
+	<string name="preference_lastProfileSync_long">global_temp_dp_lastProfileSync_long</string>
+	
+	<string name="deviceProfileSynced_bool">global_dp_deviceProfileSynced_bool</string>
+	<string name="preference_deviceProfileSynced_bool">global_temp_dp_deviceProfileSynced_bool</string>
+	
+	<string name="deviceProfileState_int">global_dp_%1$d_%2$d_%3$s_state_int</string>
+	<string name="preference_deviceProfileState_int">global_temp_dp_%1$d_%2$d_%3$s_state_int</string>
+	
+	<string name="deviceProfileStored_string">global_dp_stored_%1$d_%2$d_%3$s_string</string>
+	<string name="preference_deviceProfileStored_string">global_temp_dp_stored_%1$d_%2$d_%3$s_string</string>
+	
+	<string name="deviceProfile_string">global_dp_%1$d_%2$d_%3$s_string</string>
+	<string name="preference_deviceProfile_string">global_temp_dp_%1$d_%2$d_%3$s_string</string>
+	
+	
+	
+	<string name="calibrationTarget_int">global_dp_calibrationTarget_int</string>
+	<string name="preference_calibrationTarget_int">global_temp_dp_calibrationTarget_int</string>
+	
+	<string name="calibrationState_int">global_dp_calibrationState_int</string>
+	<string name="preference_calibrationState_int">global_temp_dp_calibrationState_int</string>
+	
+	<string name="calibrationPortraitDimension_string">global_dp_calibrationPortraitDimension_string</string>
+	<string name="preference_calibrationPortraitDimension_string">global_temp_dp_calibrationPortraitDimension_string</string>
+	
+	<string name="calibrationLandscapeDimension_string">global_dp_calibrationLandscapeDimension_string</string>
+	<string name="preference_calibrationLandscapeDimension_string">global_temp_dp_calibrationLandscapeDimension_string</string>
+
+	<string name="contentDescriptionPortraitCalibrationImage">Aix Weather Widget Calibration (Portrait)</string>
+	<string name="contentDescriptionLandscapeCalibrationImage">Aix Weather Widget Calibration (Landscape)</string>
+	
+	<string name="contentDescriptionImage">Aix Weather Widget</string>
+	<string name="contentDescriptionPortraitImage">Aix Weather Widget (Portrait)</string>
+	<string name="contentDescriptionLandscapeImage">Aix Weather Widget (Landscape)</string>
+	
+	<string name="calibrationIncrementSymbol">\u002B</string>
+	<string name="calibrationDecrementSymbol">\u2212</string>
+	
+	
+	<string name="bufferImageFileName">aix_%1$d_%2$d_%3$s.png</string>
 	
 </resources>

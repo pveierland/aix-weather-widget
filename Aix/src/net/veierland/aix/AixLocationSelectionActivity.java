@@ -22,7 +22,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.HttpHostConnectException;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -75,11 +74,12 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	private boolean mResetSearch = false;
 	private EditText mEditText = null;
 	
+	@SuppressWarnings("deprecation") // startManagingCursor() and SimpleCursorAdapter constructor is deprecated
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		mContext = this;
-		setContentView(R.layout.aix_location_selection_list);
+		setContentView(R.layout.location_selection_list);
 		
 		mAddLocationButton = (Button) findViewById(R.id.add_location_button);
 		mAddLocationButton.setOnClickListener(this);
@@ -91,7 +91,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 
         setListAdapter(new SimpleCursorAdapter(
         		mContext,
-        		R.layout.aix_location_selection_row,
+        		R.layout.location_selection_row,
         		mCursor,
         		new String[] {
         				AixLocationsColumns.TITLE_DETAILED,
@@ -133,6 +133,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	private String mLocationName;
 	private long mLocationId;
 	
+	// Cursor.requery() and showDialog() are deprecated
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
 		AdapterContextMenuInfo adapterMenuInfo = (AdapterContextMenuInfo) (item.getMenuInfo());
@@ -216,7 +218,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 	                		String displayTitle = mEditText.getText().toString();
 							
 	                		if (TextUtils.isEmpty(displayTitle)) {
-	                			Toast.makeText(getApplicationContext(), "Invalid display title", Toast.LENGTH_SHORT).show();
+	                			Toast.makeText(AixLocationSelectionActivity.this, "Invalid display title", Toast.LENGTH_SHORT).show();
 	                		} else {
 								setLocationDisplayTitle(displayTitle);
 	                		}
@@ -237,6 +239,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
         return dialog;
 	}
 	
+	// Cursor.requery() is deprecated
+	@SuppressWarnings("deprecation")
 	private void setLocationDisplayTitle(String displayTitle) {
 		ContentValues cv = new ContentValues();
 		cv.put(AixLocations.TITLE, displayTitle);
@@ -244,6 +248,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		mCursor.requery();
 	}
 	
+	// Activity.onPrepareDialog() is deprecated
+	@SuppressWarnings("deprecation")
 	@Override
 	protected void onPrepareDialog(int id, Dialog dialog) {
 		final EditText editText = (EditText) dialog.findViewById(R.id.edittext);
@@ -331,6 +337,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				AlertDialog alertDialog = new AlertDialog.Builder(mContext)
 						.setTitle(R.string.location_search_results_select_dialog_title)
 						.setItems(listItems, new DialogInterface.OnClickListener() {
+							// Cursor.requery() is deprecated
+							@SuppressWarnings("deprecation")
 							@Override
 							public void onClick(DialogInterface dialog, int which) {
 								// Add selected location to provider
@@ -352,25 +360,25 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				break;
 			case NO_RESULTS:
 				Toast.makeText(
-						getApplicationContext(),
+						AixLocationSelectionActivity.this,
 						getString(R.string.location_search_no_results),
 						Toast.LENGTH_SHORT).show();
 				break;
 			case OVER_QUERY_LIMIT:
 				Toast.makeText(
-						getApplicationContext(),
+						AixLocationSelectionActivity.this,
 						getString(R.string.location_search_over_query_limit_toast),
-						Toast.LENGTH_SHORT).show();
+						Toast.LENGTH_LONG).show();
 				break;
 			case REQUEST_DENIED:
 				Toast.makeText(
-						getApplicationContext(),
+						AixLocationSelectionActivity.this,
 						getString(R.string.location_search_request_denied_toast),
 						Toast.LENGTH_SHORT).show();
 				break;
 			case INVALID_REQUEST:
 				Toast.makeText(
-						getApplicationContext(),
+						AixLocationSelectionActivity.this,
 						getString(R.string.location_search_invalid_request_toast),
 						Toast.LENGTH_SHORT).show();
 				break;
@@ -403,10 +411,6 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				mAttempts++;
 				
 				try {
-					/*Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
-					mAddresses = geocoder.getFromLocationName(params[0].trim(), MAX_RESULTS);
-					*/
-					
 					URI uri = new URI("http", "maps.googleapis.com", "/maps/api/geocode/json",
 							"address=" + params[0].trim() +
 							"&language=" + Locale.getDefault().getLanguage() +
@@ -415,7 +419,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 					HttpGet httpGet = new HttpGet(uri);
 					httpGet.addHeader("Accept-Encoding", "gzip");
 					
-					HttpClient httpclient = new DefaultHttpClient();
+					HttpClient httpclient = AixUtils.setupHttpClient();
 					HttpResponse response = httpclient.execute(httpGet);
 					InputStream content = response.getEntity().getContent();
 					
@@ -510,6 +514,8 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		
 	}
 	
+	// Activity.showDialog() is deprecated
+	@SuppressWarnings("deprecation")
 	@Override
 	public void onClick(View v) {
 		if (v == mAddLocationButton) {

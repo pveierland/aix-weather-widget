@@ -62,10 +62,22 @@
 		<item>NOAA NWS (US)</item>
 	</string-array>
 	
+	<string name="provider_default">@string/provider_auto</string>
+	
+	<string name="provider_auto">1</string>
+	<string name="provider_met">2</string>
+	<string name="provider_nws">3</string>
+	
 	<string-array name="provider_code">
 		<item>1</item>
 		<item>2</item>
 		<item>3</item>
 	</string-array>
+
+	<string-array name="orientation_modes">
+		<item>Portrait &amp; Landscape</item>
+        <item>Portrait (locked)</item>
+        <item>Landscape (locked)</item>
+    </string-array>
 
 </resources>

@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		package="net.veierland.aix"
-		android:versionCode="13"
-		android:versionName="0.1.8.3">
+		android:versionCode="14"
+		android:versionName="0.1.9.0"
+		android:installLocation="internalOnly">
 	
+    <uses-sdk android:minSdkVersion="4" android:targetSdkVersion="13" />
+    
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
 	<application
 			android:icon="@drawable/app_icon"
 			android:label="@string/widget_name"
 			android:description="@string/app_description"
-			android:debuggable="false"
 			android:theme="@style/AixTheme">
-    	
+			
     	<activity android:name=".AixConfigure"
     	    	android:label="@string/title_configure"
     			android:windowSoftInputMode="stateHidden|adjustPan"
-    			android:excludeFromRecents="true">
+    			android:taskAffinity="net.veierland.aix.configure"
+        		android:excludeFromRecents="true">
 
             <intent-filter>
             	<action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -22,28 +28,34 @@
 
         </activity>
         
-        <activity android:name=".AixUnitSettingsActivity"
-        		android:label="@string/title_unitsettings"
-        		android:windowSoftInputMode="stateHidden|adjustPan" />
+        <activity android:name=".AixDeviceProfileActivity"
+		    	android:label="@string/device_profiles_title"
+		    	android:taskAffinity="net.veierland.aix.configure"
+		    	android:windowSoftInputMode="stateHidden|adjustPan"
+		    	android:excludeFromRecents="true" />
         
         <activity android:name=".AixLocationSelectionActivity"
-        		android:label="@string/title_select_location"
-        		android:windowSoftInputMode="stateHidden|adjustPan" />
-        
-        <provider android:name=".AixProvider" android:authorities="net.veierland.aix" />
-        
-        <service android:name=".AixService" />
+        		android:label="@string/location_settings_title"
+        		android:taskAffinity="net.veierland.aix.configure"
+        		android:windowSoftInputMode="stateHidden|adjustPan"
+        		android:excludeFromRecents="true" />
         
         <activity android:name=".AixIntro"
-        		android:label="Aix Intro"
-        		android:theme="@android:style/Theme.Dialog">
-		
+        		android:label="Aix Weather Widget"
+        		android:taskAffinity="net.veierland.aix.intro"
+        		android:excludeFromRecents="true">
+            
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
 				<category android:name="android.intent.category.INFO" />
 			</intent-filter>
 		
 		</activity>
+        
+        <provider android:name=".AixProvider" android:authorities="net.veierland.aix" />
+        
+        <service android:name=".AixService" />
     	
     	<receiver android:name=".AixWidget" android:label="@string/widget_name">
 			<intent-filter>
@@ -63,9 +75,5 @@
     	</receiver>
     	
     </application>
-    
-    <uses-sdk android:minSdkVersion="4" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 </manifest> 

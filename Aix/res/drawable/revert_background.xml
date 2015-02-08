@@ -21,5 +21,5 @@
     <item android:state_focused="false" android:state_pressed="true"
         android:drawable="@android:drawable/list_selector_background" />
     <item android:state_focused="false" android:state_pressed="false"
-        android:drawable="@color/black"/>
+        android:drawable="@android:color/transparent"/>
 </selector>

@@ -1,6 +1,8 @@
 package net.veierland.aix;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,8 +10,66 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Calendar;
+import java.util.TimeZone;
+import java.util.zip.GZIPInputStream;
+
+import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
+import net.veierland.aix.AixProvider.AixIntervalDataForecasts;
+import net.veierland.aix.AixProvider.AixLocations;
+import net.veierland.aix.AixProvider.AixLocationsColumns;
+import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
+import net.veierland.aix.AixProvider.AixPointDataForecasts;
+import net.veierland.aix.AixProvider.AixSettingsColumns;
+import net.veierland.aix.AixProvider.AixSunMoonData;
+import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
+import net.veierland.aix.AixProvider.AixViewSettings;
+import net.veierland.aix.AixProvider.AixViews;
+import net.veierland.aix.AixProvider.AixWidgetSettingsDatabase;
+import net.veierland.aix.AixProvider.AixWidgets;
+import net.veierland.aix.AixProvider.AixWidgetsColumns;
+
+import org.apache.http.Header;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
+
+import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Point;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
+import android.text.TextUtils;
+import android.text.format.DateUtils;
+import android.util.Log;
+import android.widget.RemoteViews;
 
 public class AixUtils {
+	
+	private final static String TAG = "AixUtils";
+	
+	public static final int ORIENTATION_NORMAL = 0;
+	public static final int ORIENTATION_PORTRAIT_FIXED = 1;
+	public static final int ORIENTATION_LANDSCAPE_FIXED = 2;
+	
+	public static final int WIDGET_STATE_NONE = 0;
+	public static final int WIDGET_STATE_MESSAGE = 1;
+	public static final int WIDGET_STATE_RENDER = 2;
+	
+	public final static int PROVIDER_AUTO = 1;
+	public final static int PROVIDER_NMET = 2;
+	public final static int PROVIDER_NWS = 3;
 
 	public static final int[] WEATHER_ICONS_DAY = {
 		R.drawable.weather_icon_day_sun,
@@ -214,6 +274,49 @@ public class AixUtils {
 		}
 	}
 	
+	public static HttpGet buildGzipHttpGet(String url)
+	{
+		HttpGet httpGet = new HttpGet(url);
+		httpGet.addHeader("Accept-Encoding", "gzip");
+		return httpGet;
+	}
+	
+	public static Point buildDimension(String widthString, String heightString)
+	{
+		if (widthString == null) {
+			throw new IllegalArgumentException("Width is null");
+		} else if (TextUtils.isEmpty(widthString.trim())) {
+			throw new IllegalArgumentException("Width is empty");
+		}
+		if (heightString == null) {
+			throw new IllegalArgumentException("Height is null");
+		} else if (TextUtils.isEmpty(heightString.trim())) {
+			throw new IllegalArgumentException("Height is empty");
+		}
+		
+		int width = 0, height = 0;
+		
+		try {
+			width = Integer.parseInt(widthString);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Width is not a valid number");
+		}
+		if (width < 1 || width > 10000) {
+			throw new IllegalArgumentException("Width is out of range");
+		}
+		
+		try {
+			height = Integer.parseInt(heightString);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Height is not a valid number");
+		}
+		if (height < 1 || height > 10000) {
+			throw new IllegalArgumentException("Height is out of range");
+		}
+		
+		return new Point(width, height);
+	}
+	
 	public static String convertStreamToString(InputStream is) throws IOException {
 		if (is != null) {
 			Writer writer = new StringWriter();
@@ -234,27 +337,220 @@ public class AixUtils {
 		}
 	}
 	
-//	public static NinePatchDrawable getNinePatchDrawable(Resources resources, int resId) {
-//		Log.d("AixDetailedWidget", "GG");
-//		Bitmap bitmap = getBitmapUnscaled(resources, resId);
-//		Log.d("AixDetailedWidget", "HF");
-//		byte[] qq = bitmap.getNinePatchChunk();
-//		Log.d("AixDetailedWidget", "qq=" + qq);
-//		NinePatch np = new NinePatch(bitmap, bitmap.getNinePatchChunk(), null);
-//		Log.d("AixDetailedWidget", "AHA");
-//		return new NinePatchDrawable(resources, np);
-//	}
-//
-//	public static Bitmap getBitmapUnscaled(Resources resources, int resId) {
-//		Log.d("AixDetailedWidget", "!!");
-//		BitmapFactory.Options opts = new BitmapFactory.Options();
-//		Log.d("AixDetailedWidget", "@@");
-//		opts.inDensity = opts.inTargetDensity = resources.getDisplayMetrics().densityDpi;
-//		Log.d("AixDetailedWidget", "## " + opts.inTargetDensity);
-//		Bitmap bitmap = BitmapFactory.decodeResource(resources, resId, opts);
-//		Log.d("AixDetailedWidget", "$$ " + bitmap);
-//		return bitmap;
-//	}
+	public static void deleteCacheFiles(Context context, int appWidgetId) {
+		String appWidgetIdString = Integer.toString(appWidgetId);
+		File[] cacheFileList = context.getCacheDir().listFiles();
+		
+		for (File file : cacheFileList)
+		{
+			String fileName = file.getName();
+			
+			if (fileName.startsWith("aix"))
+			{
+				String[] s = fileName.split("_");
+				
+				if (s.length > 1 && s[1].equals(appWidgetIdString))
+				{
+					file.delete();
+				}
+			}
+		}
+	}
+	
+	/* Deletes all temporary files, as made with Context.openFileOutput(), matching appWidgetId */
+	public static void deleteTemporaryFiles(Context context, int appWidgetId) {
+		String appWidgetIdString = Integer.toString(appWidgetId);
+		String[] fileNameList = context.fileList();
+		
+		for (String fileName : fileNameList)
+		{
+			if (fileName.startsWith("aix"))
+			{
+				String[] s = fileName.split("_");
+				if (s.length > 1 && s[1].equals(appWidgetIdString))
+				{
+					context.deleteFile(fileName);
+				}
+			}
+		}
+	}
+	
+	public static void deleteTemporaryFile(Context context, int appWidgetId, long updateTime, String orientation) {
+		String appWidgetIdString = Integer.toString(appWidgetId);
+		String[] fileNameList = context.fileList();
+		
+		for (String fileName : fileNameList)
+		{
+			if (fileName.startsWith("aix"))
+			{
+				String[] s = fileName.split("_");
+				
+				if (s.length == 4)
+				{
+					try
+					{
+						long fileTime = Long.parseLong(s[2]);
+						
+						boolean isFileMatch = (s[1].equals(appWidgetIdString) && s[3].startsWith(orientation));
+						boolean isFileObsolete = (fileTime < updateTime - 6 * DateUtils.HOUR_IN_MILLIS);
+						
+						if ((isFileMatch && fileTime < updateTime) || isFileObsolete)
+						{
+							context.deleteFile(fileName);
+						}
+					}
+					catch (NumberFormatException e)
+					{
+						Log.d(TAG, "Invalid temporary file: " + fileName);
+					}
+				}
+			}
+		}
+	}
+	
+	public static void deleteWidget(Context context, int appWidgetId) {
+		try {
+			AixSettings.removeWidgetSettings(context, null, null, appWidgetId).commit();
+		} catch (Exception e) {
+			Log.d(TAG, "Failed to successfully remove widget settings. (appWidgetId=" + appWidgetId + ")");
+		}
+		
+		try {
+			removeWidgetFromProvider(context, appWidgetId);
+		} catch (Exception e) {
+			Log.d(TAG, "Failed to successfully remove widget from provider. (appWidgetId=" + appWidgetId + ")");
+			e.printStackTrace();
+		}
+		
+		try {
+			deleteCacheFiles(context, appWidgetId);
+		} catch (Exception e) {
+			Log.d(TAG, "Failed to successfully delete cache files.");
+			e.printStackTrace();
+		}
+		try {
+			deleteTemporaryFiles(context, appWidgetId);
+		} catch (Exception e) {
+			Log.d(TAG, "Failed to successfully delete temporary files.");
+			e.printStackTrace();
+		}
+	}
+	
+	public static InputStream getGzipInputStream(HttpResponse httpResponse)
+			throws IllegalStateException, IOException
+	{
+		InputStream content = httpResponse.getEntity().getContent();
+		
+		Header contentEncoding = httpResponse.getFirstHeader("Content-Encoding");
+		if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
+			content = new GZIPInputStream(content);
+		}
+		
+		return content;
+	}
+	
+	public static long getWidgetViewId(Context context, Uri widgetUri)
+	{
+		long viewRowId = -1;
+		
+		ContentResolver resolver = context.getContentResolver();
+		
+		Cursor widgetCursor = null;
+		try
+		{
+			widgetCursor = resolver.query(widgetUri, null, null, null, null);
+			
+			if (widgetCursor != null)
+			{
+				if (widgetCursor.moveToFirst())
+				{
+					int viewColumnIndex = widgetCursor.getColumnIndex(AixWidgetsColumns.VIEWS);
+					if (viewColumnIndex != -1)
+					{
+						viewRowId = widgetCursor.getLong(viewColumnIndex);
+					}
+				}
+			}
+		}
+		finally
+		{
+			if (widgetCursor != null)
+			{
+				widgetCursor.close();
+			}
+		}
+		
+		return viewRowId;
+	}
+	
+	public static void removeWidgetFromProvider(Context context, int appWidgetId)
+	{
+		Uri widgetUri = Uri.withAppendedPath(AixWidgets.CONTENT_URI, Integer.toString(appWidgetId));
+		
+		long viewRowId = getWidgetViewId(context, widgetUri);
+		Uri viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, viewRowId);
+		
+		ContentResolver resolver = context.getContentResolver();
+		
+		if (widgetUri != null) {
+			resolver.delete(widgetUri, null, null);
+		}
+		if (viewUri != null) {
+			resolver.delete(viewUri, null, null);
+		}
+		
+		if (appWidgetId != -1) {
+			resolver.delete(
+					AixWidgetSettingsDatabase.CONTENT_URI,
+					AixSettingsColumns.ROW_ID + '=' + appWidgetId,
+					null);
+		}
+		if (viewRowId != -1) {
+			resolver.delete(
+					AixViewSettings.CONTENT_URI,
+					AixSettingsColumns.ROW_ID + '=' + viewRowId,
+					null);
+		}
+	}
+	
+	public static HttpClient setupHttpClient() {
+		HttpParams httpParameters = new BasicHttpParams();
+		HttpConnectionParams.setSoTimeout(httpParameters, 7777);
+		return new DefaultHttpClient(httpParameters);
+	}
+	
+	public static Uri storeBitmap(
+			Context context, Bitmap bitmap,
+			int appWidgetId, long time, boolean landscape
+	)
+		throws IOException
+	{
+		String orientation = landscape ? "landscape" : "portrait";
+		String fileName = context.getString(R.string.bufferImageFileName, appWidgetId, time, orientation);
+		
+		BufferedOutputStream out = null;
+		
+		try
+		{
+			out = new BufferedOutputStream(context.openFileOutput(fileName, Context.MODE_WORLD_READABLE));
+			
+			bitmap.setDensity(Bitmap.DENSITY_NONE);
+			bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+			
+			out.flush();
+		}
+		finally
+		{
+			if (out != null)
+			{
+				out.close();
+			}
+		}
+		
+		return Uri.parse(String.format(
+				"content://net.veierland.aix/aixrender/%d/%d/%s",
+				appWidgetId, time, orientation));
+	}
 	
 	public static Calendar truncateDay(Calendar calendar) {
 		calendar.set(Calendar.HOUR_OF_DAY, 0);
@@ -269,6 +565,92 @@ public class AixUtils {
 		calendar.set(Calendar.SECOND, 0);
 		calendar.set(Calendar.MILLISECOND, 0);
 		return calendar;
+	}
+	
+	public static void updateWidgetRemoteViews(
+			AixSettings aixSettings, int appWidgetId,
+			String message, boolean overwrite, PendingIntent pendingIntent)
+	{
+		int widgetState = aixSettings.getWidgetState();
+		
+		if (widgetState == WIDGET_STATE_RENDER && !overwrite) {
+			return;
+		}
+		
+		if (widgetState != WIDGET_STATE_MESSAGE) {
+			aixSettings.setWidgetState(WIDGET_STATE_MESSAGE);
+		}
+		
+		Context context = aixSettings.getContext();
+		
+		RemoteViews updateView = new RemoteViews(context.getPackageName(), R.layout.widget_text);
+		updateView.setTextViewText(R.id.widgetText, message);
+		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
+		
+		AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, updateView);
+	}
+	
+	public static PendingIntent buildConfigurationIntent(Context context, Uri widgetUri)
+	{
+		Intent editWidgetIntent = new Intent(Intent.ACTION_EDIT, widgetUri, context, AixConfigure.class);
+		editWidgetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		editWidgetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		return PendingIntent.getActivity(context, 0, editWidgetIntent, 0);
+	}
+	
+	public static PendingIntent buildDisableSpecificDimensionsIntent(Context context, Uri widgetUri)
+	{
+		Intent intent = new Intent(AixService.ACTION_UPDATE_ALL_MINIMAL_DIMENSIONS, widgetUri, context, AixService.class);
+		return PendingIntent.getService(context, 0, intent, 0);
+	}
+	
+	public static PendingIntent buildWidgetProviderAutoIntent(Context context, Uri widgetUri)
+	{
+		Intent intent = new Intent(AixService.ACTION_UPDATE_ALL_PROVIDER_AUTO, widgetUri, context, AixService.class);
+		return PendingIntent.getService(context, 0, intent, 0);
+	}
+	
+	public static void clearProviderData(ContentResolver contentResolver)
+	{
+		contentResolver.delete(AixPointDataForecasts.CONTENT_URI, null, null);
+		contentResolver.delete(AixIntervalDataForecasts.CONTENT_URI, null, null);
+		
+		ContentValues values = new ContentValues();
+		values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, 0);
+		values.put(AixLocationsColumns.FORECAST_VALID_TO, 0);
+		values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, 0);
+		contentResolver.update(AixLocations.CONTENT_URI, values, null, null);
+	}
+	
+	public static boolean isWifiConnected(Context context)
+	{
+		ConnectivityManager connectionManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+		if (connectionManager == null) return false;
+		NetworkInfo wifiInfo = connectionManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+		if (wifiInfo == null) return false;
+		return wifiInfo.isConnected();
+	}
+	
+	public static void clearOldProviderData(ContentResolver contentResolver)
+	{
+		Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+		AixUtils.truncateHour(calendar);
+		
+		// Clear old data
+		calendar.add(Calendar.HOUR_OF_DAY, -12);
+		contentResolver.delete(
+				AixPointDataForecasts.CONTENT_URI,
+				AixPointDataForecastColumns.TIME + "<=" + calendar.getTimeInMillis(),
+				null);
+		contentResolver.delete(
+				AixIntervalDataForecasts.CONTENT_URI,
+				AixIntervalDataForecastColumns.TIME_TO + "<=" + calendar.getTimeInMillis(),
+				null);
+		calendar.add(Calendar.HOUR_OF_DAY, -36);
+		contentResolver.delete(
+				AixSunMoonData.CONTENT_URI,
+				AixSunMoonDataColumns.DATE + "<=" + calendar.getTimeInMillis(),
+				null);
 	}
 	
 }

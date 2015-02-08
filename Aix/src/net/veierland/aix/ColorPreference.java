@@ -1,33 +1,31 @@
 package net.veierland.aix;
 
 import net.veierland.aix.ColorView.OnValueChangeListener;
-import android.app.AlertDialog;
-import android.app.Dialog;
+import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
 import android.content.res.TypedArray;
 import android.graphics.Color;
-import android.preference.Preference;
+import android.preference.DialogPreference;
 import android.text.InputType;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class ColorPreference extends Preference implements android.view.View.OnClickListener, OnValueChangeListener {
+public class ColorPreference extends DialogPreference implements android.view.View.OnClickListener, OnValueChangeListener {
 
+	// private final static String TAG = "AixColorPreference";
+	
 	private int mValue;
 	private int mDefaultValue;
 	
 	private ColorView mColorView;
-	private View mView;
 	private View mRevertView;
+	
+	private boolean showHexDialog = false;
 	
 	/* Dialog stuff */
 	private ColorView mAlphaSlider;
@@ -44,7 +42,10 @@ public class ColorPreference extends Preference implements android.view.View.OnC
 	private float[] mHSV = new float[3];
 	private float mAlpha;
 	
-    private static class RevertHolder extends ImageView {
+	private EditText mEditText;
+	
+    @SuppressWarnings("unused")
+	private static class RevertHolder extends ImageView {
         public RevertHolder(Context context, AttributeSet attrs) {
             super(context, attrs);
         }
@@ -70,7 +71,37 @@ public class ColorPreference extends Preference implements android.view.View.OnC
 	public ColorPreference(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
 	}
-
+	
+	@Override
+	protected void onBindDialogView(View view) {
+		if (showHexDialog) {
+			int color = Color.HSVToColor(Math.round(mAlpha * 255.0f), mHSV);
+			
+			mEditText = (EditText)view.findViewById(R.id.edittext);
+			mEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+			mEditText.setText(String.format("#%08X", color));
+		} else {
+			mAlphaSlider = (ColorView)view.findViewById(R.id.alphaSlider);
+			mAlphaSlider.setOnValueChangeListener(this);
+			mHueSlider = (ColorView)view.findViewById(R.id.hueSlider);
+			mHueSlider.setOnValueChangeListener(this);
+			
+			mSvMap = (ColorView)view.findViewById(R.id.svMap);
+			mSvMap.setOnValueChangeListener(this);
+			
+			mAlphaTextView = (TextView)view.findViewById(R.id.alphaText);
+			mHueTextView = (TextView)view.findViewById(R.id.hueText);
+			mSaturationTextView = (TextView)view.findViewById(R.id.saturationText);
+			mValueTextView = (TextView)view.findViewById(R.id.valueText);
+			
+			mColorOld = (ColorView)view.findViewById(R.id.colorOld);
+			mColorNew = (ColorView)view.findViewById(R.id.colorNew);
+			
+			setupDialogValues();
+			updateLabels();
+		}
+	}
+	
 	@Override
 	protected void onBindView(View view) {
 		super.onBindView(view);
@@ -80,30 +111,91 @@ public class ColorPreference extends Preference implements android.view.View.OnC
 		
 		mRevertView = view.findViewById(R.id.revert);
 		mRevertView.setOnClickListener(this);
+		
 		// Set listview item padding to 0 so revert button matches right edge
 		((View)mRevertView.getParent().getParent().getParent()).setPadding(0, 0, 0, 0);
 	}
+	
+	@Override
+	protected void onClick() {
+		showHexDialog = false;
+		setDialogLayoutResource(R.layout.dialog_color);
+		super.onClick();
+	}
+	
+	@Override
+	public void onClick(DialogInterface dialog, int which) {
+		super.onClick(dialog, which);
+		
+		switch (which) {
+		case DialogInterface.BUTTON_POSITIVE:
+			if (showHexDialog) {
+				try {
+            		setValue(Color.parseColor(mEditText.getText().toString()));
+            	} catch (Exception e) {
+            		Toast.makeText(getContext(), "Invalid color code entered", Toast.LENGTH_SHORT).show();
+            	}
+			} else {
+				setValue(Color.HSVToColor(Math.round(mAlpha * 255.0f), mHSV));
+			}
+			break;
+		case DialogInterface.BUTTON_NEUTRAL:
+			mRevertView.postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					showHexDialog = true;
+					setDialogLayoutResource(R.layout.dialog_edittext);
+					showDialog(null);
+				}
+			}, 100);
+			break;
+		case DialogInterface.BUTTON_NEGATIVE:
+			// TODO: End the world?
+			break;
+		}
+	}
 
-	private void openColorDialog() {
-		View content = LayoutInflater.from(getContext()).inflate(R.layout.dialog_color, null);
+	/* mRevertView onClick() */
+	@Override
+	public void onClick(View v) {
+		v.post(new Runnable() {
+			@Override
+			public void run() {
+				setValue(mDefaultValue);
+			}
+		});
+	}
+	
+	@Override
+	protected Object onGetDefaultValue(TypedArray a, int index) {
+		mDefaultValue = a.getInteger(index, 0);
+		return mDefaultValue;
+	}
+	
+	@Override
+	protected void onPrepareDialogBuilder(Builder builder) {
+		super.onPrepareDialogBuilder(builder);
 		
-		mAlphaSlider = (ColorView)content.findViewById(R.id.alphaSlider);
-		mAlphaSlider.setOnValueChangeListener(this);
-		mHueSlider = (ColorView)content.findViewById(R.id.hueSlider);
-		mHueSlider.setOnValueChangeListener(this);
+		if (showHexDialog) {
+			builder.setTitle("Input Hex Color");
+		}
 		
-		mSvMap = (ColorView)content.findViewById(R.id.svMap);
-		mSvMap.setOnValueChangeListener(this);
+		builder.setPositiveButton(android.R.string.ok, this);
+		builder.setNegativeButton(android.R.string.cancel, this);
 		
-		mAlphaTextView = (TextView)content.findViewById(R.id.alphaText);
-		mHueTextView = (TextView)content.findViewById(R.id.hueText);
-		mSaturationTextView = (TextView)content.findViewById(R.id.saturationText);
-		mValueTextView = (TextView)content.findViewById(R.id.valueText);
-		
-		mColorOld = (ColorView)content.findViewById(R.id.colorOld);
-		mColorNew = (ColorView)content.findViewById(R.id.colorNew);
-		
-		
+		if (!showHexDialog) {
+			builder.setNeutralButton("Hex Input", this);	
+		}
+	}
+
+	@Override
+	protected void onSetInitialValue(boolean restorePersistedValue,
+			Object defaultValue)
+	{
+		setValue(restorePersistedValue ? getPersistedInt(mValue) : (Integer) defaultValue);
+	}
+	
+	private void setupDialogValues() {
 		mHSV = new float[3];
 		
 		Color.RGBToHSV(
@@ -119,101 +211,19 @@ public class ColorPreference extends Preference implements android.view.View.OnC
 		mAlphaSlider.setColor(mValue);
 		mSvMap.setValue(new float[] { mHSV[1], mHSV[2] });
 		mSvMap.setHue(mHSV[0]);
-		mColorOld.setColor(mValue); // Change to initial
-		mColorNew.setColor(mValue); // Change to initial
-		
-		updateLabels();
-		
-		Dialog dialog = new AlertDialog.Builder(getContext())
-						.setTitle("Select Color")
-						.setView(content)
-						.setNeutralButton("Hex Input", new OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog,
-									int which) {
-								hex(Color.HSVToColor(Math.round(mAlpha * 255.0f), mHSV));
-							}
-							
-						})
-						.setPositiveButton(android.R.string.ok, new OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog,
-									int which) {
-								setValue(Color.HSVToColor(Math.round(mAlpha * 255.0f), mHSV));
-								AixConfigure.mDialog = null;
-							}
-							
-						})
-						.setNegativeButton(android.R.string.cancel, new OnClickListener() {
-
-							@Override
-							public void onClick(DialogInterface dialog,
-									int which) {
-								AixConfigure.mDialog = null;
-							}
-							
-						})
-						.create();
-		
-		AixConfigure.mDialog = dialog;
-		dialog.show();
+		mColorOld.setColor(mValue);
+		mColorNew.setColor(mValue);
 	}
 	
-	private void hex(int color) {
-		View content = LayoutInflater.from(getContext()).inflate(R.layout.dialog_edittext, null);
-		
-		final EditText editText = (EditText) content.findViewById(R.id.edittext);
-		editText.setInputType(InputType.TYPE_CLASS_TEXT);
-		editText.setText("#" + Integer.toHexString(color));
-		
-		Dialog dialog = new AlertDialog.Builder(getContext())
-				.setTitle("Input Hex Color")
-                .setView(content)
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                    	InputMethodManager imm = (InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                		imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-                    	try {
-                    		setValue(Color.parseColor(editText.getText().toString()));
-                    	} catch (Exception e) {
-                    		Toast.makeText(getContext(), "Invalid color code entered", Toast.LENGTH_SHORT).show();
-                    	}
-                    	AixConfigure.mDialog = null;
-                    }})
-                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                    	InputMethodManager imm = (InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                		imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-                		AixConfigure.mDialog = null;
-                    }})
-                .create();
-		
-		dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN |
-				WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-
-		AixConfigure.mDialog = dialog;
-		
-		dialog.show();
+	private void setValue(int value) {
+		mValue = value;
+		if (mColorView != null) {
+			mColorView.setColor(value);
+		}
+		persistInt(value);
+		notifyChanged();
 	}
-
-	@Override
-	protected void onClick() {
-		super.onClick();
-		openColorDialog();
-	}
-
-	@Override
-	public void onClick(View v) {
-		v.post(new Runnable() {
-			@Override
-			public void run() {
-				setValue(mDefaultValue);
-			}
-		});
-	}
-
+	
 	private void updateLabels() {
 		mAlphaTextView.setText(String.format("A: %.0f%%", mAlpha * 100.0f));
 		mHueTextView.setText(String.format("H: %.0f\u00b0", mHSV[0]));
@@ -239,29 +249,9 @@ public class ColorPreference extends Preference implements android.view.View.OnC
 			mAlphaSlider.setColor(rgb);
 		}
 		
-		updateLabels();
 		mColorNew.setColor(rgb);
-	}
-
-	private void setValue(int value) {
-		mValue = value;
-		if (mColorView != null) {
-			mColorView.setColor(value);
-		}
-		persistInt(value);
-		notifyChanged();
-	}
-	
-	@Override
-	protected Object onGetDefaultValue(TypedArray a, int index) {
-		mDefaultValue = a.getInteger(index, 0);
-		return mDefaultValue;
-	}
-
-	@Override
-	protected void onSetInitialValue(boolean restorePersistedValue,
-			Object defaultValue) {
-		setValue(restorePersistedValue ? getPersistedInt(mValue) : (Integer) defaultValue);
+		
+		updateLabels();
 	}
 
 }

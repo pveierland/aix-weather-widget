@@ -44,12 +44,15 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Log;
@@ -568,26 +571,27 @@ public class AixUtils {
 	}
 	
 	public static void updateWidgetRemoteViews(
-			AixSettings aixSettings, int appWidgetId,
-			String message, boolean overwrite, PendingIntent pendingIntent)
+			Context context, int appWidgetId,
+			String message, boolean overwrite,
+			PendingIntent pendingIntent)
 	{
-		int widgetState = aixSettings.getWidgetState();
+		SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
 		
-		if (widgetState == WIDGET_STATE_RENDER && !overwrite) {
-			return;
+		int widgetState = getWidgetState(sharedPreferences, appWidgetId);
+		
+		if (widgetState != WIDGET_STATE_RENDER || overwrite)
+		{
+			if (widgetState != WIDGET_STATE_RENDER)
+			{
+				setWidgetState(sharedPreferences, appWidgetId, widgetState);
+			}
+			
+			RemoteViews updateView = new RemoteViews(context.getPackageName(), R.layout.widget_text);
+			updateView.setTextViewText(R.id.widgetText, message);
+			updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
+			
+			AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, updateView);
 		}
-		
-		if (widgetState != WIDGET_STATE_MESSAGE) {
-			aixSettings.setWidgetState(WIDGET_STATE_MESSAGE);
-		}
-		
-		Context context = aixSettings.getContext();
-		
-		RemoteViews updateView = new RemoteViews(context.getPackageName(), R.layout.widget_text);
-		updateView.setTextViewText(R.id.widgetText, message);
-		updateView.setOnClickPendingIntent(R.id.widgetContainer, pendingIntent);
-		
-		AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, updateView);
 	}
 	
 	public static PendingIntent buildConfigurationIntent(Context context, Uri widgetUri)
@@ -651,6 +655,33 @@ public class AixUtils {
 				AixSunMoonData.CONTENT_URI,
 				AixSunMoonDataColumns.DATE + "<=" + calendar.getTimeInMillis(),
 				null);
+	}
+	
+	public static int getWidgetState(SharedPreferences sharedPreferences, int appWidgetId)
+	{
+		String key = "global_widget_" + appWidgetId;
+		return sharedPreferences.getInt(key, 0);
+	}
+
+	public static void setWidgetState(SharedPreferences sharedPreferences, int appWidgetId, int widgetState)
+	{
+		Editor editor = sharedPreferences.edit();
+		editWidgetState(editor, appWidgetId, widgetState);
+		editor.commit();
+	}
+	
+	public static Editor editWidgetState(Editor editor, int appWidgetId, int widgetState)
+	{
+		String key = "global_widget_" + appWidgetId;
+		if (widgetState == 0)
+		{
+			editor.remove(key);
+		}
+		else
+		{
+			editor.putInt(key, widgetState);
+		}
+		return editor;
 	}
 	
 }

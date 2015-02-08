@@ -137,11 +137,15 @@ public class AixService extends IntentService {
 	
 	private void updateWidget(String action, Uri widgetUri)
 	{
+		int appWidgetId = (int)ContentUris.parseId(widgetUri);
+		
 		AixWidgetInfo widgetInfo = null;
 		try {
 			widgetInfo = AixWidgetInfo.build(this, widgetUri);
-			widgetInfo.loadSettings();
+			widgetInfo.loadSettings(this);
 		} catch (Exception e) {
+			PendingIntent pendingIntent = AixUtils.buildConfigurationIntent(this, widgetUri);
+			AixUtils.updateWidgetRemoteViews(this, appWidgetId, "Failed to get widget information", true, pendingIntent);
 			Log.d(TAG, "onHandleIntent() failed: Could not retrieve widget information (" + e.getMessage() + ")");
 			return;
 		}
@@ -158,6 +162,8 @@ public class AixService extends IntentService {
 				AixUpdate aixUpdate = AixUpdate.build(this, widgetInfo, aixSettings);
 				aixUpdate.process();
 			} catch (Exception e) {
+				PendingIntent pendingIntent = AixUtils.buildConfigurationIntent(this, widgetUri);
+				AixUtils.updateWidgetRemoteViews(this, appWidgetId, "Failed to update widget", true, pendingIntent);
 				Log.d(TAG, "AixUpdate of " + widgetUri + " failed! (" + e.getMessage() + ")");
 				e.printStackTrace();
 			}
@@ -213,7 +219,7 @@ public class AixService extends IntentService {
 				aixSettings.exitCalibrationMode();
 				
 				PendingIntent pendingIntent = AixUtils.buildConfigurationIntent(this, widgetInfo.getWidgetUri());
-				AixUtils.updateWidgetRemoteViews(aixSettings, widgetInfo.getAppWidgetId(), getString(R.string.widget_loading), true, pendingIntent);
+				AixUtils.updateWidgetRemoteViews(this, widgetInfo.getAppWidgetId(), getString(R.string.widget_loading), true, pendingIntent);
 				
 				// Update all widgets after ended calibration
 				Intent updateIntent = new Intent(ACTION_UPDATE_ALL, widgetInfo.getWidgetUri(), this, AixService.class);

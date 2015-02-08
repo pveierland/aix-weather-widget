@@ -1,7 +1,5 @@
 package net.veierland.aix.util;
 
-import java.util.ArrayList;
-
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
@@ -11,103 +9,100 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.text.TextUtils;
 
 public class AixWidgetInfo {
 	
-	private Context mContext;
+	private int mAppWidgetId, mSize;
 	
-	private int mAppWidgetId;
-	
-	private Uri mWidgetUri = null;
-	
-	private Integer mSize = null;
-	
-	private String mViews = null;
-	private ArrayList<AixViewInfo> mViewList = new ArrayList<AixViewInfo>();
+	private AixViewInfo mAixViewInfo = null;
 	
 	private AixWidgetSettings mAixWidgetSettings = null;
 	
-	public AixWidgetInfo() { }
-	
-	public AixWidgetInfo(int appWidgetId, int size) {
+	public AixWidgetInfo(int appWidgetId, int size, AixViewInfo aixViewInfo) {
 		mAppWidgetId = appWidgetId;
 		mSize = size;
+		mAixViewInfo = aixViewInfo;
 	}
 	
 	public static AixWidgetInfo build(Context context, Uri widgetUri) throws Exception {
-		AixWidgetInfo widgetInfo = null;
+		Cursor cursor = null;
 		
-		ContentResolver resolver = context.getContentResolver();
-		Cursor widgetCursor = resolver.query(widgetUri, null, null, null, null);
-
-		if (widgetCursor != null) {
-			try {
-				if (widgetCursor.moveToFirst()) {
-					widgetInfo = buildFromCursor(widgetCursor);
+		try {
+			ContentResolver resolver = context.getContentResolver();
+			cursor = resolver.query(widgetUri, null, null, null, null);
+			
+			if (cursor != null && cursor.moveToFirst())
+			{
+				int columnIndex = cursor.getColumnIndexOrThrow(AixWidgetsColumns.APPWIDGET_ID);
+				int appWidgetId = cursor.getInt(columnIndex);
+				
+				int size = -1;
+				columnIndex = cursor.getColumnIndex(AixWidgetsColumns.SIZE);
+				if (columnIndex != -1 && !cursor.isNull(columnIndex))
+				{
+					size = cursor.getInt(columnIndex);
 				}
-			} finally {
-				widgetCursor.close();
+				// Size may be invalid due to old versions. If non-valid, default to 4x1		
+				if (!(size >= 1 && size <= 16))
+				{
+					size = AixWidgetsColumns.SIZE_LARGE_TINY;
+				}
+				
+				AixViewInfo aixViewInfo = null;
+				columnIndex = cursor.getColumnIndex(AixWidgetsColumns.VIEWS);
+				if (columnIndex != -1 && !cursor.isNull(columnIndex))
+				{
+					String viewString = cursor.getString(columnIndex);
+					Uri viewUri = AixViews.CONTENT_URI.buildUpon().appendPath(viewString).build();
+					aixViewInfo = AixViewInfo.build(context, viewUri);
+				}
+				
+				return new AixWidgetInfo(appWidgetId, size, aixViewInfo);
+			}
+			else
+			{
+				throw new Exception("Failed to build AixWidgetInfo");
 			}
 		}
-
-		if (widgetInfo != null) {
-			widgetInfo.setupViews(context);
-		} else {
-			throw new Exception("AixWidgetInfo.build() failed: Could not build AixWidgetInfo (uri=" + widgetUri + ")");
+		finally
+		{
+			if (cursor != null)
+			{
+				cursor.close();
+			}
 		}
-		
-		widgetInfo.mWidgetUri = widgetUri;
-		widgetInfo.mContext = context;
-		
-		return widgetInfo;
 	}
 	
 	public ContentValues buildContentValues() {
-		mViews = setupViewsString();
-		
 		ContentValues values = new ContentValues();
 		values.put(AixWidgetsColumns.APPWIDGET_ID, mAppWidgetId);
+		values.put(AixWidgetsColumns.SIZE, mSize);
 		
-		if (mViews != null) {
-			values.put(AixWidgetsColumns.VIEWS, mViews);
-		} else {
-			values.putNull(AixWidgetsColumns.VIEWS);
+		if (mAixViewInfo != null)
+		{
+			values.put(AixWidgetsColumns.VIEWS, Long.toString(mAixViewInfo.getId()));
 		}
-		
-		if (mSize != null) {
-			values.put(AixWidgetsColumns.SIZE, mSize);
-		} else {
-			values.putNull(AixWidgetsColumns.SIZE);
+		else
+		{
+			values.putNull(AixWidgetsColumns.VIEWS);
 		}
 		
 		return values;
 	}
 	
-	public static AixWidgetInfo buildFromCursor(Cursor c) {
-		AixWidgetInfo widgetInfo = new AixWidgetInfo();
-		
-		widgetInfo.mAppWidgetId = c.getInt(c.getColumnIndexOrThrow(AixWidgetsColumns.APPWIDGET_ID));
-		widgetInfo.mSize = getWidgetSizeFromCursor(c);
-		widgetInfo.mViews = getWidgetViewsFromCursor(c);
-		
-		return widgetInfo;
-	}
-	
 	public Uri commit(Context context)
 	{
-		if (mViewList != null) {
-			for (AixViewInfo view : mViewList) {
-				view.commit(context);
-			}
+		if (mAixViewInfo != null)
+		{
+			mAixViewInfo.commit(context);
 		}
 		
-		ContentResolver resolver = context.getContentResolver();
 		ContentValues values = buildContentValues();
+		ContentResolver resolver = context.getContentResolver();
 		
-		mWidgetUri = resolver.insert(AixWidgets.CONTENT_URI, values);
+		Uri widgetUri = resolver.insert(AixWidgets.CONTENT_URI, values);
 		
-		return mWidgetUri;
+		return widgetUri;
 	}
 	
 	public int getAppWidgetId() {
@@ -122,108 +117,45 @@ public class AixWidgetInfo {
 		return (mSize - 1) % 4 + 1;
 	}
 	
-	public ArrayList<AixViewInfo> getViewList() {
-		return mViewList;
+	public AixViewInfo getViewInfo()
+	{
+		return mAixViewInfo;
 	}
 	
-	public long[] getViewsArray() {
-		long[] viewsArray = null;
-			
-		if (!TextUtils.isEmpty(mViews)) {
-			String[] views = mViews.split(":");
-			viewsArray = new long[views.length];
-			for (int i = 0; i < views.length; i++) {
-				viewsArray[i] = Long.parseLong(views[i]);
-			}
-		}
-		
-		return viewsArray;
-	}
-	
-	public AixWidgetSettings getWidgetSettings() {
+	public AixWidgetSettings getWidgetSettings()
+	{
 		return mAixWidgetSettings;
 	}
 	
-	private static int getWidgetSizeFromCursor(Cursor c) {
-		int size = -1;
-		
-		int sizeIndex = c.getColumnIndex(AixWidgetsColumns.SIZE);
-		
-		if (sizeIndex != -1)
-		{
-			try {
-				size = c.getInt(sizeIndex);
-			} catch (Exception e) { }
-		}
-		
-		// Size may be invalid due to old versions. If non-valid, default to 4x1
-		if (!(size >= 1 && size <= 16)) {
-			size = AixWidgetsColumns.SIZE_LARGE_TINY;
-		}
-		
-		return size;
-	}
-	
 	public Uri getWidgetUri() {
-		if (mWidgetUri == null && mAppWidgetId != -1) {
-			mWidgetUri = ContentUris.withAppendedId(AixWidgets.CONTENT_URI, mAppWidgetId);
-		}
-		return mWidgetUri;
+		return ContentUris.withAppendedId(AixWidgets.CONTENT_URI, mAppWidgetId);
 	}
 	
-	private static String getWidgetViewsFromCursor(Cursor c) {
-		int viewsIndex = c.getColumnIndex(AixWidgetsColumns.VIEWS);
-		if (viewsIndex != -1) {
-			String views = c.getString(viewsIndex);
-			if (!TextUtils.isEmpty(views)) {
-				return views;
-			}
-		}
-		return null;
+	public void loadSettings(Context context)
+	{
+		mAixWidgetSettings = AixWidgetSettings.build(context, getWidgetUri());
 	}
 	
-	public void loadSettings() {
-		mAixWidgetSettings = AixWidgetSettings.build(mContext, getWidgetUri());
+	public void setViewInfo(AixViewInfo viewInfo)
+	{
+		mAixViewInfo = viewInfo;
 	}
 	
-	private void setupViews(Context context) throws Exception {
-		long[] viewsArray = getViewsArray();
-		
-		ArrayList<AixViewInfo> viewList = null;
-		
-		if (viewsArray != null && viewsArray.length > 0) {
-			viewList = new ArrayList<AixViewInfo>();
-			
-			for (long viewID : viewsArray) {
-				Uri viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, viewID);
-				viewList.add(AixViewInfo.build(context, viewUri));
-			}
+	public void setViewInfo(AixLocationInfo aixLocationInfo, int type)
+	{
+		if (mAixViewInfo != null)
+		{
+			mAixViewInfo.setAixLocationInfo(aixLocationInfo);
+			mAixViewInfo.setType(type);
 		}
-		
-		mViewList = viewList;
-		mViews = setupViewsString();
-	}
-	
-	public String setupViewsString() {
-		String views = null;
-		
-		if (mViewList != null && mViewList.size() > 0) {
-			StringBuilder stringBuilder = new StringBuilder();
-			
-			for (AixViewInfo viewInfo : mViewList) {
-				if (stringBuilder.length() > 0)
-					stringBuilder.append(":");
-				stringBuilder.append(viewInfo.getId());
-			}
-			
-			views = stringBuilder.toString();
+		else
+		{
+			mAixViewInfo = new AixViewInfo(null, aixLocationInfo, type);
 		}
-		
-		return views;
 	}
 	
 	public String toString() {
-		return "AixWidgetInfo(" + mAppWidgetId + "," + mSize + "," + mViews + ")";
+		return "AixWidgetInfo(" + mAppWidgetId + "," + mSize + "," + mAixViewInfo + ")";
 	}
 	
 }

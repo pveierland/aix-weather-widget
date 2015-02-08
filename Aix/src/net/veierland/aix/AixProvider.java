@@ -75,6 +75,7 @@ public class AixProvider extends ContentProvider {
 	}
 	
 	public interface AixViewsColumns {
+		public static final String VIEW_ID = BaseColumns._ID;
 		/* The location row ID in the AixLocations table for the view location */
 		public static final String LOCATION = "location";
 		

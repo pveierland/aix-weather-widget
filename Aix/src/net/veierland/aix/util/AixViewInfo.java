@@ -9,159 +9,141 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.provider.BaseColumns;
 
 public class AixViewInfo {
 	
-	private long _id = -1;
+	private int mType;
+	private AixLocationInfo mAixLocationInfo;
+	private Uri mViewUri;
 	
-	//private boolean _modified = false;
-	
-	private Long _location;
-	private Integer _type;
-	
-	private AixLocationInfo _locationInfo = null;
-	
-	public AixViewInfo() { }
-	
-	public AixViewInfo(long location, int type) {
-		_location = location;
-		_type = type;
+	public AixViewInfo(Uri viewUri, AixLocationInfo aixLocationInfo, int type)
+	{
+		mViewUri = viewUri;
+		mAixLocationInfo = aixLocationInfo;
+		mType = type;
 	}
 	
-	public static AixViewInfo build(Context context, Uri viewUri) throws Exception {		
-		if (context == null)
+	public static AixViewInfo build(Context context, Uri viewUri)
+			throws Exception
+	{
+		Cursor cursor = null;
+		try
 		{
-			throw new IllegalArgumentException("AixViewInfo.build() failed: context must be non-null");
-		}
-		if (viewUri == null)
-		{
-			throw new IllegalArgumentException("AixViewInfo.build() failed: viewUri must be non-null");
-		}
-		
-		AixViewInfo viewInfo = null;
-		
-		ContentResolver resolver = context.getContentResolver();
-		Cursor viewCursor = resolver.query(viewUri, null, null, null, null);
-		
-		if (viewCursor != null) {
-			try {
-				if (viewCursor.moveToFirst()) {
-					viewInfo = buildFromCursor(viewCursor);
+			ContentResolver contentResolver = context.getContentResolver();
+			cursor = contentResolver.query(viewUri, null, null, null, null);
+			
+			if (cursor != null && cursor.moveToFirst())
+			{
+				AixLocationInfo aixLocationInfo = null;
+				
+				int columnIndex = cursor.getColumnIndex(AixViewsColumns.LOCATION);
+				if (columnIndex != -1 && !cursor.isNull(columnIndex))
+				{
+					long locationId = cursor.getLong(columnIndex);
+					Uri aixLocationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, locationId);
+					aixLocationInfo = AixLocationInfo.build(context, aixLocationUri);
 				}
-			} catch (Exception e) {
-				// Bad things happened :<
-				e.printStackTrace();
-			} finally {
-				viewCursor.close();
+				
+				int type = AixViewsColumns.TYPE_DETAILED;
+				columnIndex = cursor.getColumnIndex(AixViewsColumns.TYPE);
+				if (columnIndex != -1 && !cursor.isNull(columnIndex))
+				{
+					type = cursor.getInt(columnIndex);
+				}
+				
+				return new AixViewInfo(viewUri, aixLocationInfo, type);
+			}
+			else
+			{
+				throw new Exception("Failed to build AixViewInfo");
 			}
 		}
-		
-		if (viewInfo != null) {
-			viewInfo.setupLocation(context);
-		} else {
-			throw new Exception("AixViewInfo.build() failed: Could not build AixViewInfo (uri=" + viewUri + ")");
+		finally
+		{
+			if (cursor != null)
+			{
+				cursor.close();
+			}
 		}
-		
-		return viewInfo;
 	}
 	
 	public ContentValues buildContentValues()
 	{
 		ContentValues values = new ContentValues();
-		values.put(AixViewsColumns.LOCATION, _location);
-		values.put(AixViewsColumns.TYPE, _type);
+		
+		if (mAixLocationInfo != null)
+		{
+			values.put(AixViewsColumns.LOCATION, mAixLocationInfo.getId());
+		}
+		else
+		{
+			values.putNull(AixViewsColumns.LOCATION);
+		}
+		
+		values.put(AixViewsColumns.TYPE, mType);
+		
 		return values;
-	}
-	
-	public static AixViewInfo buildFromCursor(Cursor c) {
-		AixViewInfo viewInfo = new AixViewInfo();
-		
-		viewInfo._id = c.getLong(c.getColumnIndexOrThrow(BaseColumns._ID));
-		
-		int locationColumn = c.getColumnIndex(AixViewsColumns.LOCATION);
-		if (locationColumn != -1) viewInfo._location = c.getLong(locationColumn);
-		
-		int typeColumn = c.getColumnIndex(AixViewsColumns.TYPE);
-		if (typeColumn != -1) viewInfo._type = c.getInt(typeColumn);
-		
-		return viewInfo;
 	}
 
 	public Uri commit(Context context)
 	{
-		Uri viewUri = null;
-		
-		if (_locationInfo != null)
+		if (mAixLocationInfo != null)
 		{
-			Uri locationUri = _locationInfo.commit(context);
-			_location = ContentUris.parseId(locationUri);
+			mAixLocationInfo.commit(context);
 		}
 		
-		//if (_modified)
-		//{
-			ContentResolver resolver = context.getContentResolver();
-			ContentValues values = buildContentValues();
-			
-			if (_id == -1)
-			{
-				viewUri = resolver.insert(AixViews.CONTENT_URI, values);
-				_id = ContentUris.parseId(viewUri);
-			}
-			else
-			{
-				viewUri = ContentUris.withAppendedId(AixViews.CONTENT_URI, _id);
-				resolver.update(viewUri, values, null, null);
-			}
-			
-		//}
-		return viewUri;
+		ContentValues values = buildContentValues();
+		ContentResolver resolver = context.getContentResolver();
+		
+		if (mViewUri != null)
+		{
+			resolver.update(mViewUri, values, null, null);
+		}
+		else
+		{
+			mViewUri = resolver.insert(AixViews.CONTENT_URI, values);
+		}
+		
+		return mViewUri;
 	}
 	
 	public long getId() {
-		return _id;
-	}
-	
-	public Long getLocation() {
-		return _location;
+		if (mViewUri != null)
+		{
+			return ContentUris.parseId(mViewUri);
+		}
+		else
+		{
+			return -1;
+		}
 	}
 	
 	public AixLocationInfo getLocationInfo() {
-		return _locationInfo;
+		return mAixLocationInfo;
 	}
 	
-	public Integer getType() {
-		return _type;
+	public int getType() {
+		return mType;
+	}
+
+	public void setAixLocationInfo(AixLocationInfo aixLocationInfo)
+	{
+		mAixLocationInfo = aixLocationInfo;
 	}
 	
-	//public boolean isModified() {
-		//return _modified;
-	//}
-	
-	public void setId(long id) {
-		_id = id;
-		//_modified = true;
+	public void setType(int type)
+	{
+		mType = type;
 	}
 	
-	public void setLocation(Long location) {
-		_location = location;
-		_locationInfo = null;
-		//_modified = true;
+	public void setUri(Uri uri)
+	{
+		mViewUri = uri;
 	}
 	
-	public void setLocationInfo(AixLocationInfo locationInfo) {
-		_locationInfo = locationInfo;
-		//_modified = true;
-	}
-	
-	public void setType(Integer type) {
-		_type = type;
-		//_modified = true;
-	}
-	
-	public void setupLocation(Context context) throws Exception {
-		Uri locationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, _location);
-		_locationInfo = AixLocationInfo.build(context, locationUri);
+	@Override
+	public String toString() {
+		return "AixViewInfo(" + mViewUri + "," + mType + "," + mAixLocationInfo + ")";
 	}
 	
 }

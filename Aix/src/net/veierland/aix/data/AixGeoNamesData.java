@@ -1,6 +1,7 @@
 package net.veierland.aix.data;
 
 import java.io.InputStream;
+import java.util.Locale;
 
 import net.veierland.aix.AixSettings;
 import net.veierland.aix.AixUpdate;
@@ -13,7 +14,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.json.JSONObject;
 
 import android.content.Context;
-import android.text.TextUtils;
 import android.util.Log;
 
 public class AixGeoNamesData implements AixDataSource {
@@ -43,12 +43,27 @@ public class AixGeoNamesData implements AixDataSource {
 		
 		mAixUpdate.updateWidgetRemoteViews("Getting timezone data...", false);
 		
-		if (TextUtils.isEmpty(timeZone) || TextUtils.isEmpty(countryCode))
+		Double latitude = aixLocationInfo.getLatitude();
+		Double longitude = aixLocationInfo.getLongitude();
+		
+		if (latitude == null || longitude == null)
+		{
+			throw new AixDataUpdateException("Missing location information. Latitude/Longitude was null");
+		}
+		
+		if (timeZone != null) timeZone = timeZone.trim();
+		if (countryCode != null) countryCode = countryCode.trim();
+		
+		if (timeZone == null || timeZone.length() == 0 || timeZone.equalsIgnoreCase("null") ||
+		    countryCode == null || countryCode.length() == 0 || countryCode.equalsIgnoreCase("null"))
 		{
 			String url = String.format(
+					Locale.US,
 					"http://api.geonames.org/timezoneJSON?lat=%.5f&lng=%.5f&username=aix_widget",
-					aixLocationInfo.getLatitude(),
-					aixLocationInfo.getLongitude());
+					latitude.doubleValue(),
+					longitude.doubleValue());
+			
+			Log.d(TAG, "Retrieving timezone data from URL=" + url);
 			
 			try
 			{
@@ -58,21 +73,24 @@ public class AixGeoNamesData implements AixDataSource {
 				InputStream content = response.getEntity().getContent();
 				
 				String input = AixUtils.convertStreamToString(content);
+				
 				JSONObject jObject = new JSONObject(input);
 				
 				timeZone = jObject.getString("timezoneId");
 				countryCode = jObject.getString("countryCode");
+				
+				Log.d(TAG, "Parsed TimeZone='" + timeZone + "' CountryCode='" + countryCode + "'");
+				
+				mAixSettings.setLocationCountryCode(aixLocationInfo.getId(), countryCode);
+				
+				aixLocationInfo.setTimeZone(timeZone);
+				aixLocationInfo.commit(mContext);
 			}
 			catch (Exception e)
 			{
 				Log.d(TAG, "Failed to retrieve timezone data. (" + e.getMessage() + ")");
 				throw new AixDataUpdateException();
 			}
-			
-			mAixSettings.setLocationCountryCode(aixLocationInfo.getId(), countryCode);
-			
-			aixLocationInfo.setTimeZone(timeZone);
-			aixLocationInfo.commit(mContext);
 		}
 	}
 	

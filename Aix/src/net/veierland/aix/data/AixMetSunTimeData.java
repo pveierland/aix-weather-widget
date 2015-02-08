@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -221,6 +222,14 @@ public class AixMetSunTimeData implements AixDataSource {
 		try {
 			mAixUpdate.updateWidgetRemoteViews("Getting sun time data...", false);
 			
+			Double latitude = aixLocationInfo.getLatitude();
+			Double longitude = aixLocationInfo.getLongitude();
+			
+			if (latitude == null || longitude == null)
+			{
+				throw new AixDataUpdateException("Missing location information. Latitude/Longitude was null");
+			}
+			
 			setupDateParameters(currentUtcTime);
 			
 			int numExistingDataSets = getNumExistingDataSets(aixLocationInfo.getId());
@@ -232,9 +241,10 @@ public class AixMetSunTimeData implements AixDataSource {
 			{
 				
 				String url = String.format(
+						Locale.US,
 						"http://api.met.no/weatherapi/sunrise/1.0/?lat=%.5f;lon=%.5f;from=%s;to=%s",
-						aixLocationInfo.getLatitude(),
-						aixLocationInfo.getLongitude(),
+						latitude.doubleValue(),
+						longitude.doubleValue(),
 						mDateFormat.format(mStartDate),
 						mDateFormat.format(mEndDate));
 				

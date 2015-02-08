@@ -3,7 +3,6 @@ package net.veierland.aix;
 import net.veierland.aix.AixProvider.AixViews;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.util.AixLocationInfo;
-import net.veierland.aix.util.AixViewInfo;
 import net.veierland.aix.util.AixWidgetInfo;
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -83,24 +82,17 @@ public class AixConfigure extends PreferenceActivity
 		case SELECT_LOCATION: {
 			if (resultCode == Activity.RESULT_OK) {
 				Uri locationUri = Uri.parse(data.getStringExtra("location"));
-				
-				long locationId = ContentUris.parseId(locationUri);
-				
-				AixViewInfo viewInfo = null;
-				if (mAixWidgetInfo.getViewList() != null && mAixWidgetInfo.getViewList().size() > 0) {
-					viewInfo = mAixWidgetInfo.getViewList().get(0);
-					viewInfo.setLocation(locationId);
-				} else {
-					viewInfo = new AixViewInfo(locationId, AixViews.TYPE_DETAILED);
-					mAixWidgetInfo.getViewList().add(viewInfo);
+				try
+				{
+					AixLocationInfo aixLocationInfo = AixLocationInfo.build(this, locationUri);
+					mAixWidgetInfo.setViewInfo(aixLocationInfo, AixViews.TYPE_DETAILED);
+					Log.d(TAG, "onActivityResult(): locationInfo=" + aixLocationInfo);
 				}
-				
-				try {
-					viewInfo.setupLocation(this);
-				} catch (Exception e) {
-					e.printStackTrace();
-					viewInfo.setLocation(null);
+				catch (Exception e)
+				{
 					Toast.makeText(this, "Failed to set up location info", Toast.LENGTH_SHORT).show();
+					Log.d(TAG, "onActivityResult(): Failed to get location data.");
+					e.printStackTrace();
 				}
 			}
 			break;
@@ -151,19 +143,21 @@ public class AixConfigure extends PreferenceActivity
 	public void onClick(View v) {
 		if (v == mAddWidgetButton)
 		{
-			if (mAixWidgetInfo.getViewList() == null || mAixWidgetInfo.getViewList().size() == 0 || mAixWidgetInfo.getViewList().get(0).getLocationInfo() == null)
+			if (mAixWidgetInfo.getViewInfo() == null || mAixWidgetInfo.getViewInfo().getLocationInfo() == null)
 			{
 				Toast.makeText(this, getString(R.string.must_select_location), Toast.LENGTH_SHORT).show();
 				return;
 			}
 			
+			Log.d(TAG, "onClick(): " + mAixWidgetInfo.toString());
 			mAixWidgetInfo.commit(this);
+			Log.d(TAG, "onClick(): Committed=" + mAixWidgetInfo.toString());
 			
 			boolean isProviderModified = mAixSettings.isProviderPreferenceModified();
 			boolean globalSettingModified = mAixSettings.saveAllPreferences(mActivateCalibrationMode);
 			
 			PendingIntent configurationIntent = AixUtils.buildConfigurationIntent(this, mAixWidgetInfo.getWidgetUri());
-			AixUtils.updateWidgetRemoteViews(mAixSettings, mAixWidgetInfo.getAppWidgetId(), "Loading Aix...", true, configurationIntent);
+			AixUtils.updateWidgetRemoteViews(this, mAixWidgetInfo.getAppWidgetId(), "Loading Aix...", true, configurationIntent);
 			
 			Uri widgetUri = mAixWidgetInfo.getWidgetUri();
 			
@@ -226,7 +220,8 @@ public class AixConfigure extends PreferenceActivity
 			}
 			
 			AixUtils.deleteWidget(this, appWidgetId);
-			mAixWidgetInfo = new AixWidgetInfo(appWidgetId, AixWidgets.SIZE_LARGE_TINY);
+			
+			mAixWidgetInfo = new AixWidgetInfo(appWidgetId, AixWidgets.SIZE_LARGE_TINY, null);
 			
 			Log.d(TAG, "Commit=" + mAixWidgetInfo.commit(this));
 		}
@@ -363,9 +358,10 @@ public class AixConfigure extends PreferenceActivity
 		super.onResume();
 		
 		String locationName = null;
-		if (mAixWidgetInfo.getViewList() != null && mAixWidgetInfo.getViewList().size() > 0) {
-			AixViewInfo viewInfo = mAixWidgetInfo.getViewList().get(0);
-			AixLocationInfo locationInfo = viewInfo.getLocationInfo();
+		
+		if (mAixWidgetInfo.getViewInfo() != null && mAixWidgetInfo.getViewInfo().getLocationInfo() != null)
+		{
+			AixLocationInfo locationInfo = mAixWidgetInfo.getViewInfo().getLocationInfo();
 			if (locationInfo != null && locationInfo.getTitle() != null) {
 				locationName = locationInfo.getTitle();
 			}

@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -462,13 +463,22 @@ public class AixNoaaWeatherData implements AixDataSource {
 			
 			Log.d(TAG, "update(): Started update operation. (aixLocationInfo=" + aixLocationInfo + ",currentUtcTime=" + currentUtcTime + ")");
 			
+			Double latitude = aixLocationInfo.getLatitude();
+			Double longitude = aixLocationInfo.getLongitude();
+			
+			if (latitude == null || longitude == null)
+			{
+				throw new AixDataUpdateException("Missing location information. Latitude/Longitude was null");
+			}
+			
 			long t1 = System.currentTimeMillis();
 			
 			String url = String.format(
+					Locale.US,
 					"http://www.weather.gov/forecasts/xml/sample_products/browser_interface/ndfdXMLclient.php"
 							+ "?lat=%.5f&lon=%.5f&product=time-series",
-					aixLocationInfo.getLatitude(),
-					aixLocationInfo.getLongitude());
+					latitude.doubleValue(),
+					longitude.doubleValue());
 			
 			HttpClient httpClient = AixUtils.setupHttpClient();
 			HttpGet httpGet = AixUtils.buildGzipHttpGet(url);

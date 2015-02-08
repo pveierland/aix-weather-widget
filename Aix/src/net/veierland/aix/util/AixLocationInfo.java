@@ -14,264 +14,316 @@ import android.provider.BaseColumns;
 
 public class AixLocationInfo {
 
-	private long id_ = -1;
+	private String mTitle = null;
+	private String mTitleDetailed = null;
+	private String mTimeZone = null;
+	private Integer mType = null;
+	private Long mTimeOfLastFix = null;
+	private Double mLatitude = null;
+	private Double mLongitude = null;
+	private Long mLastForecastUpdate = null;
+	private Long mForecastValidTo = null;
+	private Long mNextForecastUpdate = null;
 	
-	//private boolean _modified = false;
-	
-	private Double latitude_ = null;
-	private Double longitude_ = null;
-	
-	private Integer type_ = null;
-	
-	private Long timeOfLastFix_ = null;
-	private Long lastForecastUpdate_ = null;
-	private Long forecastValidTo_ = null;
-	private Long nextForecastUpdate_ = null;
-	
-	private String title_ = null;
-	private String titleDetailed_ = null;
-	private String timeZone_ = null;
-	
-	private TimeZone timeZoneObject_ = null;
-	
-	private Uri uri_ = null;
+	private Uri mLocationUri = null;
 	
 	public AixLocationInfo() { }
 	
-	public static AixLocationInfo build(Context context, Uri locationUri) throws Exception {
-		if (context == null)
+	public static AixLocationInfo build(Context context, Uri locationUri)
+			throws Exception
+	{
+		Cursor cursor = null;
+		try
 		{
-			throw new IllegalArgumentException("AixLocationInfo.build() failed: context must be non-null");
-		}
-		if (locationUri == null)
-		{
-			throw new IllegalArgumentException("AixLocationInfo.build() failed: locationUri must be non-null");
-		}
-		
-		AixLocationInfo locationInfo = null;
-		
-		ContentResolver resolver = context.getContentResolver();
-		Cursor locationCursor = resolver.query(locationUri, null, null, null, null);
-		
-		if (locationCursor != null) {
-			try {
-				if (locationCursor.moveToFirst()) {
-					locationInfo = AixLocationInfo.buildFromCursor(locationCursor);
-				}
-			} finally {
-				locationCursor.close();
+			ContentResolver contentResolver = context.getContentResolver();
+			cursor = contentResolver.query(locationUri, null, null, null, null);
+			
+			if (cursor != null && cursor.moveToFirst())
+			{
+				return AixLocationInfo.buildFromCursor(cursor);
+			}
+			else
+			{
+				throw new Exception("Failed to build AixLocationInfo");
 			}
 		}
-		
-		if (locationInfo == null) {
-			throw new Exception("AixLocationInfo.build(): Failed to build AixLocationInfo (locationUri=" + locationUri + ")");
+		finally
+		{
+			if (cursor != null)
+			{
+				cursor.close();
+			}
 		}
-		
-		return locationInfo;
 	}
 	
 	private ContentValues buildContentValues()
 	{
 		ContentValues values = new ContentValues();
-		values.put(AixLocationsColumns.TITLE, title_);
-		values.put(AixLocationsColumns.TITLE_DETAILED, titleDetailed_);
-		values.put(AixLocationsColumns.TIME_ZONE, timeZone_);
-		values.put(AixLocationsColumns.TYPE, type_);
-		values.put(AixLocationsColumns.TIME_OF_LAST_FIX, timeOfLastFix_);
-		values.put(AixLocationsColumns.LATITUDE, latitude_);
-		values.put(AixLocationsColumns.LONGITUDE, longitude_);
-		values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, lastForecastUpdate_);
-		values.put(AixLocationsColumns.FORECAST_VALID_TO, forecastValidTo_);
-		values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, nextForecastUpdate_);
+		
+		if (mTitle != null)
+		{
+			values.put(AixLocationsColumns.TITLE, mTitle);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.TITLE);
+		}
+		
+		if (mTitleDetailed != null)
+		{
+			values.put(AixLocationsColumns.TITLE_DETAILED, mTitleDetailed);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.TITLE_DETAILED);
+		}
+		
+		if (mTimeZone != null)
+		{
+			values.put(AixLocationsColumns.TIME_ZONE, mTimeZone);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.TIME_ZONE);
+		}
+		
+		if (mType != null)
+		{
+			values.put(AixLocationsColumns.TYPE, mType);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.TYPE);
+		}
+		
+		if (mTimeOfLastFix != null)
+		{
+			values.put(AixLocationsColumns.TIME_OF_LAST_FIX, mTimeOfLastFix);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.TIME_OF_LAST_FIX);
+		}
+		
+		if (mLatitude != null)
+		{
+			values.put(AixLocationsColumns.LATITUDE, mLatitude);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.LATITUDE);
+		}
+		
+		if (mLongitude != null)
+		{
+			values.put(AixLocationsColumns.LONGITUDE, mLongitude);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.LONGITUDE);
+		}
+		
+		if (mLastForecastUpdate != null)
+		{
+			values.put(AixLocationsColumns.LAST_FORECAST_UPDATE, mLastForecastUpdate);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.LAST_FORECAST_UPDATE);
+		}
+		
+		if (mForecastValidTo != null)
+		{
+			values.put(AixLocationsColumns.FORECAST_VALID_TO, mForecastValidTo);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.FORECAST_VALID_TO);
+		}
+		
+		if (mNextForecastUpdate != null)
+		{
+			values.put(AixLocationsColumns.NEXT_FORECAST_UPDATE, mNextForecastUpdate);
+		}
+		else
+		{
+			values.putNull(AixLocationsColumns.NEXT_FORECAST_UPDATE);
+		}
+		
 		return values;
 	}
 	
 	public static AixLocationInfo buildFromCursor(Cursor c) {
 		AixLocationInfo locationInfo = new AixLocationInfo();
 		
-		locationInfo.id_ = c.getLong(c.getColumnIndexOrThrow(BaseColumns._ID));
+		int columnIndex = c.getColumnIndexOrThrow(BaseColumns._ID);
+		long locationId = c.getLong(columnIndex);
+		locationInfo.mLocationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, locationId);
 		
-		int titleColumn = c.getColumnIndex(AixLocationsColumns.TITLE);
-		if (titleColumn != -1) locationInfo.title_ = c.getString(titleColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.TITLE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mTitle = c.getString(columnIndex);
 		
-		int titleDetailedColumn = c.getColumnIndex(AixLocationsColumns.TITLE_DETAILED);
-		if (titleDetailedColumn != -1) locationInfo.titleDetailed_ = c.getString(titleDetailedColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.TITLE_DETAILED);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mTitleDetailed = c.getString(columnIndex);
 		
-		int timeZoneColumn = c.getColumnIndex(AixLocationsColumns.TIME_ZONE);
-		if (timeZoneColumn != -1) locationInfo.timeZone_ = c.getString(timeZoneColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.TIME_ZONE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mTimeZone = c.getString(columnIndex);
 		
-		int typeColumn = c.getColumnIndex(AixLocationsColumns.TYPE);
-		if (typeColumn != -1) locationInfo.type_ = c.getInt(typeColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.TYPE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mType = c.getInt(columnIndex);
 		
-		int timeOfLastFixColumn = c.getColumnIndex(AixLocationsColumns.TIME_OF_LAST_FIX);
-		if (timeOfLastFixColumn != -1) locationInfo.timeOfLastFix_ = c.getLong(timeOfLastFixColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.TIME_OF_LAST_FIX);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mTimeOfLastFix = c.getLong(columnIndex);
 		
-		int latitudeColumn = c.getColumnIndex(AixLocationsColumns.LATITUDE);
-		if (latitudeColumn != -1) locationInfo.latitude_ = c.getDouble(latitudeColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.LATITUDE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mLatitude = c.getDouble(columnIndex);
 		
-		int longitudeColumn = c.getColumnIndex(AixLocationsColumns.LONGITUDE);
-		if (longitudeColumn != -1) locationInfo.longitude_ = c.getDouble(longitudeColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.LONGITUDE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mLongitude = c.getDouble(columnIndex);
 		
-		int lastForecastUpdateColumn = c.getColumnIndex(AixLocationsColumns.LAST_FORECAST_UPDATE);
-		if (lastForecastUpdateColumn != -1) locationInfo.lastForecastUpdate_ = c.getLong(lastForecastUpdateColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.LAST_FORECAST_UPDATE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mLastForecastUpdate = c.getLong(columnIndex);
 		
-		int forecastValidToColumn = c.getColumnIndex(AixLocationsColumns.FORECAST_VALID_TO);
-		if (forecastValidToColumn != -1) locationInfo.forecastValidTo_ = c.getLong(forecastValidToColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.FORECAST_VALID_TO);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mForecastValidTo = c.getLong(columnIndex);
 		
-		int nextForecastUpdateColumn = c.getColumnIndex(AixLocationsColumns.NEXT_FORECAST_UPDATE);
-		if (nextForecastUpdateColumn != -1) locationInfo.nextForecastUpdate_ = c.getLong(nextForecastUpdateColumn);
+		columnIndex = c.getColumnIndex(AixLocationsColumns.NEXT_FORECAST_UPDATE);
+		if (columnIndex != -1 && !c.isNull(columnIndex)) locationInfo.mNextForecastUpdate = c.getLong(columnIndex);
 		
 		return locationInfo;
 	}
 	
 	public TimeZone buildTimeZone() {
-		if (timeZoneObject_ == null && timeZone_ != null) {
-			timeZoneObject_ = TimeZone.getTimeZone(timeZone_);
+		if (mTimeZone != null)
+		{
+			return TimeZone.getTimeZone(mTimeZone);
 		}
-		return timeZoneObject_;
+		else
+		{
+			return null;
+		}
 	}
 	
 	public Uri commit(Context context)
 	{
-		Uri locationUri = null;
-		//if (_modified)
-		//{
-			ContentResolver resolver = context.getContentResolver();
-			ContentValues values = buildContentValues();
-			
-			if (id_ == -1)
-			{
-				locationUri = resolver.insert(AixLocations.CONTENT_URI, values);
-				id_ = ContentUris.parseId(locationUri);
-			}
-			else
-			{
-				locationUri = ContentUris.withAppendedId(AixLocations.CONTENT_URI, id_);
-				resolver.update(locationUri, values, null, null);
-			}
-		//}
-		return locationUri;
+		ContentResolver resolver = context.getContentResolver();
+		ContentValues values = buildContentValues();
+		
+		if (mLocationUri != null)
+		{
+			resolver.update(mLocationUri, values, null, null);
+		}
+		else
+		{
+			mLocationUri = resolver.insert(AixLocations.CONTENT_URI, values);
+		}
+		
+		return mLocationUri;
 	}
 	
 	public Long getForecastValidTo() {
-		return forecastValidTo_;
+		return mForecastValidTo;
 	}
 	
 	public long getId() {
-		return id_;
+		if (mLocationUri != null)
+		{
+			return ContentUris.parseId(mLocationUri);
+		}
+		else
+		{
+			return -1;
+		}
 	}
 	
 	public Long getLastForecastUpdate() {
-		return lastForecastUpdate_;
+		return mLastForecastUpdate;
 	}
 	
 	public Double getLatitude() {
-		return latitude_;
+		return mLatitude;
 	}
 	
 	public Uri getLocationUri() {
-		if (uri_ == null && id_ != -1) {
-			uri_ = ContentUris.withAppendedId(AixLocations.CONTENT_URI, id_);
-		}
-		return uri_;
+		return mLocationUri;
 	}
 	
 	public Double getLongitude() {
-		return longitude_;
+		return mLongitude;
 	}
 	
 	public Long getNextForecastUpdate() {
-		return nextForecastUpdate_;
+		return mNextForecastUpdate;
 	}
 	
 	public Long getTimeOfLastFix() {
-		return timeOfLastFix_;
+		return mTimeOfLastFix;
 	}
 	
 	public String getTimeZone() {
-		return timeZone_;
+		return mTimeZone;
 	}
 	
 	public String getTitle() {
-		return title_;
+		return mTitle;
 	}
 	
 	public String getTitleDetailed() {
-		return titleDetailed_;
+		return mTitleDetailed;
 	}
 	
 	public Integer getType() {
-		return type_;
+		return mType;
 	}
-	
-	//public boolean isModified() {
-		//return _modified;
-	//}
 	
 	public void setForecastValidTo(Long forecastValidTo) {
-		forecastValidTo_ = forecastValidTo;
-		//_modified = true;
-	}
-	
-	public void setId(long id) {
-		id_ = id;
-		//_modified = true;
+		mForecastValidTo = forecastValidTo;
 	}
 	
 	public void setLastForecastUpdate(Long lastForecastUpdate) {
-		lastForecastUpdate_ = lastForecastUpdate;
-		//_modified = true;
+		mLastForecastUpdate = lastForecastUpdate;
 	}
 	
 	public void setLatitude(Double latitude) {
-		latitude_ = latitude;
-		//_modified = true;
+		mLatitude = latitude;
 	}
 	
 	public void setLongitude(Double longitude) {
-		longitude_ = longitude;
-		//_modified = true;
+		mLongitude = longitude;
 	}
 	
 	public void setNextForecastUpdate(Long nextForecastUpdate) {
-		nextForecastUpdate_ = nextForecastUpdate;
-		//_modified = true;
+		mNextForecastUpdate = nextForecastUpdate;
 	}
 	
 	public void setTimeOfLastFix(Long timeOfLastFix) {
-		timeOfLastFix_ = timeOfLastFix;
-		//_modified = true;
+		mTimeOfLastFix = timeOfLastFix;
 	}
 	
 	public void setTimeZone(String timeZone) {
-		timeZone_ = timeZone;
-		timeZoneObject_ = null;
-		//_modified = true;
+		mTimeZone = timeZone;
 	}
 	
 	public void setTitle(String title) {
-		title_ = title;
-		//_modified = true;
+		mTitle = title;
 	}
 	
 	public void setTitleDetailed(String titleDetailed) {
-		titleDetailed_ = titleDetailed;
-		//_modified = true;
+		mTitleDetailed = titleDetailed;
 	}
 	
 	public void setType(Integer type) {
-		type_ = type;
-		//_modified = true;
+		mType = type;
 	}
 
 	@Override
 	public String toString() {
-		return "AixLocationInfo(" + id_ + "," + title_ + "," + "," + titleDetailed_ + ","
-				+ timeZone_ + "," + type_ + "," + timeOfLastFix_ + ","
-				+ latitude_ + "," + longitude_ + ","
-				+ lastForecastUpdate_ + ","
-				+ forecastValidTo_ + ","
-				+ nextForecastUpdate_ + ")";
+		return "AixLocationInfo(" + mLocationUri + "," + mTitle + "," + mTitleDetailed + ","
+				+ mTimeZone + "," + mType + "," + mTimeOfLastFix + ","
+				+ mLatitude + "," + mLongitude + ","
+				+ mLastForecastUpdate + ","
+				+ mForecastValidTo + ","
+				+ mNextForecastUpdate + ")";
 	}
 	
 }

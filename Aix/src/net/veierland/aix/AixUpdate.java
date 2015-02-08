@@ -10,6 +10,7 @@ import net.veierland.aix.data.AixMetSunTimeData;
 import net.veierland.aix.data.AixMetWeatherData;
 import net.veierland.aix.data.AixNoaaWeatherData;
 import net.veierland.aix.util.AixLocationInfo;
+import net.veierland.aix.util.AixViewInfo;
 import net.veierland.aix.util.AixWidgetInfo;
 import net.veierland.aix.widget.AixDetailedWidget;
 import net.veierland.aix.widget.AixWidgetDataException;
@@ -46,12 +47,12 @@ public class AixUpdate {
 	
 	private TimeZone mUtcTimeZone = null;
 	
-	private AixWidgetInfo mWidgetInfo = null;
+	private AixWidgetInfo mAixWidgetInfo = null;
 	private AixSettings mAixSettings = null;
 	
 	private AixUpdate(Context context, AixWidgetInfo aixWidgetInfo, AixSettings aixSettings) {
 		mContext = context;
-		mWidgetInfo = aixWidgetInfo;
+		mAixWidgetInfo = aixWidgetInfo;
 		mWidgetUri = aixWidgetInfo.getWidgetUri();
 		mAixSettings = aixSettings;
 		
@@ -64,16 +65,34 @@ public class AixUpdate {
 	}
 	
 	public void process() throws Exception {
-		Log.d(TAG, "process() started!");
+		if (mAixWidgetInfo == null)
+		{
+			Log.d(TAG, "process(): Failed to start update. Missing widget info.");
+			throw new Exception("AixUpdate.process(): Widget info was null.");
+		}
 		
-		AixLocationInfo locationInfo = mWidgetInfo.getViewList().get(0).getLocationInfo();
+		AixViewInfo aixViewInfo = mAixWidgetInfo.getViewInfo();
+		if (aixViewInfo == null)
+		{
+			Log.d(TAG, "process(): Failed to start update. Missing view info.");
+			throw new Exception("AixUpdate.process(): View info was null.");
+		}
+		
+		AixLocationInfo aixLocationInfo = aixViewInfo.getLocationInfo();
+		if (aixLocationInfo == null)
+		{
+			Log.d(TAG, "process(): Failed to start update. Missing location info.");
+			throw new Exception("AixUpdate.process(): Location info was null.");
+		}
+		
+		Log.d(TAG, "process(): Started processing. " + mAixWidgetInfo.toString());
 		
 		mCurrentUtcTime = Calendar.getInstance(mUtcTimeZone).getTimeInMillis(); 
 
 		int numAttempts = 3;
 		boolean updateSuccess = false, drawSuccess = false;
 		
-		boolean shouldUpdate = isDataUpdateNeeded(locationInfo);
+		boolean shouldUpdate = isDataUpdateNeeded(aixLocationInfo);
 		
 		do {
 			if (numAttempts != 3) {
@@ -82,9 +101,9 @@ public class AixUpdate {
 			}
 			
 			if (shouldUpdate) {
-				updateSuccess = updateData(locationInfo);
+				updateSuccess = updateData(aixLocationInfo);
 				
-				if (!updateSuccess && mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(locationInfo))
+				if (!updateSuccess && mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(aixLocationInfo))
 				{
 					break;
 				}
@@ -93,7 +112,7 @@ public class AixUpdate {
 			AixDetailedWidget widget = null;
 			
 			try {
-				widget = AixDetailedWidget.build(mContext, mWidgetInfo, mWidgetInfo.getViewList().get(0).getLocationInfo());
+				widget = AixDetailedWidget.build(mContext, mAixWidgetInfo, aixLocationInfo);
 				
 				updateWidgetRemoteViews(widget);
 				drawSuccess = true;
@@ -138,22 +157,22 @@ public class AixUpdate {
 				Log.d(TAG, "WiFi needed, but not connected!");
 			}
 			
-			clearUpdateTimestamps(locationInfo);
+			clearUpdateTimestamps(aixLocationInfo);
 			updateTime = Math.min(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
 		}
 
 		if (!drawSuccess) {
 			if (shouldUpdate && !updateSuccess) {
-				if (mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(locationInfo)) {
+				if (mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(aixLocationInfo)) {
 					PendingIntent pendingIntent = AixUtils.buildWidgetProviderAutoIntent(mContext, mWidgetUri);
-					AixUtils.updateWidgetRemoteViews(mAixSettings, mWidgetInfo.getAppWidgetId(), "NWS source cannot be used outside US.\nTap widget to revert to auto", true, pendingIntent);
+					AixUtils.updateWidgetRemoteViews(mContext, mAixWidgetInfo.getAppWidgetId(), "NWS source cannot be used outside US.\nTap widget to revert to auto", true, pendingIntent);
 				} else {
 					updateWidgetRemoteViews("Failed to get weather data", true);
 				}
 			} else {
 				if (mAixSettings.getCachedUseSpecificDimensions()) {
 					PendingIntent pendingIntent = AixUtils.buildDisableSpecificDimensionsIntent(mContext, mWidgetUri);
-					AixUtils.updateWidgetRemoteViews(mAixSettings, mWidgetInfo.getAppWidgetId(), "Draw failed!\nTap widget to revert to minimal dimensions", true, pendingIntent);
+					AixUtils.updateWidgetRemoteViews(mContext, mAixWidgetInfo.getAppWidgetId(), "Draw failed!\nTap widget to revert to minimal dimensions", true, pendingIntent);
 				} else {
 					updateWidgetRemoteViews("Failed to draw widget", true);
 				}
@@ -209,11 +228,11 @@ public class AixUpdate {
 		if (mAixSettings.getCachedUseSpecificDimensions()) {
 			dimensions = mAixSettings.getPixelDimensionsOrStandard(isLandscape);
 		} else {
-			dimensions = mAixSettings.getStandardPixelDimensions(mWidgetInfo.getNumColumns(), mWidgetInfo.getNumRows(), isLandscape, true);
+			dimensions = mAixSettings.getStandardPixelDimensions(mAixWidgetInfo.getNumColumns(), mAixWidgetInfo.getNumRows(), isLandscape, true);
 		}
 
 		Bitmap bitmap = widget.render(dimensions.x, dimensions.y, isLandscape);
-		return AixUtils.storeBitmap(mContext, bitmap, mWidgetInfo.getAppWidgetId(), mCurrentUtcTime, isLandscape);
+		return AixUtils.storeBitmap(mContext, bitmap, mAixWidgetInfo.getAppWidgetId(), mCurrentUtcTime, isLandscape);
 	}
 	
 	private void updateWidgetRemoteViews(AixDetailedWidget aixDetailedWidget) throws AixWidgetDrawException, IOException
@@ -259,9 +278,9 @@ public class AixUpdate {
 		
 		mAixSettings.setWidgetState(WIDGET_STATE_RENDER);
 		
-		PendingIntent configurationIntent = AixUtils.buildConfigurationIntent(mContext, mWidgetInfo.getWidgetUri());
+		PendingIntent configurationIntent = AixUtils.buildConfigurationIntent(mContext, mAixWidgetInfo.getWidgetUri());
 		updateView.setOnClickPendingIntent(R.id.widgetContainer, configurationIntent);
-		AppWidgetManager.getInstance(mContext).updateAppWidget(mWidgetInfo.getAppWidgetId(), updateView);
+		AppWidgetManager.getInstance(mContext).updateAppWidget(mAixWidgetInfo.getAppWidgetId(), updateView);
 	}
 	
 	private boolean isDataUpdateNeeded(AixLocationInfo locationInfo) {
@@ -298,8 +317,8 @@ public class AixUpdate {
 	
 	public void updateWidgetRemoteViews(String message, boolean overwrite)
 	{
-		PendingIntent configurationIntent = AixUtils.buildConfigurationIntent(mContext, mWidgetInfo.getWidgetUri());
-		AixUtils.updateWidgetRemoteViews(mAixSettings, mWidgetInfo.getAppWidgetId(), message, overwrite, configurationIntent);
+		PendingIntent configurationIntent = AixUtils.buildConfigurationIntent(mContext, mAixWidgetInfo.getWidgetUri());
+		AixUtils.updateWidgetRemoteViews(mContext, mAixWidgetInfo.getAppWidgetId(), message, overwrite, configurationIntent);
 	}
 	
 	private boolean updateData(AixLocationInfo aixLocationInfo) {

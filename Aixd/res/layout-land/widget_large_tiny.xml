@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    	android:id="@+id/widgetContainer"
+		android:layout_width="fill_parent"
+		android:layout_height="fill_parent"
+		android:gravity="center_vertical|center_horizontal">
+
+	<ImageView
+			android:id="@+id/widgetImagePortrait"
+			android:layout_width="@dimen/large_portrait_width"
+			android:layout_height="@dimen/tiny_portrait_height"
+			android:visibility="gone"
+			android:scaleType="fitXY"
+			android:contentDescription="@string/contentDescriptionPortraitImage" />
+
+	<ImageView
+			android:id="@+id/widgetImageLandscape"
+			android:layout_width="@dimen/large_landscape_width"
+			android:layout_height="@dimen/tiny_landscape_height"
+			android:visibility="visible"
+			android:scaleType="fitXY"
+			android:contentDescription="@string/contentDescriptionLandscapeImage" />
+
+</LinearLayout>

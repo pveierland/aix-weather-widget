@@ -471,6 +471,10 @@ public class AixSettings {
 			avoidKeys.add(buildPixelDimensionsKey(PREFERENCE, numColumns, numRows, false));
 			avoidKeys.add(buildPixelDimensionsKey(PREFERENCE, numColumns, numRows, true));
 		}
+		else
+		{
+			AixUtils.editWidgetState(editor, mAixWidgetInfo.getAppWidgetId(), 0);
+		}
 		
 		editSaveGlobalSettings(editor, settingsMap, avoidKeys);
 		

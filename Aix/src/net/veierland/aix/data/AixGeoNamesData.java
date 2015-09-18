@@ -67,7 +67,7 @@ public class AixGeoNamesData implements AixDataSource {
 			
 			try
 			{
-				HttpClient httpClient = AixUtils.setupHttpClient();
+				HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 				HttpGet httpGet = new HttpGet(url);
 				HttpResponse response = httpClient.execute(httpGet);
 				InputStream content = response.getEntity().getContent();

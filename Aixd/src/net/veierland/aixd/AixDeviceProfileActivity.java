@@ -810,7 +810,7 @@ public class AixDeviceProfileActivity extends Activity
 			
 			Log.d(TAG, "Attempting to upload device profile. (URI=" + uri.toString() + ")");
 			
-			HttpClient httpclient = AixUtils.setupHttpClient();
+			HttpClient httpclient = AixUtils.setupHttpClient(getApplicationContext());
 			HttpGet httpGet = new HttpGet(uri);
 			HttpResponse response = httpclient.execute(httpGet);
 			InputStream content = response.getEntity().getContent();
@@ -825,7 +825,7 @@ public class AixDeviceProfileActivity extends Activity
 			
 			Log.d(TAG, "Attempting to download device profile. (URI=" + uri.toString() + ")");
 			
-			HttpClient httpclient = AixUtils.setupHttpClient();
+			HttpClient httpclient = AixUtils.setupHttpClient(getApplicationContext());
 			HttpGet httpGet = new HttpGet(uri);
 			HttpResponse response = httpclient.execute(httpGet);
 			InputStream content = response.getEntity().getContent();

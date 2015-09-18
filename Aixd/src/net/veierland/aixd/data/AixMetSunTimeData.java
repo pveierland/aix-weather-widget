@@ -248,7 +248,7 @@ public class AixMetSunTimeData implements AixDataSource {
 						mDateFormat.format(mStartDate),
 						mDateFormat.format(mEndDate));
 				
-				HttpClient httpClient = AixUtils.setupHttpClient();
+				HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 				
 				HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 				HttpResponse httpResponse = httpClient.execute(httpGet);

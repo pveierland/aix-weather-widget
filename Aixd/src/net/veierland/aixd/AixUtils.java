@@ -35,6 +35,8 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.CoreConnectionPNames;
+import org.apache.http.params.CoreProtocolPNames;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 
@@ -47,6 +49,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Point;
@@ -485,6 +489,23 @@ public class AixUtils {
 		return content;
 	}
 	
+	public static String getUserAgent(Context context)
+	{
+		StringBuilder userAgent = new StringBuilder();
+		
+		userAgent.append("Aix Weather Widget");
+
+		try {
+			PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+			userAgent.append("/");
+			userAgent.append(pInfo.versionName);
+		} catch (NameNotFoundException e) { }
+		
+		userAgent.append(" (http://www.veierland.net/aix/; aix@veierland.net)");
+
+		return userAgent.toString();
+	}
+	
 	public static long getWidgetViewId(Context context, Uri widgetUri)
 	{
 		long viewRowId = -1;
@@ -549,9 +570,10 @@ public class AixUtils {
 		}
 	}
 	
-	public static HttpClient setupHttpClient() {
+	public static HttpClient setupHttpClient(Context context) {
 		HttpParams httpParameters = new BasicHttpParams();
-		HttpConnectionParams.setSoTimeout(httpParameters, 7777);
+		httpParameters.setParameter(CoreConnectionPNames.SO_TIMEOUT, 7777);
+		httpParameters.setParameter(CoreProtocolPNames.USER_AGENT, getUserAgent(context));
 		return new DefaultHttpClient(httpParameters);
 	}
 	

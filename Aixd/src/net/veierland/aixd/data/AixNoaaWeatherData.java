@@ -480,7 +480,7 @@ public class AixNoaaWeatherData implements AixDataSource {
 					latitude.doubleValue(),
 					longitude.doubleValue());
 			
-			HttpClient httpClient = AixUtils.setupHttpClient();
+			HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 			HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 			HttpResponse httpResponse = httpClient.execute(httpGet);
 			InputStream content = AixUtils.getGzipInputStream(httpResponse);

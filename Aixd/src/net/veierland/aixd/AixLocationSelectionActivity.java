@@ -420,7 +420,7 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 					HttpGet httpGet = new HttpGet(uri);
 					httpGet.addHeader("Accept-Encoding", "gzip");
 					
-					HttpClient httpclient = AixUtils.setupHttpClient();
+					HttpClient httpclient = AixUtils.setupHttpClient(mContext);
 					HttpResponse response = httpclient.execute(httpGet);
 					InputStream content = response.getEntity().getContent();
 					

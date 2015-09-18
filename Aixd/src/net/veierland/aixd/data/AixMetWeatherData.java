@@ -114,7 +114,7 @@ public class AixMetWeatherData implements AixDataSource {
 			
 			Log.d(TAG, "Attempting to download weather data from URL=" + url);
 			
-			HttpClient httpClient = AixUtils.setupHttpClient();
+			HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 			HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 			HttpResponse httpResponse = httpClient.execute(httpGet);
 			InputStream content = AixUtils.getGzipInputStream(httpResponse);

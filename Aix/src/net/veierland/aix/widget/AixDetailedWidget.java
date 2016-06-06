@@ -598,7 +598,7 @@ public class AixDetailedWidget {
 	
 	private void drawDayAndNight(Canvas canvas)
 	{
-		if (mSunMoonData == null) return;
+		if (mSunMoonData == null || mSunMoonData.isEmpty()) return;
 		
 		float timeRange = mTimeTo - mTimeFrom;
 		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange;

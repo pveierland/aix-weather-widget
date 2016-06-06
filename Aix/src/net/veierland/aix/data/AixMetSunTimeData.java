@@ -109,7 +109,7 @@ public class AixMetSunTimeData implements AixDataSource {
 		}
 	}
 	
-	private ContentValues[] parseData(InputStream content, long locationId, long currentUtcTime)
+	private List<ContentValues> parseData(InputStream content, long locationId, long currentUtcTime)
 			throws ParseException, XmlPullParserException, IOException
 	{
 		List<ContentValues> contentValuesList = new ArrayList<ContentValues>();
@@ -143,43 +143,53 @@ public class AixMetSunTimeData implements AixDataSource {
 						   contentValues != null)
 				{
 					String neverRiseString = parser.getAttributeValue(null, "never_rise");
+					String riseString      = parser.getAttributeValue(null, "rise");
+
 					String neverSetString = parser.getAttributeValue(null, "never_set");
-					
-					if (neverRiseString != null && neverRiseString.equalsIgnoreCase("true"))
+					String setString      = parser.getAttributeValue(null, "set");
+
+					if (neverRiseString == null || neverRiseString.equalsIgnoreCase("false") && riseString != null)
 					{
-						contentValues.put(AixSunMoonDataColumns.SUN_RISE, AixSunMoonData.NEVER_RISE);
-					}
-					else if (neverSetString != null && neverSetString.equalsIgnoreCase("true"))
-					{
-						contentValues.put(AixSunMoonDataColumns.SUN_SET, AixSunMoonData.NEVER_SET);
+						contentValues.put(AixSunMoonDataColumns.SUN_RISE, mTimeFormat.parse(riseString).getTime());
 					}
 					else
 					{
-						long sunRise = mTimeFormat.parse(parser.getAttributeValue(null, "rise")).getTime();
-						long sunSet = mTimeFormat.parse(parser.getAttributeValue(null, "set")).getTime();
-						contentValues.put(AixSunMoonDataColumns.SUN_RISE, sunRise);
-						contentValues.put(AixSunMoonDataColumns.SUN_SET, sunSet);
+						contentValues.put(AixSunMoonDataColumns.SUN_RISE, AixSunMoonData.NEVER_RISE);
+					}
+
+					if (neverSetString == null || neverSetString.equalsIgnoreCase("false") && setString != null)
+					{
+						contentValues.put(AixSunMoonDataColumns.SUN_SET, mTimeFormat.parse(setString).getTime());
+					}
+					else
+					{
+						contentValues.put(AixSunMoonDataColumns.SUN_SET, AixSunMoonData.NEVER_SET);
 					}
 				} else if (parser.getName().equals("moon") &&
 						   contentValues != null)
 				{
 					String neverRiseString = parser.getAttributeValue(null, "never_rise");
+					String riseString      = parser.getAttributeValue(null, "rise");
+
 					String neverSetString = parser.getAttributeValue(null, "never_set");
+					String setString      = parser.getAttributeValue(null, "set");
 					
-					if (neverRiseString != null && neverRiseString.equalsIgnoreCase("true"))
+					if (neverRiseString != null && neverRiseString.equalsIgnoreCase("true") || riseString == null)
 					{
 						contentValues.put(AixSunMoonDataColumns.MOON_RISE, AixSunMoonData.NEVER_RISE);
 					}
-					else if (neverSetString != null && neverSetString.equalsIgnoreCase("true"))
+					else if (riseString != null)
+					{
+						contentValues.put(AixSunMoonDataColumns.MOON_RISE, mTimeFormat.parse(riseString).getTime());
+					}
+
+					if (neverSetString != null && neverSetString.equalsIgnoreCase("true") || setString == null)
 					{
 						contentValues.put(AixSunMoonDataColumns.MOON_SET, AixSunMoonData.NEVER_SET);
 					}
-					else
+					else if (setString != null)
 					{
-						long moonRise = mTimeFormat.parse(parser.getAttributeValue(null, "rise")).getTime();
-						long moonSet = mTimeFormat.parse(parser.getAttributeValue(null, "set")).getTime();
-						contentValues.put(AixSunMoonDataColumns.MOON_RISE, moonRise);
-						contentValues.put(AixSunMoonDataColumns.MOON_SET, moonSet);
+						contentValues.put(AixSunMoonDataColumns.MOON_SET, mTimeFormat.parse(setString).getTime());
 					}
 					
 					String moonPhase = parser.getAttributeValue(null, "phase");
@@ -199,7 +209,7 @@ public class AixMetSunTimeData implements AixDataSource {
 			eventType = parser.next();
 		}
 		
-		return contentValuesList.toArray(new ContentValues[contentValuesList.size()]);
+		return contentValuesList;
 	}
 
 	private void setupDateParameters(long time)
@@ -239,10 +249,9 @@ public class AixMetSunTimeData implements AixDataSource {
 			
 			if (numExistingDataSets < NUM_DAYS_BUFFERED)
 			{
-				
 				String url = String.format(
 						Locale.US,
-						"http://api.met.no/weatherapi/sunrise/1.0/?lat=%.5f;lon=%.5f;from=%s;to=%s",
+						"http://api.met.no/weatherapi/sunrise/1.1/?lat=%.5f;lon=%.5f;from=%s;to=%s",
 						latitude.doubleValue(),
 						longitude.doubleValue(),
 						mDateFormat.format(mStartDate),
@@ -253,12 +262,16 @@ public class AixMetSunTimeData implements AixDataSource {
 				HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 				HttpResponse httpResponse = httpClient.execute(httpGet);
 				InputStream content = AixUtils.getGzipInputStream(httpResponse);
-				
-				ContentValues[] contentValuesArray = parseData(content, aixLocationInfo.getId(), currentUtcTime);
-				updateDatabase(contentValuesArray);
-				
+
+				List<ContentValues> contentValuesList = parseData(content, aixLocationInfo.getId(), currentUtcTime);
+
+				if (contentValuesList != null && contentValuesList.size() > 0)
+				{
+					updateDatabase(contentValuesList.toArray(new ContentValues[contentValuesList.size()]));
+				}
+
 				Log.d(TAG, String.format("update(): %d datasets were added to location %s (%d).",
-						contentValuesArray.length, aixLocationInfo.getTitle(), aixLocationInfo.getId()));
+						contentValuesList.size(), aixLocationInfo.getTitle(), aixLocationInfo.getId()));
 			}
 		}
 		catch (Exception e)

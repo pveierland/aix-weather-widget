@@ -12,11 +12,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import net.veierland.aixd.AixProvider.AixSunMoonData;
+import net.veierland.aixd.AixProvider.AixSunMoonDataColumns;
 import net.veierland.aixd.AixSettings;
 import net.veierland.aixd.AixUpdate;
 import net.veierland.aixd.AixUtils;
-import net.veierland.aixd.AixProvider.AixSunMoonData;
-import net.veierland.aixd.AixProvider.AixSunMoonDataColumns;
 import net.veierland.aixd.util.AixLocationInfo;
 
 import org.apache.http.HttpResponse;
@@ -33,11 +33,11 @@ import android.util.Log;
 import android.util.Xml;
 
 public class AixMetSunTimeData implements AixDataSource {
-	
+
 	public final static String TAG = "AixMetSunTimeData";
-	
+
 	private final static int NUM_DAYS_BUFFERED = 5;
-	
+
 	@SuppressWarnings("serial")
 	private Map<String, Integer> moonPhaseMap = new HashMap<String, Integer>() {{
 		put("new moon", AixSunMoonData.NEW_MOON);
@@ -49,17 +49,17 @@ public class AixMetSunTimeData implements AixDataSource {
 		put("third quarter", AixSunMoonData.LAST_QUARTER);
 		put("waning crescent", AixSunMoonData.WANING_CRESCENT);
 	}};
-	
+
 	private Context mContext;
-	
+
 	//private AixSettings mAixSettings;
 	private AixUpdate mAixUpdate;
-	
+
 	private SimpleDateFormat mDateFormat;
 	private SimpleDateFormat mTimeFormat;
-	
+
 	private TimeZone mUtcTimeZone;
-	
+
 	private long mStartDate;
 	private long mEndDate;
 	
@@ -139,59 +139,107 @@ public class AixMetSunTimeData implements AixDataSource {
 					contentValues.put(AixSunMoonDataColumns.LOCATION, locationId);
 					contentValues.put(AixSunMoonDataColumns.TIME_ADDED, currentUtcTime);
 					contentValues.put(AixSunMoonDataColumns.DATE, date);
-				} else if (parser.getName().equalsIgnoreCase("sun") &&
-						   contentValues != null)
+				}
+				else if (parser.getName().equalsIgnoreCase("sun") && contentValues != null)
 				{
-					String neverRiseString = parser.getAttributeValue(null, "never_rise");
-					String riseString      = parser.getAttributeValue(null, "rise");
+					String neverRise = parser.getAttributeValue(null, "never_rise");
+					String rise      = parser.getAttributeValue(null, "rise");
+					String neverSet  = parser.getAttributeValue(null, "never_set");
+					String set       = parser.getAttributeValue(null, "set");
 
-					String neverSetString = parser.getAttributeValue(null, "never_set");
-					String setString      = parser.getAttributeValue(null, "set");
+					long riseValue = 0;
+					long setValue  = 0;
 
-					if (neverRiseString == null || neverRiseString.equalsIgnoreCase("false") && riseString != null)
+					if (neverRise != null && neverRise.equalsIgnoreCase("true"))
 					{
-						contentValues.put(AixSunMoonDataColumns.SUN_RISE, mTimeFormat.parse(riseString).getTime());
+						// Polar Night
+						riseValue = AixSunMoonData.NEVER_RISE;
+						setValue  = AixSunMoonData.NEVER_SET;
+					}
+					else if (neverSet != null && neverSet.equalsIgnoreCase("true"))
+					{
+						// Midnight Sun
+						setValue = AixSunMoonData.NEVER_SET;
 					}
 					else
 					{
-						contentValues.put(AixSunMoonDataColumns.SUN_RISE, AixSunMoonData.NEVER_RISE);
+						if (rise != null)
+						{
+							try
+							{
+								riseValue = mTimeFormat.parse(rise).getTime();
+							}
+							catch (Exception e)
+							{
+								Log.e(TAG, "Sun rise time parse failed: " + e.getMessage());
+							}
+						}
+
+						if (set != null)
+						{
+							try
+							{
+								setValue = mTimeFormat.parse(set).getTime();
+							}
+							catch (Exception e)
+							{
+								Log.e(TAG, "Sun set time parse failed: " + e.getMessage());
+							}
+						}
 					}
 
-					if (neverSetString == null || neverSetString.equalsIgnoreCase("false") && setString != null)
+					contentValues.put(AixSunMoonDataColumns.SUN_RISE, riseValue);
+					contentValues.put(AixSunMoonDataColumns.SUN_SET, setValue);
+				}
+				else if (parser.getName().equals("moon") && contentValues != null)
+				{
+					String neverRise = parser.getAttributeValue(null, "never_rise");
+					String rise      = parser.getAttributeValue(null, "rise");
+					String neverSet  = parser.getAttributeValue(null, "never_set");
+					String set       = parser.getAttributeValue(null, "set");
+
+					long riseValue = 0;
+					long setValue  = 0;
+
+					if (neverRise != null && neverRise.equalsIgnoreCase("true"))
 					{
-						contentValues.put(AixSunMoonDataColumns.SUN_SET, mTimeFormat.parse(setString).getTime());
+						riseValue = AixSunMoonData.NEVER_RISE;
+						setValue  = AixSunMoonData.NEVER_SET;
+					}
+					else if (neverSet != null && neverSet.equalsIgnoreCase("true"))
+					{
+						setValue = AixSunMoonData.NEVER_SET;
 					}
 					else
 					{
-						contentValues.put(AixSunMoonDataColumns.SUN_SET, AixSunMoonData.NEVER_SET);
-					}
-				} else if (parser.getName().equals("moon") &&
-						   contentValues != null)
-				{
-					String neverRiseString = parser.getAttributeValue(null, "never_rise");
-					String riseString      = parser.getAttributeValue(null, "rise");
+						if (rise != null)
+						{
+							try
+							{
+								riseValue = mTimeFormat.parse(rise).getTime();
+							}
+							catch (Exception e)
+							{
+								Log.e(TAG, "Moon rise time parse failed: " + e.getMessage());
+							}
+						}
 
-					String neverSetString = parser.getAttributeValue(null, "never_set");
-					String setString      = parser.getAttributeValue(null, "set");
-					
-					if (neverRiseString != null && neverRiseString.equalsIgnoreCase("true") || riseString == null)
-					{
-						contentValues.put(AixSunMoonDataColumns.MOON_RISE, AixSunMoonData.NEVER_RISE);
-					}
-					else if (riseString != null)
-					{
-						contentValues.put(AixSunMoonDataColumns.MOON_RISE, mTimeFormat.parse(riseString).getTime());
+						if (set != null)
+						{
+							try
+							{
+								setValue = mTimeFormat.parse(set).getTime();
+							}
+							catch (Exception e)
+							{
+								Log.e(TAG, "Moon set time parse failed: " + e.getMessage());
+							}
+						}
 					}
 
-					if (neverSetString != null && neverSetString.equalsIgnoreCase("true") || setString == null)
-					{
-						contentValues.put(AixSunMoonDataColumns.MOON_SET, AixSunMoonData.NEVER_SET);
-					}
-					else if (setString != null)
-					{
-						contentValues.put(AixSunMoonDataColumns.MOON_SET, mTimeFormat.parse(setString).getTime());
-					}
-					
+					contentValues.put(AixSunMoonDataColumns.MOON_RISE, riseValue);
+					contentValues.put(AixSunMoonDataColumns.MOON_SET, setValue);
+
 					String moonPhase = parser.getAttributeValue(null, "phase");
 					int moonPhaseData = AixSunMoonData.NO_MOON_PHASE_DATA;
 					
@@ -294,5 +342,4 @@ public class AixMetSunTimeData implements AixDataSource {
 			contentResolver.insert(AixSunMoonData.CONTENT_URI, contentValues);
 		}
 	}
-	
 }

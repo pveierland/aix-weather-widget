@@ -14,7 +14,7 @@ This app was written as a personal project in order to provide a compact graphic
 
 # License
 
-* All code written as part of the app is licensed as [CC0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). The only exception is the `Pair.java` file which is licensed under Apache 2.0 as specified in its header.
+* All code written as part of the app is licensed as [CC0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). The only exceptions are `MultiKey.java` and `Pair.java` which are licensed under Apache 2.0 as specified in their headers.
 * The weather icons are owned by The Norwegian Meteorological Institute and are as provided via their [weathericon API](http://api.met.no/weatherapi/weathericon/1.1/documentation).
 
 # Information for use

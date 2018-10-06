@@ -1,17 +1,15 @@
 package net.veierland.aixd;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import net.veierland.aixd.R;
@@ -38,6 +36,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.BaseColumns;
@@ -61,7 +60,50 @@ import android.widget.Toast;
 
 public class AixLocationSelectionActivity extends ListActivity implements OnClickListener {
 
-	private static final String TAG = "AixLocationSelectionActivity";
+    private static final List<String> geonamesDetailedNameComponents = Collections.unmodifiableList(
+            Arrays.asList("name", "adminName5", "adminName4", "adminName3", "adminName2", "adminName1", "countryName"));
+
+    private static final Map<Integer, String> geonamesWebserviceExceptions;
+    static {
+        Map<Integer, String> gwe = new HashMap<Integer, String>();
+        gwe.put(10, "Authorization exception");
+        gwe.put(11, "Record does not exist");
+        gwe.put(12, "Other error");
+        gwe.put(13, "Database timeout");
+        gwe.put(14, "Invalid parameter");
+        gwe.put(15, "No result found");
+        gwe.put(16, "Duplicate exception");
+        gwe.put(17, "Postal code not found");
+        gwe.put(18, "Daily limit of credits exceeded");
+        gwe.put(19, "Hourly limit of credits exceeded");
+        gwe.put(20, "Weekly limit of credits exceeded");
+        gwe.put(21, "Invalid input");
+        gwe.put(22, "Server overloaded exception");
+        gwe.put(23, "Service not implemented");
+        gwe.put(24, "Radius too large");
+        geonamesWebserviceExceptions = Collections.unmodifiableMap(gwe);
+    }
+
+    private static String buildTitleDetailed(final JSONObject result) {
+        StringBuilder titleDetailedSb = new StringBuilder();
+
+        for (String key : geonamesDetailedNameComponents) {
+            if (result.has(key)) {
+                String component = result.optString(key).trim();
+
+                if (component.length() > 0) {
+                    if (titleDetailedSb.length() > 0) {
+                        titleDetailedSb.append(", ");
+                    }
+                    titleDetailedSb.append(component);
+                }
+            }
+        }
+
+        return titleDetailedSb.toString();
+    }
+
+	private static final String TAG = "AixLocationSelection";
 	
 	private static final int DIALOG_ADD = 0;
 	private static final int DIALOG_EDIT = 1;
@@ -279,12 +321,12 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		private final static int INVALID_INPUT = 0;
 		private final static int NO_CONNECTION = 1;
 		private final static int SEARCH_CANCELLED = 2;
-		private final static int SEARCH_ERROR = 3;
 		private final static int SEARCH_SUCCESS = 4;
 		private final static int NO_RESULTS = 5;
 		private final static int OVER_QUERY_LIMIT = 6;
 		private final static int REQUEST_DENIED = 7;
 		private final static int INVALID_REQUEST = 8;
+		private final static int SEARCH_ERROR = 100;
 
 		private int mAttempts = 0;
 		private List<AixAddress> mAddresses;
@@ -298,13 +340,21 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 		
 		@Override
 		protected void onPostExecute(Integer result) {
-			// TODO Auto-generated method stub
 			super.onPostExecute(result);
 			if (mProgressDialog != null) {
 				mProgressDialog.dismiss();
 			}
-			
-			switch (result.intValue()) {
+
+			if (result >= SEARCH_ERROR) {
+			    final int errorCode = result - SEARCH_ERROR;
+			    final String errorString = geonamesWebserviceExceptions.containsKey(errorCode)
+                        ? geonamesWebserviceExceptions.get(errorCode)
+                        : getString(R.string.location_search_error_toast);
+                Toast.makeText(mContext, errorString, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+			switch (result) {
 			case INVALID_INPUT:
 				mResetSearch = true;
 				Toast.makeText(
@@ -321,12 +371,6 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 			case SEARCH_CANCELLED:
 				Log.d(TAG, "Search was cancelled!");
 				break;
-			case SEARCH_ERROR:
-				Toast.makeText(
-						mContext,
-						getString(R.string.location_search_error_toast),
-						Toast.LENGTH_SHORT).show();
-				break;			
 			case SEARCH_SUCCESS:
 				mResetSearch = true;
 				
@@ -412,14 +456,15 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				mAttempts++;
 				
 				try {
-					URI uri = new URI("http", "maps.googleapis.com", "/maps/api/geocode/json",
-							"address=" + params[0].trim() +
-							"&language=" + Locale.getDefault().getLanguage() +
-							"&sensor=false", null);
-					
+                    URI uri = new URI("http", "api.geonames.org", "/searchJSON",
+                            "q=" + params[0].trim() +
+                                    "&lang=" + Locale.getDefault().getLanguage() +
+                                    "&maxRows=" + MAX_RESULTS +
+                                    "&username=aix_widget", null);
+
 					HttpGet httpGet = new HttpGet(uri);
 					httpGet.addHeader("Accept-Encoding", "gzip");
-					
+
 					HttpClient httpclient = AixUtils.setupHttpClient(mContext);
 					HttpResponse response = httpclient.execute(httpGet);
 					InputStream content = response.getEntity().getContent();
@@ -429,38 +474,31 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 						content = new GZIPInputStream(content);
 					}
 
-					JSONObject jObject = new JSONObject(convertStreamToString(content));
+                    JSONObject jObject = new JSONObject(AixUtils.convertStreamToString(content));
 
-					String status = jObject.getString("status");
-					
-					if (status.equals("ZERO_RESULTS")) {
-						return NO_RESULTS;
-					} else if (status.equals("OVER_QUERY_LIMIT")) {
-						return OVER_QUERY_LIMIT;
-					} else if (status.equals("REQUEST_DENIED")) {
-						return REQUEST_DENIED;
-					} else if (status.equals("INVALID_REQUEST")) {
-						return INVALID_REQUEST;
-					} else if (!status.equals("OK")) {
-						return SEARCH_ERROR;
-					}
+					if (jObject.has("status")) {
+                        int errorCode = jObject.getJSONObject("status").optInt("value", 0);
+                        return SEARCH_ERROR + errorCode;
+                    }
 
 					mAddresses = new ArrayList<AixAddress>();
-					JSONArray results = jObject.getJSONArray("results");
-					
+
+					JSONArray results = jObject.getJSONArray("geonames");
 					int numResults = Math.min(results.length(), MAX_RESULTS);
+
+                    if (numResults <= 0) {
+                        return NO_RESULTS;
+                    }
+
 					for (int i = 0; i < numResults; i++) {
 						try {
 							JSONObject result = results.getJSONObject(i);
-	
-							JSONArray addressComponents = result.getJSONArray("address_components"); 
-							JSONObject location = result.getJSONObject("geometry").getJSONObject("location");
 							
 							AixAddress address = new AixAddress();
-							address.title = addressComponents.getJSONObject(0).getString("long_name");
-							address.title_detailed = result.getString("formatted_address");
-							address.latitude = location.getString("lat");
-							address.longitude = location.getString("lng");
+							address.title = result.getString("name");
+							address.title_detailed = buildTitleDetailed(result);
+							address.latitude = result.getString("lat");
+							address.longitude = result.getString("lng");
 							mAddresses.add(address);
 						} catch (Exception e) { }
 					}
@@ -481,31 +519,11 @@ public class AixLocationSelectionActivity extends ListActivity implements OnClic
 				publishProgress(mAttempts);
 				
 				try {
-					Thread.sleep(555);
+					Thread.sleep(2222);
 				} catch (InterruptedException e) { }
 			}
 
 			return SEARCH_CANCELLED;
-		}
-		
-		public String convertStreamToString(InputStream is) throws IOException {
-			if (is != null) {
-				Writer writer = new StringWriter();
-				char[] buffer = new char[1024];
-				try {
-					Reader reader = new BufferedReader(
-							new InputStreamReader(is, "UTF-8"));
-					int n;
-					while ((n = reader.read(buffer)) != -1) {
-						writer.write(buffer, 0, n);
-					}
-				} finally {
-					is.close();
-				}
-				return writer.toString();
-			} else {
-				return "";
-			}
 		}
 
 		@Override

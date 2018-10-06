@@ -1,0 +1,1 @@
+-Changed from Google to Geonames geocoding API.

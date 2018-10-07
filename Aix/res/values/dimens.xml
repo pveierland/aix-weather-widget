@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <dimen name="tiny_portrait_height">98dp</dimen>
-    <dimen name="tiny_landscape_height">72dp</dimen>
-    
-    <dimen name="large_portrait_width">318dp</dimen>
-    <dimen name="large_landscape_width">422dp</dimen>
-</resources>

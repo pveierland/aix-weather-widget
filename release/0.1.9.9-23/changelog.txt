@@ -1,0 +1,2 @@
+-Changed from Google to Geonames geocoding API.
+-Enabled export of Content Provider + fixed SQL issue.

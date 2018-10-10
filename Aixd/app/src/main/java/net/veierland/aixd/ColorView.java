@@ -245,8 +245,8 @@ public class ColorView extends View {
 	        	ComposeShader s = new ComposeShader(mShader, colorShader, PorterDuff.Mode.MULTIPLY);
 	        	mColorAreaPaint.setShader(s);
 			}
-			
-			canvas.save(Canvas.MATRIX_SAVE_FLAG);
+
+			canvas.save();
 			canvas.translate(mColorAreaRect.left, mColorAreaRect.top);
 			canvas.scale(mColorAreaRect.width(), mColorAreaRect.height());
 			canvas.drawRect(0.0f, 0.0f, 1.0f, 1.0f, mColorAreaPaint);

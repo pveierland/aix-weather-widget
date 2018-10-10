@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
 		xmlns:android="http://schemas.android.com/apk/res/android"
-		android:layout_width="fill_parent"
-		android:layout_height="fill_parent">
+		android:layout_width="match_parent"
+		android:layout_height="match_parent">
 	
 	<ImageView
 			android:id="@+id/portraitCalibrationImage"
-			android:layout_width="fill_parent"
-			android:layout_height="fill_parent"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
 			android:scaleType="fitXY"
 			android:visibility="gone"
 			android:contentDescription="@string/contentDescriptionPortraitCalibrationImage" />
 	
 	<ImageView
 			android:id="@+id/landscapeCalibrationImage"
-			android:layout_width="fill_parent"
-			android:layout_height="fill_parent"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
 			android:scaleType="fitXY"
 			android:visibility="visible"
 			android:contentDescription="@string/contentDescriptionLandscapeCalibrationImage" />
@@ -37,8 +37,8 @@
 	
 	<LinearLayout
 			android:orientation="horizontal"
-			android:layout_width="fill_parent"
-			android:layout_height="fill_parent">
+			android:layout_width="match_parent"
+			android:layout_height="match_parent">
 		
 	    <Button android:id="@+id/portrait_decrease_height"
 	        	android:text="@string/calibrationDecrementSymbol"
@@ -52,16 +52,16 @@
 	    
 		<Button
 				android:id="@+id/portrait_vertical_accept"
-				android:layout_width="fill_parent"
-				android:layout_height="fill_parent"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
 				android:layout_weight="1"
 				android:background="#0000"
 				android:visibility="gone" />
 	
 		<Button
 				android:id="@+id/landscape_vertical_accept"
-				android:layout_width="fill_parent"
-				android:layout_height="fill_parent"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
 				android:layout_weight="1"
 				android:background="#0000"
 				android:visibility="visible" />

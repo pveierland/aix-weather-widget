@@ -19,6 +19,7 @@ import android.database.sqlite.SQLiteStatement;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.provider.BaseColumns;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -63,6 +64,9 @@ public class AixProvider extends ContentProvider {
 		public static final int APPWIDGET_ID_COLUMN = 0;
 		public static final int SIZE_COLUMN = 1;
 		public static final int VIEWS_COLUMN = 2;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				APPWIDGET_ID, SIZE, VIEWS };
 	}
 	
 	public static class AixWidgets implements BaseColumns, AixWidgetsColumns {
@@ -85,6 +89,9 @@ public class AixProvider extends ContentProvider {
 		public static final int VIEW_ID_COLUMN = 0;
 		public static final int LOCATION_COLUMN = 1;
 		public static final int TYPE_COLUMN = 2;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				VIEW_ID, LOCATION, TYPE };
 	}
 	
 	public static class AixViews implements BaseColumns, AixViewsColumns {
@@ -132,6 +139,19 @@ public class AixProvider extends ContentProvider {
 		public static final int LAST_FORECAST_UPDATE_COLUMN = 8;
 		public static final int FORECAST_VALID_TO_COLUMN = 9;
 		public static final int NEXT_FORECAST_UPDATE_COLUMN = 10;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				BaseColumns._ID,
+				TITLE,
+				TITLE_DETAILED,
+				TIME_ZONE,
+				TYPE,
+				TIME_OF_LAST_FIX,
+				LATITUDE,
+				LONGITUDE,
+				LAST_FORECAST_UPDATE,
+				FORECAST_VALID_TO,
+				NEXT_FORECAST_UPDATE };
 	}
 	
 	public static class AixLocations implements BaseColumns, AixLocationsColumns {
@@ -158,6 +178,9 @@ public class AixProvider extends ContentProvider {
 		public static final int TEMPERATURE_COLUMN = 4;
 		public static final int HUMIDITY_COLUMN = 5;
 		public static final int PRESSURE_COLUMN = 6;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				BaseColumns._ID, LOCATION, TIME_ADDED, TIME, TEMPERATURE, HUMIDITY, PRESSURE };
 	};
 	
 	public static class AixPointDataForecasts implements BaseColumns, AixPointDataForecastColumns {
@@ -185,6 +208,9 @@ public class AixProvider extends ContentProvider {
 		public static final int RAIN_MINVAL_COLUMN = 6;
 		public static final int RAIN_MAXVAL_COLUMN = 7;
 		public static final int WEATHER_ICON_COLUMN = 8;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				BaseColumns._ID, LOCATION, TIME_ADDED, TIME_FROM, TIME_TO, RAIN_VALUE, RAIN_MINVAL, RAIN_MAXVAL, WEATHER_ICON };
 	};
 	
 	public static class AixIntervalDataForecasts implements BaseColumns, AixIntervalDataForecastColumns {
@@ -223,6 +249,18 @@ public class AixProvider extends ContentProvider {
 		public static final int MOON_RISE_COLUMN = 6;
 		public static final int MOON_SET_COLUMN = 7;
 		public static final int MOON_PHASE_COLUMN = 8;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				BaseColumns._ID,
+				LOCATION,
+				TIME_ADDED,
+				DATE,
+				SUN_RISE,
+				SUN_SET,
+				MOON_RISE,
+				MOON_SET,
+				MOON_PHASE
+		};
 	}
 	
 	public static class AixSunMoonData implements BaseColumns, AixSunMoonDataColumns {
@@ -244,6 +282,9 @@ public class AixProvider extends ContentProvider {
 		public static final int ROW_ID_COLUMN = 1;
 		public static final int KEY_COLUMN = 2;
 		public static final int VALUE_COLUMN = 3;
+
+		public static final String[] ALL_COLUMNS = new String[] {
+				BaseColumns._ID, ROW_ID, KEY, VALUE };
 	}
 	
 	public static abstract class AixSettings implements BaseColumns, AixSettingsColumns {
@@ -543,12 +584,12 @@ public class AixProvider extends ContentProvider {
 			if (before != null) {
                 count += db.delete(
                         TABLE_AIXPOINTDATAFORECASTS,
-                        AixPointDataForecastColumns.TIME + "<?",
+                        AixPointDataForecasts.TIME + "<?",
                         new String[] { before });
             } else if (after != null) {
 			    count += db.delete(
 			            TABLE_AIXPOINTDATAFORECASTS,
-                        AixPointDataForecastColumns.TIME + ">=?",
+                        AixPointDataForecasts.TIME + ">=?",
                         new String[] { after });
             } else {
                 count = db.delete(TABLE_AIXPOINTDATAFORECASTS, null, null);
@@ -570,12 +611,12 @@ public class AixProvider extends ContentProvider {
             if (before != null) {
                 count += db.delete(
                         TABLE_AIXINTERVALDATAFORECASTS,
-                        AixIntervalDataForecastColumns.TIME_TO + "<?",
+                        AixIntervalDataForecasts.TIME_TO + "<?",
                         new String[] { before });
             } else if (after != null) {
                 count += db.delete(
                         TABLE_AIXINTERVALDATAFORECASTS,
-                        AixIntervalDataForecastColumns.TIME_FROM + ">=?",
+                        AixIntervalDataForecasts.TIME_FROM + ">=?",
                         new String[] { after });
             } else {
                 count = db.delete(TABLE_AIXINTERVALDATAFORECASTS, null, null);
@@ -597,12 +638,12 @@ public class AixProvider extends ContentProvider {
             if (before != null) {
                 count += db.delete(
                         TABLE_AIXSUNMOONDATA,
-                        AixSunMoonDataColumns.DATE + "<?",
+                        AixSunMoonData.DATE + "<?",
                         new String[] { before });
             } else if (after != null) {
                 count += db.delete(
                         TABLE_AIXSUNMOONDATA,
-                        AixSunMoonDataColumns.DATE + ">=?",
+                        AixSunMoonData.DATE + ">=?",
                         new String[] { after });
             } else {
                 count = db.delete(TABLE_AIXSUNMOONDATA, null, null);
@@ -757,7 +798,7 @@ public class AixProvider extends ContentProvider {
 			break;
 		}
 		case AIXINTERVALDATAFORECASTS: {
-			long rowId = rowId = db.insert(TABLE_AIXINTERVALDATAFORECASTS, null, values);
+			long rowId = db.insert(TABLE_AIXINTERVALDATAFORECASTS, null, values);
 			
 			if (rowId != -1) {
 				resultUri = ContentUris.withAppendedId(AixIntervalDataForecasts.CONTENT_URI, rowId);
@@ -815,7 +856,7 @@ public class AixProvider extends ContentProvider {
 	}
 	
 	@Override
-	public ParcelFileDescriptor openFile(Uri uri, String mode)
+	public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode)
 			throws FileNotFoundException
 	{
 		if (sUriMatcher.match(uri) != AIXRENDER)
@@ -863,127 +904,223 @@ public class AixProvider extends ContentProvider {
 		}
 		
 		Context context = getContext();
-		AixUtils.deleteTemporaryFile(context, appWidgetId, updateTime, orientation);
-		String fileName = context.getString(R.string.bufferImageFileName, appWidgetId, updateTime, orientation);
 
-		File file = new File(context.getFilesDir(), fileName);
-		return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+		if (context != null) {
+			AixUtils.deleteTemporaryFile(context, appWidgetId, updateTime, orientation);
+			String fileName = context.getString(R.string.bufferImageFileName, appWidgetId, updateTime, orientation);
+
+			File file = new File(context.getFilesDir(), fileName);
+			return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+		} else {
+			throw new FileNotFoundException("could not open file: " + uri);
+		}
 	}
 	
 	@Override
-	public Cursor query(Uri uri, String[] projection, String selection,
+	public Cursor query(@NonNull Uri uri, String[] projection, String selection,
 			String[] selectionArgs, String sortOrder)
 	{
 		if (LOGD) Log.d(TAG, "query() with uri=" + uri);
-		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
-		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-		qb.setStrict(true);
+		String   qbTables        = null;
+		String[] qbProjection    = null;
+		String   qbSelection     = null;
+		String[] qbSelectionArgs = null;
+		String   qbSortOrder     = null;
 
 		switch (sUriMatcher.match(uri)) {
 		case AIXWIDGETS: {
-			qb.setTables(TABLE_AIXWIDGETS);
+			qbTables     = TABLE_AIXWIDGETS;
+			qbProjection = AixWidgets.ALL_COLUMNS;
 			break;
 		}
 		case AIXWIDGETS_ID: {
-			qb.setTables(TABLE_AIXWIDGETS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXWIDGETS;
+			qbProjection    = AixWidgets.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXWIDGETS_ID_SETTINGS: {
-			qb.setTables(TABLE_AIXWIDGETSETTINGS);
-			qb.appendWhere(AixSettingsColumns.ROW_ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXWIDGETSETTINGS;
+			qbProjection    = AixSettings.ALL_COLUMNS;
+			qbSelection     = AixSettings.ROW_ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXWIDGETSETTINGS: {
-			qb.setTables(TABLE_AIXWIDGETSETTINGS);
+			qbTables     = TABLE_AIXWIDGETSETTINGS;
+			qbProjection = AixSettings.ALL_COLUMNS;
 			break;
 		}
 		case AIXWIDGETSETTINGS_ID: {
-			qb.setTables(TABLE_AIXWIDGETSETTINGS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXWIDGETSETTINGS;
+			qbProjection    = AixSettings.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
+			break;
 		}
 		case AIXVIEWS: {
-			qb.setTables(TABLE_AIXVIEWS);
+			qbTables     = TABLE_AIXVIEWS;
+			qbProjection = AixViews.ALL_COLUMNS;
 			break;
 		}
 		case AIXVIEWS_ID: {
-			qb.setTables(TABLE_AIXVIEWS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXVIEWS;
+			qbProjection    = AixViews.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXVIEWS_ID_SETTINGS: {
-			qb.setTables(TABLE_AIXVIEWSETTINGS);
-			qb.appendWhere(AixSettingsColumns.ROW_ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXVIEWSETTINGS;
+			qbProjection    = AixSettings.ALL_COLUMNS;
+			qbSelection     = AixSettings.ROW_ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXVIEWSETTINGS: {
-			qb.setTables(TABLE_AIXVIEWSETTINGS);
+			qbTables     = TABLE_AIXVIEWSETTINGS;
+			qbProjection = AixSettings.ALL_COLUMNS;
 			break;
 		}
 		case AIXVIEWSETTINGS_ID: {
-			qb.setTables(TABLE_AIXVIEWSETTINGS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXVIEWSETTINGS;
+			qbProjection    = AixSettings.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXLOCATIONS: {
-			qb.setTables(TABLE_AIXLOCATIONS);
+			qbTables     = TABLE_AIXLOCATIONS;
+			qbProjection = AixLocations.ALL_COLUMNS;
 			break;
 		}
 		case AIXLOCATIONS_ID: {
-			qb.setTables(TABLE_AIXLOCATIONS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXLOCATIONS;
+			qbProjection    = AixLocations.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXLOCATIONS_POINTDATAFORECASTS: {
-			qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
-			qb.appendWhere(AixPointDataForecastColumns.LOCATION + '=' + uri.getPathSegments().get(1));
+			qbTables     = TABLE_AIXPOINTDATAFORECASTS;
+			qbProjection = AixPointDataForecasts.ALL_COLUMNS;
+
+			final String locationId = uri.getPathSegments().get(1);
+			final String start      = uri.getQueryParameter("start");
+			final String end        = uri.getQueryParameter("end");
+
+			if (start != null && end != null) {
+				qbSelection = AixPointDataForecasts.LOCATION + "=? AND "
+						+ AixPointDataForecasts.TIME + ">=? AND "
+						+ AixPointDataForecasts.TIME + "<=?";
+				qbSelectionArgs = new String[] { locationId, start, end };
+				qbSortOrder     = AixPointDataForecasts.TIME + " ASC";
+			} else {
+				qbSelection     = AixPointDataForecasts.LOCATION + "=?";
+				qbSelectionArgs = new String[] { locationId };
+			}
+
 			break;
 		}
 		case AIXLOCATIONS_INTERVALDATAFORECASTS: {
-			qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
-			qb.appendWhere(AixIntervalDataForecastColumns.LOCATION + '=' + uri.getPathSegments().get(1));
+			qbTables     = TABLE_AIXINTERVALDATAFORECASTS;
+			qbProjection = AixIntervalDataForecasts.ALL_COLUMNS;
+
+			final String locationId = uri.getPathSegments().get(1);
+			final String start      = uri.getQueryParameter("start");
+			final String end        = uri.getQueryParameter("end");
+
+			if (start != null && end != null) {
+				qbSelection = AixIntervalDataForecasts.LOCATION + "=? AND "
+						+ AixIntervalDataForecasts.TIME_TO + ">? AND "
+						+ AixIntervalDataForecasts.TIME_FROM + "<?";
+				qbSelectionArgs = new String[] { locationId, start, end };
+				qbSortOrder     = '(' + AixIntervalDataForecasts.TIME_TO + '-' +
+						AixIntervalDataForecasts.TIME_FROM + ") ASC," +
+						AixIntervalDataForecasts.TIME_FROM + " ASC";
+			}
+			else
+			{
+				qbSelection     = AixIntervalDataForecasts.LOCATION + "=?";
+				qbSelectionArgs = new String[] { locationId };
+			}
+
 			break;
 		}
 		case AIXLOCATIONS_SUNMOONDATA: {
-			qb.setTables(TABLE_AIXSUNMOONDATA);
-            qb.appendWhere(AixSunMoonDataColumns.LOCATION + '=' + uri.getPathSegments().get(1));
+			qbTables     = TABLE_AIXSUNMOONDATA;
+			qbProjection = AixSunMoonData.ALL_COLUMNS;
+
+            final String locationId = uri.getPathSegments().get(1);
+            final String start      = uri.getQueryParameter("start");
+            final String end        = uri.getQueryParameter("end");
+
+            if (start != null && end != null) {
+            	qbSelection = AixSunMoonData.LOCATION + "=? AND "
+						+ AixSunMoonData.DATE + ">=? AND "
+						+ AixSunMoonData.DATE + "<=?";
+            	qbSelectionArgs = new String[] { locationId, start, end };
+            	qbSortOrder     = AixSunMoonData.DATE + " ASC";
+			}
+			else
+			{
+				qbSelection = AixSunMoonData.LOCATION + "=?";
+				qbSelectionArgs = new String[] { locationId };
+			}
+
 			break;
 		}
 		case AIXPOINTDATAFORECASTS: {
-			qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
+			qbTables     = TABLE_AIXPOINTDATAFORECASTS;
+			qbProjection = AixPointDataForecasts.ALL_COLUMNS;
 			break;
 		}
 		case AIXPOINTDATAFORECASTS_ID: {
-			qb.setTables(TABLE_AIXPOINTDATAFORECASTS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXPOINTDATAFORECASTS;
+			qbProjection    = AixPointDataForecasts.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXINTERVALDATAFORECASTS: {
-			qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
+			qbTables     = TABLE_AIXINTERVALDATAFORECASTS;
+			qbProjection = AixIntervalDataForecasts.ALL_COLUMNS;
 			break;
 		}
 		case AIXINTERVALDATAFORECASTS_ID: {
-			qb.setTables(TABLE_AIXINTERVALDATAFORECASTS);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXINTERVALDATAFORECASTS;
+			qbProjection    = AixIntervalDataForecasts.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		case AIXSUNMOONDATA: {
-			qb.setTables(TABLE_AIXSUNMOONDATA);
+			qbTables     = TABLE_AIXSUNMOONDATA;
+			qbProjection = AixSunMoonData.ALL_COLUMNS;
 			break;
 		}
 		case AIXSUNMOONDATA_ID: {
-			qb.setTables(TABLE_AIXSUNMOONDATA);
-			qb.appendWhere(BaseColumns._ID + '=' + uri.getPathSegments().get(1));
+			qbTables        = TABLE_AIXSUNMOONDATA;
+			qbProjection    = AixSunMoonData.ALL_COLUMNS;
+			qbSelection     = BaseColumns._ID + "=?";
+			qbSelectionArgs = new String[] { uri.getPathSegments().get(1) };
 			break;
 		}
 		}
 
-		return qb.query(db, projection, selection, selectionArgs, null, null, sortOrder);
+		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+		SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
+		qb.setStrict(true);
+		qb.setTables(qbTables);
+
+		return qb.query(db, qbProjection, qbSelection, qbSelectionArgs, null, null, qbSortOrder);
 	}
 
+
 	@Override
-	public int update(Uri uri, ContentValues values, String selection,
+	public int update(@NonNull Uri uri, ContentValues values, String selection,
 			String[] selectionArgs) {
 		if (LOGD) Log.d(TAG, "update() with uri=" + uri);
 		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
@@ -1099,12 +1236,12 @@ public class AixProvider extends ContentProvider {
 	}
 
 	@Override
-	public int bulkInsert(Uri uri, ContentValues[] values) {
+	public int bulkInsert(@NonNull Uri uri, @NonNull ContentValues[] values) {
 		if (LOGD) Log.d(TAG, "bulkInsert() with uri=" + uri);
 		SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 		
 		final int match = sUriMatcher.match(uri);
-		int numInserted = -1;
+		int numInserted = 0;
 		
 		switch (match)
 		{
@@ -1117,7 +1254,7 @@ public class AixProvider extends ContentProvider {
 			} finally {
 				db.endTransaction();
 			}
-			return numInserted;
+			break;
 		case AIXINTERVALDATAFORECASTS:
 			try
 			{
@@ -1127,7 +1264,7 @@ public class AixProvider extends ContentProvider {
 			} finally {
 				db.endTransaction();
 			}
-			return numInserted;
+			break;
 		case AIXWIDGETS_ID_SETTINGS:
 			String widgetId = uri.getPathSegments().get(1);
 			try {
@@ -1137,10 +1274,12 @@ public class AixProvider extends ContentProvider {
 			} finally {
 				db.endTransaction();
 			}
-			return 0;
+			break;
 		default:
 			throw new UnsupportedOperationException("AixProvider.bulkInsert() Unsupported URI: " + uri); 
 		}
+
+		return numInserted;
 	}
 	
 	private void bulkInsertSettings(SQLiteDatabase db, ContentValues[] values, String appWidgetId)
@@ -1209,7 +1348,7 @@ public class AixProvider extends ContentProvider {
 				new String[] { BaseColumns._ID },
 				AixSettingsColumns.ROW_ID + "=? AND " + AixSettingsColumns.KEY + "=?",
 				new String[] { appWidgetId, key },
-				null, null, null, null);
+				null, null, null);
 		
 		if (cursor != null)
 		{
@@ -1434,7 +1573,7 @@ public class AixProvider extends ContentProvider {
 				new String[] { AixViewsColumns.LOCATION },
 				BaseColumns._ID + "=?",
 				new String[] { viewUri.getPathSegments().get(1) },
-				null, null, null, null);
+				null, null, null);
 		
 		if (cursor != null) {
 			if (cursor.moveToFirst()) {
@@ -1457,7 +1596,7 @@ public class AixProvider extends ContentProvider {
 				new String[] { BaseColumns._ID },
 				AixSettingsColumns.ROW_ID + "=? AND " + AixSettingsColumns.KEY + "=?",
 				new String[] { id, entry.getKey() },
-				null, null, null, null);
+				null, null, null);
 
 		if (cursor != null) {
 			if (cursor.moveToFirst()) {

@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixSunMoonData;
 import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
 import net.veierland.aix.AixSettings;
@@ -29,6 +30,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.util.Log;
 import android.util.Xml;
 
@@ -90,13 +92,13 @@ public class AixMetSunTimeData implements AixDataSource {
 		Cursor cursor = null;
 		
 		try {
-			cursor = contentResolver.query(
-					AixSunMoonData.CONTENT_URI,
-					null,
-					AixSunMoonDataColumns.LOCATION + "=" + locationId + " AND " +
-					AixSunMoonDataColumns.DATE + ">=" + mStartDate + " AND " +
-					AixSunMoonDataColumns.DATE + "<=" + mEndDate,
-					null, null);
+			final Uri uri = AixLocations.CONTENT_URI.buildUpon()
+					.appendPath(Long.toString(locationId))
+					.appendPath(AixLocations.TWIG_SUNMOONDATA)
+					.appendQueryParameter("start", Long.toString(mStartDate))
+					.appendQueryParameter("end", Long.toString(mEndDate)).build();
+
+			cursor = contentResolver.query(uri, null, null, null, null);
 			
 			return cursor.getCount();
 		}

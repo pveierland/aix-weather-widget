@@ -1264,21 +1264,16 @@ public class AixDetailedWidget {
 	
 	private void setupIntervalData() {
 		ArrayList<IntervalData> intervalData = new ArrayList<IntervalData>();
-		
-		Uri.Builder builder = mAixLocationInfo.getLocationUri().buildUpon();
-		builder.appendPath(AixLocations.TWIG_INTERVALDATAFORECASTS);
-		//builder.appendQueryParameter("pu", mWidgetSettings.useInches() ? "i" : "m");
 
 		boolean useInches = mWidgetSettings.useInches();
+
+		final Uri uri = mAixLocationInfo.getLocationUri().buildUpon()
+				.appendPath(AixLocations.TWIG_INTERVALDATAFORECASTS)
+				.appendQueryParameter("start", Long.toString(mTimeFrom))
+				.appendQueryParameter("end", Long.toString(mTimeTo)).build();
 		
-		Cursor cursor = mResolver.query(
-				builder.build(), null,
-				AixIntervalDataForecastColumns.TIME_TO + ">? AND " +
-				AixIntervalDataForecastColumns.TIME_FROM + "<?",
-				new String[] { Long.toString(mTimeFrom), Long.toString(mTimeTo) },
-				'(' + AixIntervalDataForecastColumns.TIME_TO + '-' +
-				AixIntervalDataForecastColumns.TIME_FROM + ") ASC," +
-				AixIntervalDataForecastColumns.TIME_FROM + " ASC");
+		Cursor cursor = mResolver.query(uri, null, null, null, null);
+
 		if (cursor != null) {
 			if (cursor.moveToFirst()) {
 				do {
@@ -1386,13 +1381,14 @@ public class AixDetailedWidget {
 		long dateTo = calendar.getTimeInMillis();
 		
 		ArrayList<SunMoonData> sunMoonData = new ArrayList<SunMoonData>();
-		Cursor c = mResolver.query(
-				Uri.withAppendedPath(mAixLocationInfo.getLocationUri(), AixLocations.TWIG_SUNMOONDATA),
-				null,
-				AixSunMoonDataColumns.DATE + ">=? AND " +
-				AixSunMoonDataColumns.DATE + "<=?",
-				new String[] { Long.toString(dateFrom), Long.toString(dateTo) },
-				AixSunMoonDataColumns.DATE + " ASC");
+
+		final Uri uri = mAixLocationInfo.getLocationUri().buildUpon()
+				.appendPath(AixLocations.TWIG_SUNMOONDATA)
+				.appendQueryParameter("start", Long.toString(dateFrom))
+				.appendQueryParameter("end", Long.toString(dateTo)).build();
+
+		Cursor c = mResolver.query(uri, null, null, null, null);
+
 		if (c != null) {
 			if (c.moveToFirst()) {
 				do {
@@ -1507,23 +1503,18 @@ public class AixDetailedWidget {
 		
 		// Get temperature values
 		ArrayList<PointData> pointData = new ArrayList<PointData>();
-		
-		Uri.Builder builder = mAixLocationInfo.getLocationUri().buildUpon();
-		builder.appendPath(AixLocations.TWIG_POINTDATAFORECASTS);
-		//builder.appendQueryParameter("tu", mWidgetSettings.useFahrenheit() ? "f" : "c");
 
 		boolean isFahrenheit = mWidgetSettings.useFahrenheit();
 		
 		Cursor cursor = null;
 		
 		try {
-			cursor = mResolver.query(
-					builder.build(),
-					null,
-					AixPointDataForecastColumns.TIME + ">=? AND " +
-					AixPointDataForecastColumns.TIME + "<=?",
-					new String[] { Long.toString(mTimeFrom), Long.toString(mTimeTo) },
-					AixPointDataForecastColumns.TIME + " ASC");
+			final Uri uri = mAixLocationInfo.getLocationUri().buildUpon()
+					.appendPath(AixLocations.TWIG_POINTDATAFORECASTS)
+					.appendQueryParameter("start", Long.toString(mTimeFrom))
+					.appendQueryParameter("end", Long.toString(mTimeTo)).build();
+
+			cursor = mResolver.query(uri, null, null, null, null);
 			
 			if (cursor != null) {
 				if (cursor.moveToFirst()) {

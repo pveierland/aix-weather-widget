@@ -1,0 +1,3 @@
+-Changed minSdkVersion to 16 and targetSdkVersion to 28.
+-Changed layout image scaling.
+-Removed SQL injection vulnerability from content provider.

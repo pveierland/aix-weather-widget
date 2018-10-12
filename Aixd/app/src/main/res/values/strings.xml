@@ -15,7 +15,7 @@
     <string name="widget_name_large_tiny">Aix Weather (4x1)</string>
     <string name="widget_name_large_small">Aix Weather (4x2)</string>
 
-    <string name="device_profile_guide_link">&lt;a href=\"http://www.veierland.net/aix/device_profiles/\"&gt;Device Profile Guide&lt;/a&gt;</string>
+    <string name="device_profile_guide_link">&lt;a href=\"https://www.veierland.net/aix/device_profiles/\"&gt;Device Profile Guide&lt;/a&gt;</string>
     
 	<!-- InfoText -->
 	<string name="pressure_top">MSLP: %1$.0f hPa</string>

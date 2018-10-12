@@ -27,22 +27,22 @@ public class AixIntro extends Activity {
 		
 		if (uri != null && uri.equals(ACTION_SHOW_HELP))
 		{
-			url = "http://www.veierland.net/aix/help/";
+			url = "https://www.veierland.net/aix/help/";
 			loadingMessage = "Loading Aix help..";
 		}
 		else if (uri != null && uri.equals(ACTION_SHOW_DEVICE_PROFILE_GUIDE))
 		{
-			url = "http://www.veierland.net/aix/device_profiles/";
+			url = "https://www.veierland.net/aix/device_profiles/";
 			loadingMessage = "Loading Device Profile guide..";
 		}
 		else
 		{
 			// Show intro as default
-			url = "http://www.veierland.net/aix/introduction/";
+			url = "https://www.veierland.net/aix/introduction/";
 			loadingMessage = "Loading Aix introduction..";
 		}
 		
-		WebView web = (WebView) findViewById(R.id.webview);
+		WebView web = findViewById(R.id.webview);
 		
 	    final ProgressDialog progressBar = ProgressDialog.show(this, "Aix Weather Widget", loadingMessage);
         
@@ -52,12 +52,18 @@ public class AixIntro extends Activity {
                     progressBar.dismiss();
                 }
             }
+
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                if (failingUrl.startsWith("https://")) {
+                    view.loadUrl(failingUrl.replace("https://", "http://"));
+                }
+            }
             
             public boolean shouldOverrideUrlLoading(WebView view, String url){
             	view.loadUrl(url);
             	return false;
             }
-        });
+		});
         
         web.loadUrl(url);
 	}

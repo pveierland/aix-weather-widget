@@ -503,7 +503,7 @@ public class AixUtils {
 			userAgent.append(pInfo.versionName);
 		} catch (NameNotFoundException e) { }
 		
-		userAgent.append(" (http://www.veierland.net/aix/; aix@veierland.net)");
+		userAgent.append(" (https://www.veierland.net/aix/; aix@veierland.net)");
 
 		return userAgent.toString();
 	}

@@ -802,7 +802,7 @@ public class AixDeviceProfileActivity extends Activity
 		}
 		
 		private InputStream doUpload() throws URISyntaxException, IOException {
-			URI uri = new URI("http", "www.veierland.net", "/aix/aix.php",
+			URI uri = new URI("https", "www.veierland.net", "/aix/aix.php",
 					"d=" + mTaskDevice + "&u=" + mTaskUser + "&l=" + mTaskIsLandscape +
 					"&c=" + mTaskNumColumns + "&r=" + mTaskNumRows +
 					"&w=" + mTaskDimension.x + "&h=" + mTaskDimension.y, null);
@@ -820,7 +820,7 @@ public class AixDeviceProfileActivity extends Activity
 		}
 		
 		private InputStream doDownload() throws URISyntaxException, IOException {
-			URI uri = new URI("http", "www.veierland.net", "/aix/aix.php", "d=" + mTaskDevice, null);
+			URI uri = new URI("https", "www.veierland.net", "/aix/aix.php", "d=" + mTaskDevice, null);
 			
 			Log.d(TAG, "Attempting to download device profile. (URI=" + uri.toString() + ")");
 			

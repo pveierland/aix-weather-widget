@@ -294,7 +294,7 @@ public class AixConfigure extends PreferenceActivity
 			startActivity(new Intent(AixIntro.ACTION_SHOW_HELP, null, this, AixIntro.class));
 			return true;
 		case R.id.donate:
-			Intent donateIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://market.android.com/details?id=net.veierland.aixd"));
+			Intent donateIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://market.android.com/details?id=net.veierland.aixd"));
 			startActivity(donateIntent);
 			return true;
 		default:

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		package="net.veierland.aix"
-		android:versionCode="28"
-		android:versionName="0.1.9.14"
+		android:versionCode="29"
+		android:versionName="0.1.9.15"
 		android:installLocation="internalOnly">
     
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
-    
+
 	<application
 			android:icon="@drawable/app_icon"
 			android:label="@string/widget_name"
@@ -86,7 +86,11 @@
 				<action android:name="net.veierland.aix.ACCEPT_LANDSCAPE_VERTICAL_CALIBRATION" />
     		</intent-filter>
     	</receiver>
-    	
-    </application>
+
+		<uses-library
+			android:name="org.apache.http.legacy"
+			android:required="false" />
+
+	</application>
 
 </manifest> 

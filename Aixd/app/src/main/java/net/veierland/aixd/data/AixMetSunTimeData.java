@@ -301,7 +301,7 @@ public class AixMetSunTimeData implements AixDataSource {
 			{
 				String url = String.format(
 						Locale.US,
-						"http://api.met.no/weatherapi/sunrise/1.1/?lat=%.5f;lon=%.5f;from=%s;to=%s",
+						"https://api.met.no/weatherapi/sunrise/1.1/?lat=%.5f;lon=%.5f;from=%s;to=%s",
 						latitude.doubleValue(),
 						longitude.doubleValue(),
 						mDateFormat.format(mStartDate),

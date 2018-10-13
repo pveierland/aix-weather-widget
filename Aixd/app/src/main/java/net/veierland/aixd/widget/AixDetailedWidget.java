@@ -734,8 +734,7 @@ public class AixDetailedWidget {
 				mGraphRect.left + 1,
 				mGraphRect.top,
 				mGraphRect.right + rightOffset,
-				mGraphRect.bottom,
-				Region.Op.REPLACE);
+				mGraphRect.bottom);
 		canvas.drawPath(gridPath, mGridPaint);
 		canvas.restore();
 	}

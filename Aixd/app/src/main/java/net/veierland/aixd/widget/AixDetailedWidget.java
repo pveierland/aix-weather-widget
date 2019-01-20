@@ -1015,8 +1015,11 @@ public class AixDetailedWidget {
 					graphRectInner.right, graphRectInner.bottom - freezingPosY);
 			canvas.drawPath(temperaturePath, mAboveFreezingTemperaturePaint);
 			
+			canvas.restore();
+			canvas.save();
+			
 			canvas.clipRect(graphRectInner.left, graphRectInner.bottom - freezingPosY,
-					graphRectInner.right, graphRectInner.bottom, Op.REPLACE);
+					graphRectInner.right, graphRectInner.bottom);
 			canvas.drawPath(temperaturePath, mBelowFreezingTemperaturePaint);
 		}
 		canvas.restore();

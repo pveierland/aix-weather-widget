@@ -14,16 +14,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
 import net.veierland.aix.AixProvider.AixLocations;
-import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
 import net.veierland.aix.AixProvider.AixSunMoonData;
-import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
 import net.veierland.aix.IntervalData;
 import net.veierland.aix.PointData;
 import net.veierland.aix.R;
@@ -34,6 +32,9 @@ import net.veierland.aix.util.AixWidgetSettings;
 import net.veierland.aix.util.CatmullRomSpline;
 import net.veierland.aix.util.Cubic;
 import net.veierland.aix.util.Cubic.CubicResult;
+import net.veierland.aix.util.DayState;
+import net.veierland.aix.util.Pair;
+
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
@@ -53,7 +54,6 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
-import android.graphics.Region.Op;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -96,6 +96,7 @@ public class AixDetailedWidget {
 	private ArrayList<IntervalData> mIntervalData;
 	private ArrayList<PointData> mPointData;
 	private ArrayList<SunMoonData> mSunMoonData;
+	private ArrayList<Pair<Date, DayState>> mSunMoonTransitions;
 	
 	private ContentResolver mResolver;
 	
@@ -158,6 +159,7 @@ public class AixDetailedWidget {
 		setupEpochAndTimes();
 		validatePointData();
 		setupSunMoonData();
+		setupSunMoonTransitions();
 		setupPaints();
 		
 		DisplayMetrics dm = mContext.getResources().getDisplayMetrics();
@@ -598,10 +600,10 @@ public class AixDetailedWidget {
 	
 	private void drawDayAndNight(Canvas canvas)
 	{
-		if (mSunMoonData == null || mSunMoonData.isEmpty()) return;
+		if (mSunMoonTransitions == null || mSunMoonTransitions.size() < 2) return;
 		
 		float timeRange = mTimeTo - mTimeFrom;
-		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange;
+		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange / 2.0f;
 		
 		canvas.save();
 		canvas.clipRect(mGraphRect.left + 1, mGraphRect.top, mGraphRect.right, mGraphRect.bottom);
@@ -611,101 +613,47 @@ public class AixDetailedWidget {
 		matrix.postTranslate(mGraphRect.left + 1, mGraphRect.top);
 		canvas.setMatrix(matrix);
 		
-		final int DAY = 1, NIGHT = 2;
-		int state = 0; int firstState = NIGHT;
-		
-		ArrayList<Long> sunToggleTimes = new ArrayList<Long>();
-		
-		for (SunMoonData s: mSunMoonData) {
-			if (s.sunRise == AixSunMoonData.NEVER_RISE) {
-				if (state != NIGHT) {
-					sunToggleTimes.add(s.date);
-					if (state == 0) {
-						firstState = NIGHT;
-					}
-					state = NIGHT;
-				}
-				continue;
-			}
-			if (s.sunSet == AixSunMoonData.NEVER_SET) {
-				if (state != DAY) {
-					sunToggleTimes.add(s.date);
-					if (state == 0) {
-						firstState = DAY;
-					}
-					state = DAY;
-				}
-				continue;
-			}
-			
-			if (s.sunRise > 0 && state != DAY) {
-				sunToggleTimes.add(s.sunRise);
-				if (state == 0) {
-					firstState = DAY;
-				}
-				state = DAY;
-			}
-			if (s.sunSet > 0 && state != NIGHT) {
-				sunToggleTimes.add(s.sunSet);
-				if (state == 0) {
-					firstState = NIGHT;
-				}
-				state = NIGHT;
-			}
-		}
-		
-		sunToggleTimes.add(mSunMoonData.get(mSunMoonData.size() - 1).date + DateUtils.DAY_IN_MILLIS);
-		
-		Paint p = new Paint();
-		p.setStyle(Style.FILL);
-		
-		float marker = Float.NEGATIVE_INFINITY;
-		long last = -1, current = -1, next = -1;
-		state = 0;
-		
-		Iterator<Long> iterator = sunToggleTimes.iterator();
+		Paint paint = new Paint();
+		paint.setStyle(Style.FILL);
 
-		int dayColor = mWidgetSettings.getDayColor();
-		int nightColor = mWidgetSettings.getNightColor();
-		
-		do {
-			state = state == 0 ? firstState : (state == DAY ? NIGHT : DAY);
-			
-			last = current; current = next;
-			if (iterator.hasNext()) {
-				next = iterator.next();
-			} else {
-				if (last == -1 || current == -1) {
-					break;
-				}
-				next = -1;
+		final int dayColor = mWidgetSettings.getDayColor();
+		final int nightColor = mWidgetSettings.getNightColor();
+
+		float marker = Float.NEGATIVE_INFINITY;
+
+		for (int i = 0; i < mSunMoonTransitions.size() - 1; i++)
+		{
+			Pair<Date, DayState> previous = mSunMoonTransitions.get(i);
+			Pair<Date, DayState> current = mSunMoonTransitions.get(i + 1);
+			Pair<Date, DayState> next = (i < mSunMoonTransitions.size() - 2)
+				? mSunMoonTransitions.get(i + 2) : null;
+
+			float transitionWidth = hcap(
+				transitionWidthDefault,
+				(float)(current.first.getTime() - previous.first.getTime()) / timeRange);
+
+			if (next != null) {
+				transitionWidth = hcap(transitionWidth,
+					(float)(next.first.getTime() - current.first.getTime()) / timeRange);
 			}
-			if (last == -1) continue;
-			
-			float togglePos = (float)(current - mTimeFrom) / timeRange;
-			float transitionWidth = transitionWidthDefault;
-			
-			if (marker != Float.NEGATIVE_INFINITY) {
-				transitionWidth = hcap(transitionWidth, (float)(current - marker) / timeRange);
+
+			float transitionPosition = (float)(current.first.getTime() - mTimeFrom) / timeRange;
+			float transitionStart = transitionPosition - transitionWidth;
+			float transitionEnd = transitionPosition + transitionWidth;
+
+			paint.setShader(new LinearGradient(transitionStart, 0.0f, transitionEnd, 0.0f,
+				previous.second == DayState.DAY ? dayColor : nightColor,
+				current.second == DayState.DAY ? dayColor : nightColor,
+				Shader.TileMode.CLAMP));
+
+			if (marker == Float.NEGATIVE_INFINITY) {
+				marker = (float)(previous.first.getTime() - mTimeFrom) / timeRange;
 			}
-			if (next != -1) {
-				transitionWidth = hcap(transitionWidth, (float)(next - current) / timeRange / 2.0f);
-			}
-			
-			float toggleStart = togglePos - transitionWidth;
-			float toggleEnd = togglePos + transitionWidth;
-			
-			p.setShader(new LinearGradient(toggleStart, 0.0f, toggleEnd, 0.0f,
-					state == DAY ? dayColor : nightColor,
-					state == DAY ? nightColor : dayColor,
-					Shader.TileMode.CLAMP));
-			
-			if (marker == Float.NEGATIVE_INFINITY) marker = 0.0f;
-			
-			canvas.drawRect(marker, 0.0f, toggleEnd, 1.0f, p);
-			
-			marker = toggleEnd;
-		} while (next != -1);
+
+			canvas.drawRect(marker, 0.0f, transitionEnd, 1.0f, paint);
+
+			marker = transitionEnd;
+		}
 		
 		canvas.restore();
 	}
@@ -1401,6 +1349,72 @@ public class AixDetailedWidget {
 		}
 		
 		mSunMoonData = sunMoonData;
+	}
+
+	private void setupSunMoonTransitions() {
+		ArrayList<Pair<Date, DayState>> transitions = new ArrayList<>();
+
+		for (SunMoonData s : mSunMoonData) {
+			if (s.sunRise > 0) {
+				transitions.add(Pair.create(new Date(s.sunRise), DayState.DAY));
+			}
+			if (s.sunSet > 0) {
+				transitions.add(Pair.create(new Date(s.sunSet), DayState.NIGHT));
+			}
+		}
+
+		Collections.sort(transitions, new Comparator<Pair<Date, DayState>>() {
+			@Override
+			public int compare(final Pair<Date, DayState> t1, final Pair<Date, DayState> t2) {
+				int dateComparison = t1.first.compareTo(t2.first);
+				if (dateComparison != 0) {
+					return dateComparison;
+				}
+				return t1.second == DayState.DAY ? 1 : -1;
+			}
+		});
+
+		if (mSunMoonData.size() > 0) {
+			SunMoonData firstSunMoonData = mSunMoonData.get(0);
+			Pair<Date, DayState> firstTransition = transitions.size() > 0 ? transitions.get(0) : null;
+
+			if (firstTransition == null || firstSunMoonData.date < firstTransition.first.getTime()) {
+				if (firstSunMoonData.sunRise == AixSunMoonData.NEVER_RISE) {
+					// Polar night
+					transitions.add(0, Pair.create(new Date(firstSunMoonData.date), DayState.NIGHT));
+				} else if (firstSunMoonData.sunRise == 0) {
+					// Polar day
+					transitions.add(0, Pair.create(new Date(firstSunMoonData.date), DayState.DAY));
+				} else if (firstTransition != null) {
+					transitions.add(0, Pair.create(
+						new Date(firstSunMoonData.date),
+						firstTransition.second == DayState.DAY ? DayState.NIGHT : DayState.DAY));
+				}
+			}
+		}
+
+		// Remove non-transitions
+		for (int i = 0; i < transitions.size() - 1;) {
+			if (transitions.get(i).second == transitions.get(i + 1).second) {
+				transitions.remove(i + 1);
+			}
+			else {
+				i += 1;
+			}
+		}
+
+		if (mSunMoonData.size() > 0 && transitions.size() > 0) {
+			SunMoonData lastSunMoonData = mSunMoonData.get(mSunMoonData.size() - 1);
+			Pair<Date, DayState> lastTransition = transitions.get(transitions.size() - 1);
+
+			if (lastSunMoonData.date + DateUtils.DAY_IN_MILLIS > lastTransition.first.getTime()) {
+				transitions.add(Pair.create(
+					new Date(lastSunMoonData.date + DateUtils.DAY_IN_MILLIS),
+					lastTransition.second == DayState.DAY ? DayState.NIGHT : DayState.DAY));
+			}
+		}
+
+		mSunMoonTransitions = transitions;
 	}
 	
 	private void setupEpochAndTimes() {

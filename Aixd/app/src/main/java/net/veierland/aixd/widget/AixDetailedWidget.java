@@ -603,7 +603,7 @@ public class AixDetailedWidget {
 		if (mSunMoonTransitions == null || mSunMoonTransitions.size() < 2) return;
 		
 		float timeRange = mTimeTo - mTimeFrom;
-		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange / 2.0f;
+		float transitionWidthDefault = (float)DateUtils.HOUR_IN_MILLIS / timeRange;
 		
 		canvas.save();
 		canvas.clipRect(mGraphRect.left + 1, mGraphRect.top, mGraphRect.right, mGraphRect.bottom);

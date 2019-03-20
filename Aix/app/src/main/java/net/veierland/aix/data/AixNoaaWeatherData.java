@@ -476,13 +476,19 @@ public class AixNoaaWeatherData implements AixDataSource {
 			String url = String.format(
 					Locale.US,
 					"https://www.weather.gov/forecasts/xml/sample_products/browser_interface/ndfdXMLclient.php"
-							+ "?lat=%.5f&lon=%.5f&product=time-series",
+							+ "?lat=%.3f&lon=%.3f&product=time-series",
 					latitude.doubleValue(),
 					longitude.doubleValue());
 			
 			HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 			HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 			HttpResponse httpResponse = httpClient.execute(httpGet);
+
+			if (httpResponse.getStatusLine().getStatusCode() == 429)
+			{
+				throw new AixDataUpdateException(url, AixDataUpdateException.Reason.RATE_LIMITED);
+			}
+
 			InputStream content = AixUtils.getGzipInputStream(httpResponse);
 			
 			long t2 = System.currentTimeMillis();

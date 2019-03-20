@@ -6,6 +6,7 @@ import java.util.Calendar;
 import java.util.TimeZone;
 
 import net.veierland.aixd.R;
+import net.veierland.aixd.data.AixDataUpdateException;
 import net.veierland.aixd.data.AixGeoNamesData;
 import net.veierland.aixd.data.AixMetSunTimeData;
 import net.veierland.aixd.data.AixMetWeatherData;
@@ -90,31 +91,44 @@ public class AixUpdate {
 		
 		mCurrentUtcTime = Calendar.getInstance(mUtcTimeZone).getTimeInMillis(); 
 
-		int numAttempts = 3;
+		final int totalNumAttempts = 3;
+		int numAttemptsRemaining = totalNumAttempts;
 		boolean updateSuccess = false, drawSuccess = false;
-		
+
 		boolean shouldUpdate = isDataUpdateNeeded(aixLocationInfo);
+		boolean isWifiConnectionMissing = false;
+		boolean isRateLimited = false;
 		
 		do {
-			if (numAttempts != 3) {
-				updateWidgetRemoteViews("Delay before attempt #" + (4 - numAttempts), false);
-				Thread.sleep(5000);
+			if (numAttemptsRemaining != totalNumAttempts) {
+				updateWidgetRemoteViews("Delay before attempt #" + (totalNumAttempts - numAttemptsRemaining + 1), false);
+				Thread.sleep(10000);
 			}
 			
 			if (shouldUpdate) {
-				updateSuccess = updateData(aixLocationInfo);
-				
-				if (!updateSuccess && mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(aixLocationInfo))
-				{
-					break;
+				if (!mAixSettings.getCachedWifiOnly() || isWiFiAvailable()) {
+					try {
+						updateData(aixLocationInfo);
+						updateSuccess = true;
+						isWifiConnectionMissing = false;
+					}
+					catch (AixDataUpdateException e) {
+						if (e.reason == AixDataUpdateException.Reason.RATE_LIMITED) {
+							isRateLimited = true;
+							numAttemptsRemaining = 0;
+						}
+						Log.d(TAG, String.format("update() failed: %s", e.toString()));
+					}
+					catch (Exception e) {
+						Log.d(TAG, String.format("update() failed: %s", e.toString()));
+					}
+				} else {
+					isWifiConnectionMissing = true;
 				}
 			}
 			
-			AixDetailedWidget widget = null;
-			
 			try {
-				widget = AixDetailedWidget.build(mContext, mAixWidgetInfo, aixLocationInfo);
-				
+				AixDetailedWidget widget = AixDetailedWidget.build(mContext, mAixWidgetInfo, aixLocationInfo);
 				updateWidgetRemoteViews(widget);
 				drawSuccess = true;
 			}
@@ -144,7 +158,7 @@ public class AixUpdate {
 				
 				shouldUpdate = true;
 			}
-		} while (!drawSuccess && (shouldUpdate && !updateSuccess) && (--numAttempts > 0));
+		} while (!drawSuccess && (shouldUpdate && !updateSuccess) && (--numAttemptsRemaining > 0));
 		
 		long updateTime = Long.MAX_VALUE;
 
@@ -154,12 +168,15 @@ public class AixUpdate {
 				Editor editor = settings.edit();
 				editor.putBoolean("global_needwifi", true);
 				editor.commit();
-				
+
 				Log.d(TAG, "WiFi needed, but not connected!");
 			}
-			
+
 			clearUpdateTimestamps(aixLocationInfo);
-			updateTime = Math.min(updateTime, System.currentTimeMillis() + 5 * DateUtils.MINUTE_IN_MILLIS);
+			updateTime = Math.min(updateTime,
+				System.currentTimeMillis()
+				+ 10 * DateUtils.MINUTE_IN_MILLIS
+				+ Math.round((float)(20 * 60) * Math.random()) * DateUtils.SECOND_IN_MILLIS);
 		}
 
 		if (!drawSuccess) {
@@ -167,6 +184,10 @@ public class AixUpdate {
 				if (mAixSettings.getCachedProvider() == AixUtils.PROVIDER_NWS && !isLocationInUS(aixLocationInfo)) {
 					PendingIntent pendingIntent = AixUtils.buildWidgetProviderAutoIntent(mContext, mWidgetUri);
 					AixUtils.updateWidgetRemoteViews(mContext, mAixWidgetInfo.getAppWidgetId(), "NWS source cannot be used outside US.\nTap widget to revert to auto", true, pendingIntent);
+				} else if (isRateLimited) {
+					updateWidgetRemoteViews("API is currently rate limited", true);
+				} else if (isWifiConnectionMissing) {
+					updateWidgetRemoteViews("WiFi is required and missing", true);
 				} else {
 					updateWidgetRemoteViews("Failed to get weather data", true);
 				}
@@ -322,38 +343,20 @@ public class AixUpdate {
 		AixUtils.updateWidgetRemoteViews(mContext, mAixWidgetInfo.getAppWidgetId(), message, overwrite, configurationIntent);
 	}
 	
-	private boolean updateData(AixLocationInfo aixLocationInfo) {
-		boolean success = false;
-		
+	private void updateData(AixLocationInfo aixLocationInfo) throws AixDataUpdateException {
 		Log.d(TAG, "updateData() started uri=" + aixLocationInfo.getLocationUri());
-		
-		try {
-			if (!mAixSettings.getCachedWifiOnly() || isWiFiAvailable())
-			{
-				AixUtils.clearOldProviderData(mContext.getContentResolver());
-				AixGeoNamesData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
-				AixMetSunTimeData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
-				
-				int provider = mAixSettings.getCachedProvider();
-				
-				if ((provider == AixUtils.PROVIDER_AUTO && isLocationInUS(aixLocationInfo)) || provider == AixUtils.PROVIDER_NWS) {
-					AixNoaaWeatherData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
-				} else {
-					AixMetWeatherData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
-				}
-				
-				success = true;
-			}
-			else
-			{
-				Log.d(TAG, "updateData(): Could not update. WiFi is required but not available.");
-			}
-		} catch (Exception e) {
-			Log.d(TAG, "updateData(): Failed to update data. Exception=" + e.getMessage());
-			e.printStackTrace();
+
+		AixUtils.clearOldProviderData(mContext.getContentResolver());
+		AixGeoNamesData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
+		AixMetSunTimeData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
+
+		int provider = mAixSettings.getCachedProvider();
+
+		if ((provider == AixUtils.PROVIDER_AUTO && isLocationInUS(aixLocationInfo)) || provider == AixUtils.PROVIDER_NWS) {
+			AixNoaaWeatherData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
+		} else {
+			AixMetWeatherData.build(mContext, this, mAixSettings).update(aixLocationInfo, mCurrentUtcTime);
 		}
-		
-		return success;
 	}
 	
 }

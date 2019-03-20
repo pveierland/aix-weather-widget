@@ -108,7 +108,7 @@ public class AixMetWeatherData implements AixDataSource {
 			
 			String url = String.format(
 					Locale.US,
-					"https://api.met.no/weatherapi/locationforecast/1.9/?lat=%.5f&lon=%.5f",
+					"https://aa033wckd2azu8v41.api.met.no/weatherapi/locationforecast/1.9/?lat=%.3f&lon=%.3f",
 					latitude.doubleValue(),
 					longitude.doubleValue());
 			
@@ -117,6 +117,12 @@ public class AixMetWeatherData implements AixDataSource {
 			HttpClient httpClient = AixUtils.setupHttpClient(mContext);
 			HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 			HttpResponse httpResponse = httpClient.execute(httpGet);
+
+			if (httpResponse.getStatusLine().getStatusCode() == 429)
+			{
+				throw new AixDataUpdateException(url, AixDataUpdateException.Reason.RATE_LIMITED);
+			}
+
 			InputStream content = AixUtils.getGzipInputStream(httpResponse);
 			
 			mAixUpdate.updateWidgetRemoteViews("Parsing NMI weather data...", false);

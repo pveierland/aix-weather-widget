@@ -77,7 +77,7 @@ public class AixMetSunTimeData implements AixDataSource {
 		mDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 		mDateFormat.setTimeZone(mUtcTimeZone);
 		
-		mTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+		mTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 		mTimeFormat.setTimeZone(mUtcTimeZone);
 	}
 	
@@ -175,46 +175,45 @@ public class AixMetSunTimeData implements AixDataSource {
 				}
 				else if (contentValues != null)
 				{
-					if (parser.getName().equalsIgnoreCase("sunrise"))
-					{
-						contentValues.put(
-								AixSunMoonDataColumns.SUN_RISE,
-								mTimeFormat.parse(parser.getAttributeValue(null, "time")).getTime());
-					}
-					else if (parser.getName().equalsIgnoreCase("sunset"))
-					{
-						contentValues.put(
-								AixSunMoonDataColumns.SUN_SET,
-								mTimeFormat.parse(parser.getAttributeValue(null, "time")).getTime());
-					}
-					else if (parser.getName().equalsIgnoreCase("solarnoon"))
-					{
-						solarnoonElevationValue = Float.parseFloat(
-								parser.getAttributeValue(null, "elevation"));
-					}
-					else if (parser.getName().equalsIgnoreCase("moonrise"))
-					{
-						contentValues.put(
-								AixSunMoonDataColumns.MOON_RISE,
-								mTimeFormat.parse(parser.getAttributeValue(null, "time")).getTime());
-					}
-					else if (parser.getName().equalsIgnoreCase("moonset"))
-					{
-						contentValues.put(
-								AixSunMoonDataColumns.MOON_SET,
-								mTimeFormat.parse(parser.getAttributeValue(null, "time")).getTime());
-					}
-					else if (parser.getName().equalsIgnoreCase("moonposition"))
-					{
-						moonElevationAtStartOfDay = Float.parseFloat(
-								parser.getAttributeValue(null, "elevation"));
+					String time = parser.getAttributeValue(null, "time");
 
-						float moonphaseValue = Float.parseFloat(
-								parser.getAttributeValue(null, "phase"));
+					if (time != null)
+					{
+						long timeValue = mTimeFormat.parse(time.substring(0, 19)).getTime();
 
-						contentValues.put(
-								AixSunMoonDataColumns.MOON_PHASE,
-								parseMoonPhaseValue(moonphaseValue, parser.getLineNumber()));
+						if (parser.getName().equalsIgnoreCase("sunrise"))
+						{
+							contentValues.put(AixSunMoonDataColumns.SUN_RISE, timeValue);
+						}
+						else if (parser.getName().equalsIgnoreCase("sunset"))
+						{
+							contentValues.put(AixSunMoonDataColumns.SUN_SET, timeValue);
+						}
+						else if (parser.getName().equalsIgnoreCase("solarnoon"))
+						{
+							solarnoonElevationValue = Float.parseFloat(
+								parser.getAttributeValue(null, "elevation"));
+						}
+						else if (parser.getName().equalsIgnoreCase("moonrise"))
+						{
+							contentValues.put(AixSunMoonDataColumns.MOON_RISE, timeValue);
+						}
+						else if (parser.getName().equalsIgnoreCase("moonset"))
+						{
+							contentValues.put(AixSunMoonDataColumns.MOON_SET, timeValue);
+						}
+						else if (parser.getName().equalsIgnoreCase("moonposition"))
+						{
+							moonElevationAtStartOfDay = Float.parseFloat(
+									parser.getAttributeValue(null, "elevation"));
+
+							float moonphaseValue = Float.parseFloat(
+									parser.getAttributeValue(null, "phase"));
+
+							contentValues.put(
+									AixSunMoonDataColumns.MOON_PHASE,
+									parseMoonPhaseValue(moonphaseValue, parser.getLineNumber()));
+						}
 					}
 				}
 				break;
@@ -300,16 +299,21 @@ public class AixMetSunTimeData implements AixDataSource {
 			{
 				String url = String.format(
 						Locale.US,
-						"https://api.met.no/weatherapi/sunrise/2.0/?lat=%.5f&lon=%.5f&date=%s&offset=+00:00&days=%d",
+						"https://aa033wckd2azu8v41.api.met.no/weatherapi/sunrise/2.0/?lat=%.1f&lon=%.1f&date=%s&offset=+00:00&days=%d",
 						latitude.doubleValue(),
 						longitude.doubleValue(),
 						mDateFormat.format(mStartDate),
 						NUM_DAYS_REQUEST);
 
 				HttpClient httpClient = AixUtils.setupHttpClient(mContext);
-				
 				HttpGet httpGet = AixUtils.buildGzipHttpGet(url);
 				HttpResponse httpResponse = httpClient.execute(httpGet);
+
+				if (httpResponse.getStatusLine().getStatusCode() == 429)
+				{
+					throw new AixDataUpdateException(url, AixDataUpdateException.Reason.RATE_LIMITED);
+				}
+
 				InputStream content = AixUtils.getGzipInputStream(httpResponse);
 
 				List<ContentValues> contentValuesList = parseData(

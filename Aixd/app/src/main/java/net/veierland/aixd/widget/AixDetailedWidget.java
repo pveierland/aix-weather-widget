@@ -1035,8 +1035,8 @@ public class AixDetailedWidget {
 		Calendar calendar = Calendar.getInstance(mUtcTimeZone);
 		
 		for (IntervalData dataPoint : mIntervalData) {
-			if ((dataPoint.getLengthInHours() == hoursPerIcon || dataPoint.getLengthInHours() == 0) && dataPoint.weatherIcon != null && dataPoint.weatherIcon >= 1 && dataPoint.weatherIcon <= 23) {
-				long iconTimePos = (dataPoint.timeFrom + dataPoint.timeTo) / 2;
+			if (dataPoint.weatherIcon != null && dataPoint.weatherIcon >= 1 && dataPoint.weatherIcon <= 23) {
+				long iconTimePos = dataPoint.getLengthInHours() == 1 ? dataPoint.timeFrom : (dataPoint.timeFrom + dataPoint.timeTo) / 2;
 				if (iconTimePos < loMarker || iconTimePos > hiMarker) continue;
 				
 				PointF Z1 = interpolateTemperature(iconTimePos - (long)Math.round(iconWidthValOver4));

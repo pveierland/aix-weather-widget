@@ -27,18 +27,18 @@ public class AixIntro extends Activity {
 		
 		if (uri != null && uri.equals(ACTION_SHOW_HELP))
 		{
-			url = "https://www.veierland.net/aix/help/";
+			url = "https://www.veierland.net/aix/help/?https";
 			loadingMessage = "Loading Aix help..";
 		}
 		else if (uri != null && uri.equals(ACTION_SHOW_DEVICE_PROFILE_GUIDE))
 		{
-			url = "https://www.veierland.net/aix/device_profiles/";
+			url = "https://www.veierland.net/aix/device_profiles/?https";
 			loadingMessage = "Loading Device Profile guide..";
 		}
 		else
 		{
 			// Show intro as default
-			url = "https://www.veierland.net/aix/introduction/";
+			url = "https://www.veierland.net/aix/introduction/?https";
 			loadingMessage = "Loading Aix introduction..";
 		}
 		
@@ -55,7 +55,7 @@ public class AixIntro extends Activity {
 
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 if (failingUrl.startsWith("https://")) {
-                    view.loadUrl(failingUrl.replace("https://", "http://"));
+                    view.loadUrl(failingUrl.replace("https://", "http://").concat("?http"));
                 }
             }
             

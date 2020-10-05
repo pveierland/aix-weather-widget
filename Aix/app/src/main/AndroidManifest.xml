@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		package="net.veierland.aix"
-		android:versionCode="29"
-		android:versionName="0.1.9.15"
+		android:versionCode="34"
+		android:versionName="0.1.9.20"
 		android:installLocation="internalOnly">
     
     <uses-permission android:name="android.permission.INTERNET" />
@@ -13,7 +13,8 @@
 			android:icon="@drawable/app_icon"
 			android:label="@string/widget_name"
 			android:description="@string/app_description"
-			android:theme="@style/AixTheme">
+			android:theme="@style/AixTheme"
+			android:usesCleartextTraffic="true">
 			
     	<activity android:name=".AixConfigure"
     	    	android:label="@string/title_configure"

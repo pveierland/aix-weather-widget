@@ -108,7 +108,7 @@ public class AixMetWeatherData implements AixDataSource {
 			
 			String url = String.format(
 					Locale.US,
-					"https://aa033wckd2azu8v41.api.met.no/weatherapi/locationforecast/1.9/?lat=%.3f&lon=%.3f",
+					"https://aa033wckd2azu8v41.api.met.no/weatherapi/locationforecast/2.0/classic?lat=%.3f&lon=%.3f",
 					latitude.doubleValue(),
 					longitude.doubleValue());
 			

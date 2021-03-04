@@ -1,1 +1,0 @@
--Fixed Android 9 use of deprecated Op.REPLACE resulting in failed widget drawing.

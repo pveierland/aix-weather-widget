@@ -29,7 +29,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.net.Uri;
 import android.preference.PreferenceManager;
-import android.support.v4.app.JobIntentService;
+import androidx.core.app.JobIntentService;
 import android.util.Log;
 import android.widget.RemoteViews;
 

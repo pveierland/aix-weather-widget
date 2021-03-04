@@ -1,3 +1,0 @@
--Updated app to support api.met.no Sunrise API version 2.0.
--Reduced sun rise/set transitions to 30 minutes.
--Redid drawing logic for day/night transitions.

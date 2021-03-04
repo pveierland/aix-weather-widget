@@ -1,6 +1,0 @@
--Removed X date format specifier causing issues on older Android versions.
--Added approximation of 1 decimal to lat/lon of MET Sunrise API.
--Added approximation of 3 decimals to lat/lon of MET Locationforecast API.
--Respect rate limiting and display message to user.
--Changed sun rise/set transitions back to 60 minutes.
--Altered update timing to make app less aggressive.

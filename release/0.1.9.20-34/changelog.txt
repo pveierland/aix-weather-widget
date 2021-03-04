@@ -1,1 +1,0 @@
--Fixed issue with weather icons not being drawn due to change in MET API.

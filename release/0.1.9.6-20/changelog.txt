@@ -1,1 +1,0 @@
--Fixed bug affecting polar night & midnight sun locations.

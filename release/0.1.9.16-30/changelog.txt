@@ -1,3 +1,0 @@
--Removed deprecated use of Region.OP.REPLACE.
--Allowed use of HTTP for GeoNames for Android 9.0.
--Updated website to support HTTPS correctly.

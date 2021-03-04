@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Aix.iml" filepath="$PROJECT_DIR$/Aix.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Aix.iml" filepath="$PROJECT_DIR$/.idea/Aix.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Aix.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Aix.app.iml" />
     </modules>
   </component>
 </project>

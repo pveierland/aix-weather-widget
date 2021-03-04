@@ -1,2 +1,0 @@
--Changed from Google to Geonames geocoding API.
--Disabled export of Content Provider.

@@ -9,6 +9,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.util.Log;
 
 public class AixWidgetInfo {
 	
@@ -30,7 +31,7 @@ public class AixWidgetInfo {
 		try {
 			ContentResolver resolver = context.getContentResolver();
 			cursor = resolver.query(widgetUri, null, null, null, null);
-			
+			Log.d("AixWidgetInfo", "cursor" + cursor);
 			if (cursor != null && cursor.moveToFirst())
 			{
 				int columnIndex = cursor.getColumnIndexOrThrow(AixWidgetsColumns.APPWIDGET_ID);

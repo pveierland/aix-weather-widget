@@ -1,2 +1,0 @@
--Changed most resources to HTTPS.
--Fixed legacy Apache HTTP issue.

@@ -1,4 +1,0 @@
--Changed from Google to Geonames geocoding API.
--Fixed SQL vulnerability in content provider.
--Updated app to Android API version 26.
--Changed widget dimensions due to API changes.

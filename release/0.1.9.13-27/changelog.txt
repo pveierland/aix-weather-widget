@@ -1,2 +1,0 @@
--Changed minSdkVersion to 21 and targetSdkVersion to 28.
--Changed layout image scaling.

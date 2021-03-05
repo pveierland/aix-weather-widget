@@ -289,17 +289,11 @@ public class AixConfigure extends PreferenceActivity
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		switch (item.getItemId()) {
-		case R.id.help:
+		if (item.getItemId() == R.id.help) {
 			startActivity(new Intent(AixIntro.ACTION_SHOW_HELP, null, this, AixIntro.class));
 			return true;
-		case R.id.donate:
-			Intent donateIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://market.android.com/details?id=net.veierland.aixd"));
-			startActivity(donateIntent);
-			return true;
-		default:
-			return super.onOptionsItemSelected(item);
 		}
+		return super.onOptionsItemSelected(item);
 	}
 	
 	@Override

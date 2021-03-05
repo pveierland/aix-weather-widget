@@ -946,7 +946,7 @@ public class AixDeviceProfileActivity extends Activity
 					break;
 				}
 				eventType = parser.next();
-			};
+			}
 			
 			return result;
 		}

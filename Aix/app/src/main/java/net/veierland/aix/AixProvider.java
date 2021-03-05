@@ -181,7 +181,7 @@ public class AixProvider extends ContentProvider {
 
 		public static final String[] ALL_COLUMNS = new String[] {
 				BaseColumns._ID, LOCATION, TIME_ADDED, TIME, TEMPERATURE, HUMIDITY, PRESSURE };
-	};
+	}
 	
 	public static class AixPointDataForecasts implements BaseColumns, AixPointDataForecastColumns {
 		public static final Uri CONTENT_URI = Uri.parse(
@@ -211,7 +211,7 @@ public class AixProvider extends ContentProvider {
 
 		public static final String[] ALL_COLUMNS = new String[] {
 				BaseColumns._ID, LOCATION, TIME_ADDED, TIME_FROM, TIME_TO, RAIN_VALUE, RAIN_MINVAL, RAIN_MAXVAL, WEATHER_ICON };
-	};
+	}
 	
 	public static class AixIntervalDataForecasts implements BaseColumns, AixIntervalDataForecastColumns {
 		public static final Uri CONTENT_URI = Uri.parse(

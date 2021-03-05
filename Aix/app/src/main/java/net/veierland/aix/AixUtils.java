@@ -14,18 +14,12 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
-import net.veierland.aix.AixProvider.AixIntervalDataForecastColumns;
 import net.veierland.aix.AixProvider.AixIntervalDataForecasts;
 import net.veierland.aix.AixProvider.AixLocations;
 import net.veierland.aix.AixProvider.AixLocationsColumns;
-import net.veierland.aix.AixProvider.AixPointDataForecastColumns;
 import net.veierland.aix.AixProvider.AixPointDataForecasts;
-import net.veierland.aix.AixProvider.AixSettingsColumns;
 import net.veierland.aix.AixProvider.AixSunMoonData;
-import net.veierland.aix.AixProvider.AixSunMoonDataColumns;
-import net.veierland.aix.AixProvider.AixViewSettings;
 import net.veierland.aix.AixProvider.AixViews;
-import net.veierland.aix.AixProvider.AixWidgetSettingsDatabase;
 import net.veierland.aix.AixProvider.AixWidgets;
 import net.veierland.aix.AixProvider.AixWidgetsColumns;
 
@@ -37,7 +31,6 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.CoreProtocolPNames;
-import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 
 import android.app.PendingIntent;
@@ -51,7 +44,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Point;

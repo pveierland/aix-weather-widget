@@ -710,6 +710,8 @@ public class AixProvider extends ContentProvider {
 			return AixSunMoonData.CONTENT_TYPE;
 		case AIXSUNMOONDATA_ID:
 			return AixSunMoonData.CONTENT_ITEM_TYPE;
+		case AIXRENDER:
+			return " ";
 		}
 		throw new IllegalStateException();
 	}
